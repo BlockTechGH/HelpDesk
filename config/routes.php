@@ -50,8 +50,45 @@ return static function (RouteBuilder $routes) {
          * its action called 'display', and we pass a param to select the view file
          * to use (in this case, templates/Pages/home.php)...
          */
+
+        // we need here of dummy page
         $builder->connect('/', ['controller' => 'Pages', 'action' => 'display', 'home']);
 
+        $builder->connect('/install',
+            ['controller' => 'Installations', 'action' => 'install']
+        );
+
+        // status of Whatsapp messages and Incoming message from Whatsapp
+        $builder->connect('/kaleyra_handler',
+            [
+                'controller' => 'Kaleyra',
+                'action' => 'handle'
+            ], ['_name' => 'kaleyra_handler']
+        );
+
+        // Interface for open channel settings
+        $builder->connect('/oc_settings_interface',
+            [
+                'controller' => 'Bitrix',
+                'action' => 'diplaySettingsInterface'
+            ], ['_name' => 'oc_settings_interface']
+        );
+
+        // Handler for message from Bitrix chat
+        $builder->connect('/oc_message_handler',
+            [
+                'controller' => 'Bitrix',
+                'action' => 'handleBitrixMessage'
+            ], ['_name' => 'oc_message_handler']
+        );
+
+        // Handler open channel events - OnImConnectorLineDelete, OnImConnectorStatusDelete
+        $builder->connect('/oc_event_handler',
+            [
+                'controller' => 'Bitrix',
+                'action' => 'handleOCEvents'
+            ], ['_name' => 'oc_event_handler']
+        );
         /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */
