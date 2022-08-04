@@ -20,13 +20,18 @@ git clone ssh://git@main.git.e2e4gu.ru:2222/E2E4/kaleyra-integration.git ./html/
 composer install
 ```
 
+Выходим из контейнера и меняем владельца файлов на своего
+
+```
+sudo chown -R ${USER}:${USER} html/application
+```
+
 # Конфигурация
 
 ## 4. Настраиваем подключение к базе данных
 
 ```
-cp config/app_local.example.php config/app_local.php
-vim config/app_local.php
+cp html/application/config/app_local.example.php html/application/config/app_local.php
 ```
 
 И вводим соответсвующие настройки
@@ -45,8 +50,7 @@ vim config/app_local.php
 ## 5. Настраиваем конфигурацию приложения
 
 ```
-cp config/app_config.example.php config/app_config.php
-vim config/app_config.php
+cp html/application/config/app_config.example.php html/application/config/app_config.php
 ```
 
 и указываем следующие данные
@@ -65,5 +69,12 @@ return [
 ];
 ```
 
+## 6. Открываем приложение и добавляем самоподписной сертификат в список исключений браузера
+
+[https://kaleyra.local:4433](https://kaleyra.local:4433)
+
+## 7. Для доступа к phpmyadmin
+
+[http://kaleyra.local:9876](http://kaleyra.local:9876)
 
 
