@@ -16,6 +16,7 @@ declare(strict_types=1);
  */
 namespace App\Controller;
 
+use Cake\Error\Debugger;
 use Cake\Controller\Controller;
 
 /**
@@ -28,6 +29,13 @@ use Cake\Controller\Controller;
  */
 class AppController extends Controller
 {
+    public $isAccessFromBitrix = false;
+    public $memberId = null;
+    public $authId = null;
+    public $refreshId = null;
+    public $authExpires = null;
+    public $domain = null;
+
     /**
      * Initialization hook method.
      *
@@ -44,10 +52,22 @@ class AppController extends Controller
         $this->loadComponent('RequestHandler');
         $this->loadComponent('Flash');
 
-        /*
-         * Enable the following component for recommended CakePHP form protection settings.
-         * see https://book.cakephp.org/4/en/controllers/components/form-protection.html
-         */
-        //$this->loadComponent('FormProtection');
+        $controllerName = $this->request->getParam('controller');
+
+        if($controllerName == 'Installations')
+        {
+            $event = $this->request->getData('event');
+            $auth = $this->request->getData('auth');
+
+            if($event && $auth)
+            {
+                $this->isAccessFromBitrix = true;
+                $this->memberId = $auth['member_id'];
+                $this->authId = $auth['access_token'];
+                $this->refreshId = $auth['refresh_token'];
+                $this->authExpires = $auth['[expires_in'];
+                $this->domain = $auth['domain'];
+            }
+        }
     }
 }

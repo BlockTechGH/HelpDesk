@@ -21,6 +21,7 @@ use Cake\Core\ContainerInterface;
 use Cake\Datasource\FactoryLocator;
 use Cake\Error\Middleware\ErrorHandlerMiddleware;
 use Cake\Http\BaseApplication;
+use Cake\Routing\RouteBuilder;
 use Cake\Http\Middleware\BodyParserMiddleware;
 use Cake\Http\Middleware\CsrfProtectionMiddleware;
 use Cake\Http\MiddlewareQueue;
@@ -99,9 +100,11 @@ class Application extends BaseApplication
 
             // Cross Site Request Forgery (CSRF) Protection Middleware
             // https://book.cakephp.org/4/en/security/csrf.html#cross-site-request-forgery-csrf-middleware
-            ->add(new CsrfProtectionMiddleware([
-                'httponly' => true,
-            ]));
+            // ->add(new CsrfProtectionMiddleware([
+            //    'httponly' => true,
+            //]))
+            // you can switch on CSRF in routes
+        ;
 
         return $middlewareQueue;
     }
@@ -132,5 +135,15 @@ class Application extends BaseApplication
         $this->addPlugin('Migrations');
 
         // Load more plugins here
+    }
+
+    public function routes(RouteBuilder $routes): void
+    {
+        $options = [
+        ];
+
+        $routes->registerMiddleware('csrf', new CsrfProtectionMiddleware($options));
+
+        parent::routes($routes);
     }
 }
