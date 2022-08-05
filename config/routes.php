@@ -52,10 +52,15 @@ return static function (RouteBuilder $routes) {
          */
 
         // we need here of dummy page
-        $builder->connect('/', ['controller' => 'Pages', 'action' => 'display', 'home']);
+        $builder->connect('/',
+            [
+                'controller' => 'Pages',
+                'action' => 'home'
+            ], ['_name' => 'home']
+        );
 
         $builder->connect('/install',
-            ['controller' => 'Installations', 'action' => 'install']
+            ['controller' => 'Installations', 'action' => 'installApp']
         );
 
         // status of Whatsapp messages and Incoming message from Whatsapp
