@@ -62,6 +62,9 @@ return [
         'client_id' => '*****',
         'client_secret' => '*****',
 
+        // portal id
+        'member_id' => '*****',
+
         // logs configurations
         'LogsFilePath' => '/var/log/kaleyra',
         'LogsLifeTime' => 10,
