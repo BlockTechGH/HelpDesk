@@ -65,7 +65,7 @@ class AppController extends Controller
                 $this->memberId = $auth['member_id'];
                 $this->authId = $auth['access_token'];
                 $this->refreshId = $auth['refresh_token'];
-                $this->authExpires = $auth['[expires_in'];
+                $this->authExpires = $auth['expires_in'];
                 $this->domain = $auth['domain'];
             }
         }

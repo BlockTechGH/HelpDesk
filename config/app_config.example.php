@@ -12,6 +12,10 @@ return [
         // logs configurations
         'LogsFilePath' => '/var/log/kaleyra',
         'LogsLifeTime' => 10,
+
+        // for local development
+        'portalBaseUrl' => '', // ngrok url
+        'postfix' => '', // unique postfix for app item names
     ],
 ];
 

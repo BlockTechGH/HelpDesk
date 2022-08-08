@@ -16,7 +16,7 @@ class Bx24Component extends Component {
     private $obBx24App = null;
     private $bx24Logger = null;
 
-    public function initialize(array $config = [])
+    public function initialize(array $config = []): void
     {
         parent::initialize($config);
         $this->controller = $this->_registry->getController();
@@ -32,5 +32,42 @@ class Bx24Component extends Component {
         $this->obBx24App->setMemberId($this->controller->memberId);
         $this->obBx24App->setAccessToken($this->controller->authId);
         $this->obBx24App->setRefreshToken($this->controller->refreshId);
+    }
+
+    public function installConnector()
+    {
+        $postfix = Configure::read('itemsPostfix');
+
+        $arParams = [
+            'ID' => 'BT_WHATSAPP' . (($postfix) ? $postfix : ''),
+            'NAME' => __('BT Whatsapp') . (($postfix) ? $postfix : ''),
+            'ICON' => [
+                'DATA_IMAGE' => 'data:image/svg+xml,',
+                'COLOR' => '#a6ffa3',
+                'SIZE' => '100%',
+                'POSITION' => 'center',
+            ]
+        ];
+    }
+
+    public function getInstalledData()
+    {
+        $arData = [
+            'user' => [],
+            'placementList' => [],
+            'activityTypeList'
+        ];
+
+        $this->obBx24App->addBatchCall('user.current', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['user'] = $result['result'];
+            }
+        });
+
+        $this->B24App->processBatchCalls();
+
+        return $arData;
     }
 }
