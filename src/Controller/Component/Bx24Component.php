@@ -18,13 +18,6 @@ class Bx24Component extends Component
     private $obBx24App = null;
     public $bx24Logger = null;
 
-    const IM_CONNECTOR_URI = 'https://wa.me/';
-    const HOUR = 3600;
-    const ENTITY_TYPE_ID_LEAD = 1;
-    const ENTITY_TYPE_ID_DEAL = 2;
-    const ENTITY_TYPE_ID_CONTACT = 3;
-    const ENTITY_TYPE_ID_COMPANY = 4;
-
     public function initialize(array $config = []): void
     {
         parent::initialize($config);
