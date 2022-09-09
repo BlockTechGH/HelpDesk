@@ -10,7 +10,7 @@ return [
         'member_id' => '',
 
         // logs configurations
-        'LogsFilePath' => '/var/log/kaleyra',
+        'LogsFilePath' => '/var/log/helpdesk',
         'LogsLifeTime' => 10,
 
         // fill for local development, leave empty for production

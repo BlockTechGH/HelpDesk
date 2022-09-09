@@ -17,6 +17,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Cake\Event\EventInterface;
+use Cake\Core\Configure;
+use Cake\Http\Exception\ForbiddenException;
+use Cake\Http\Exception\NotFoundException;
+use Cake\Http\Response;
+use Cake\Error\Debugger;
+use Cake\View\Exception\MissingTemplateException;
 
 class InstallationsController extends AppController
 {
@@ -47,20 +53,19 @@ class InstallationsController extends AppController
 
         $this->loadComponent('Bx24');
 
-        // 1. save/update bitrix tokens in models
+        // 1. save/updatre bitrix tokens in models
         $this->BitrixTokens = $this->getTableLocator()->get('BitrixTokens');
-        $this->BitrixTokens->writeAppTokens($this->memberId, $this->domain, $this->authId, $this->refreshId, $this->authExpires);
 
-        // 2.0 Get installed data
+        // 2.0 Install/reinstall connector
+        $this->Bx24->installConnector();
+
+        // 2.1 Get installed data
         $arInstalledData = $this->Bx24->getInstalledData();
 
-        // 2.1 Register connector - https://dev.1c-bitrix.ru/rest_help/imconnector/methods/imconnector_register.php
-        $this->Bx24->installConnector($arInstalledData['placementList']);
-
+        // 2.2 Register connector - https://dev.1c-bitrix.ru/rest_help/imconnector/methods/imconnector_register.php
         // 2.3 Bind on OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete - https://dev.1c-bitrix.ru/rest_help/imconnector/events/index.php
         // 2.4 Add application activity type - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/crm_activity_type_add.php
-        // 2.5 Placement in CRM cards https://dev.1c-bitrix.ru/rest_help/application_embedding/metods/index.php
-        $this->Bx24->installApplicationData($arInstalledData);
+        // 2.5 Placement in CRM cards
 
         die();
     }

@@ -20,6 +20,11 @@ class CreateBitrixTokens extends AbstractMigration
             'limit' => 255,
             'null' => false,
         ]);
+        $table->addColumn('domain', 'string', [
+            'default' => null,
+            'null' => false,
+            'limit' => 255
+        ]);
         $table->addColumn('auth_id', 'string', [
             'default' => null,
             'limit' => 255,
@@ -42,27 +47,6 @@ class CreateBitrixTokens extends AbstractMigration
         $table->addColumn('modified', 'datetime', [
             'default' => null,
             'null' => false,
-        ]);
-        $table->addIndex([
-            'auth_id',
-
-            ], [
-            'name' => 'BY_AUTH_ID',
-            'unique' => false,
-        ]);
-        $table->addIndex([
-            'refresh_id',
-
-            ], [
-            'name' => 'BY_REFRESH_ID',
-            'unique' => false,
-        ]);
-        $table->addIndex([
-            'auth_expires',
-
-            ], [
-            'name' => 'BY_AUTH_EXPIRES',
-            'unique' => false,
         ]);
         $table->create();
     }

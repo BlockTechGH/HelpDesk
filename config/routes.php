@@ -87,14 +87,6 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'oc_message_handler']
         );
 
-        // Handler for message from Bitrix chat
-        $builder->connect('/crm_interface',
-            [
-                'controller' => 'Bitrix',
-                'action' => 'displayCrmInterface'
-            ], ['_name' => 'crm_interface']
-        );
-
         // Handler open channel events - OnImConnectorLineDelete, OnImConnectorStatusDelete
         $builder->connect('/oc_event_handler',
             [

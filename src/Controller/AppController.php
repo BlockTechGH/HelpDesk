@@ -39,15 +39,6 @@ class AppController extends Controller
     public $authExpires = null;
     public $domain = null;
 
-
-    public $isCallFromKaleyra = false;
-    public $wanumber = null;
-    public $from = null;
-    public $message = null;
-    public $mobile = null;
-    public $status = null;
-    public $messageId = null;
-
     /**
      * Initialization hook method.
      *
@@ -70,7 +61,7 @@ class AppController extends Controller
 
         $controllerName = $this->request->getParam('controller');
 
-        $this->AppControllerLogger->debug('Start request', [
+        $this->AppControllerLogger->debug('Request', [
             'controllerName' => $controllerName,
             'data' => $this->request->getParsedBody(),
             'query' => $this->request->getQueryParams()
@@ -80,6 +71,7 @@ class AppController extends Controller
         if($controllerName == 'Installations')
         {
             $event = $this->request->getData('event');
+            $auth = $this->request->getData('auth');
 
             if($event && $auth)
             {
@@ -89,47 +81,6 @@ class AppController extends Controller
                 $this->refreshId = $auth['refresh_token'];
                 $this->authExpires = $auth['expires_in'];
                 $this->domain = $auth['domain'];
-            }
-        }
-
-        if($controllerName == 'Bitrix')
-        {
-            $this->memberId = $this->request->getData('member_id') ?? $auth['member_id'];
-            $this->authId = $this->request->getData('AUTH_ID') ?? $auth['auth_id'] ?? $auth['access_token'];
-            $this->refreshId = $this->request->getData('REFRESH_ID');
-            if(!$this->refreshId)
-            {
-                $this->refreshId = $this->getTableLocator()
-                    ->get('BitrixTokens')
-                    ->getTokenObjectByMemberId($this->memberId)
-                    ->refresh_id;
-            }
-            $this->authExpires = $this->request->getData('AUTH_EXPIRES') ?? $auth['expires_in'];
-            $this->domain = $this->request->getQuery('DOMAIN') ?? $auth['domain'];
-
-            if($this->memberId && $this->authId && $this->refreshId && $this->authExpires && $this->domain)
-            {
-                $this->isAccessFromBitrix = true;
-            }
-        }
-
-        if($controllerName == 'Kaleyra')
-        {
-            $this->wanumber = $this->request->getQuery('wanumber');
-            $this->from = $this->request->getQuery('from');
-            $this->messageId = $this->request->getQuery('id');
-            $this->message = json_decode($this->request->getQuery('message'), true);
-            $this->mobile = $this->request->getQuery('mobile');
-            $this->status = $this->request->getQuery('status');
-
-            if($this->wanumber && $this->from && $this->mobile)
-            {
-                $this->isCallFromKaleyra = true;
-            }
-
-            if($this->mobile && $this->status)
-            {
-                $this->isCallFromKaleyra = true;
             }
         }
     }
