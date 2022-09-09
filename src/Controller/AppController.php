@@ -16,6 +16,9 @@ declare(strict_types=1);
  */
 namespace App\Controller;
 
+use Cake\Core\Configure;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Cake\Error\Debugger;
 use Cake\Controller\Controller;
 
@@ -36,6 +39,15 @@ class AppController extends Controller
     public $authExpires = null;
     public $domain = null;
 
+
+    public $isCallFromKaleyra = false;
+    public $wanumber = null;
+    public $from = null;
+    public $message = null;
+    public $mobile = null;
+    public $status = null;
+    public $messageId = null;
+
     /**
      * Initialization hook method.
      *
@@ -52,8 +64,19 @@ class AppController extends Controller
         $this->loadComponent('RequestHandler');
         $this->loadComponent('Flash');
 
+        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'app.log';
+        $this->AppControllerLogger = new Logger('AppController');
+        $this->AppControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
         $controllerName = $this->request->getParam('controller');
 
+        $this->AppControllerLogger->debug('Request', [
+            'controllerName' => $controllerName,
+            'data' => $this->request->getParsedBody(),
+            'query' => $this->request->getQueryParams()
+        ]);
+
+        $auth = $this->request->getData('auth');
         if($controllerName == 'Installations')
         {
             $event = $this->request->getData('event');

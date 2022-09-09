@@ -1,8 +1,8 @@
 <?php
 namespace App\Controller\Component;
 
+use Bitrix24\Exceptions\Bitrix24TokenIsExpiredException;
 use Monolog\Logger;
-use Cake\I18n\Time;
 use Cake\Routing\Router;
 use Cake\Core\Configure;
 use Cake\Controller\Component;
@@ -10,64 +10,72 @@ use Monolog\Handler\StreamHandler;
 use Bitrix24\Exceptions\Bitrix24ApiException;
 use Bitrix24\Exceptions\Bitrix24SecurityException;
 
-class Bx24Component extends Component {
+class Bx24Component extends Component
+{
 
     private $controller = null;
+    private $BitrixTokens = null;
     private $obBx24App = null;
-    private $bx24Logger = null;
+    public $bx24Logger = null;
+
+    const IM_CONNECTOR_URI = 'https://wa.me/';
+    const HOUR = 3600;
+    const ENTITY_TYPE_ID_LEAD = 1;
+    const ENTITY_TYPE_ID_DEAL = 2;
+    const ENTITY_TYPE_ID_CONTACT = 3;
+    const ENTITY_TYPE_ID_COMPANY = 4;
 
     public function initialize(array $config = []): void
     {
         parent::initialize($config);
         $this->controller = $this->_registry->getController();
+        $this->BitrixTokens = $this->controller
+            ->getTableLocator()
+            ->get('BitrixTokens');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bx24app.log';
-        $bx24Logger = new Logger('BX24');
-        $bx24Logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+        $this->bx24Logger = new Logger('BX24');
+        $this->bx24Logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
 
-        $this->obBx24App = new \Bitrix24\Bitrix24(false, $bx24Logger);
+        $this->obBx24App = new \Bitrix24\Bitrix24(false, $this->bx24Logger);
+        $this->obBx24App->setOnExpiredToken(function() {
+            $this->bx24Logger->debug("Access token is expired. Refresh tokens");
+            $this->refreshTokens();
+            return true;
+        });
 
         $this->obBx24App->setApplicationScope(["crm"]);
         $this->obBx24App->setDomain($this->controller->domain);
         $this->obBx24App->setMemberId($this->controller->memberId);
         $this->obBx24App->setAccessToken($this->controller->authId);
         $this->obBx24App->setRefreshToken($this->controller->refreshId);
-    }
 
-    public function installConnector()
-    {
-        $postfix = Configure::read('itemsPostfix');
+        $this->obBx24App->setApplicationId(Configure::read('AppConfig.client_id'));
+        $this->obBx24App->setApplicationSecret(Configure::read('AppConfig.client_secret'));
+        $appBaseURL = Configure::read('AppConfig.appBaseUrl');
+        $this->obBx24App->setRedirectUri($appBaseURL);
 
-        $arParams = [
-            'ID' => 'BT_WHATSAPP' . (($postfix) ? $postfix : ''),
-            'NAME' => __('BT Whatsapp') . (($postfix) ? $postfix : ''),
-            'ICON' => [
-                'DATA_IMAGE' => 'data:image/svg+xml,',
-                'COLOR' => '#a6ffa3',
-                'SIZE' => '100%',
-                'POSITION' => 'center',
-            ]
-        ];
-    }
-
-    public function getInstalledData()
-    {
-        $arData = [
-            'user' => [],
-            'placementList' => [],
-            'activityTypeList'
-        ];
-
-        $this->obBx24App->addBatchCall('user.current', [], function($result) use (&$arData)
+        if($this->obBx24App->isAccessTokenExpire())
         {
-            if($result['result'])
-            {
-                $arData['user'] = $result['result'];
-            }
-        });
+            $this->bx24Logger->debug("Access token is expired. Refresh tokens");
+            $this->refreshTokens();
+        }
+    }
 
-        $this->B24App->processBatchCalls();
+    private function refreshTokens()
+    {
+        $oldAccessToken = $this->obBx24App->getAccessToken();
+        $oldRefreshToken = $this->obBx24App->getRefreshToken();
+        $tokensRefreshResult = $this->obBx24App->getNewAccessToken();
+        $this->bx24Logger->debug('refreshTokens - getNewAccessToken - result', [
+            '$tokensRefreshResult' => $tokensRefreshResult
+        ]);
+        $this->obBx24App->setAccessToken($tokensRefreshResult["access_token"]);
+        $this->obBx24App->setRefreshToken($tokensRefreshResult["refresh_token"]);
 
-        return $arData;
+        $this->bx24Logger->debug("refreshTokens - status", [
+            "Access token refreshed" => $oldAccessToken != $tokensRefreshResult["access_token"],
+            "Refresh token refreshed" => $oldRefreshToken != $tokensRefreshResult["refresh_token"],
+        ]);
     }
 }
