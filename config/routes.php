@@ -75,7 +75,7 @@ return static function (RouteBuilder $routes) {
         $builder->connect('/oc_settings_interface',
             [
                 'controller' => 'Bitrix',
-                'action' => 'diplaySettingsInterface'
+                'action' => 'displaySettingsInterface'
             ], ['_name' => 'oc_settings_interface']
         );
 

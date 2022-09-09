@@ -10,12 +10,12 @@ return [
         'member_id' => '',
 
         // logs configurations
-        'LogsFilePath' => '/var/log/kaleyra',
+        'LogsFilePath' => '/var/log/helpdesk',
         'LogsLifeTime' => 10,
 
-        // for local development
-        'portalBaseUrl' => '', // ngrok url
-        'postfix' => '', // unique postfix for app item names
+        // fill for local development, leave empty for production
+        'appBaseUrl' => '', // ngrok url
+        'itemsPostfix' => '', // unique postfix for app item names
     ],
 ];
 
