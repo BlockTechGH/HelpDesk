@@ -68,7 +68,7 @@ class Bx24Component extends Component
         $oldRefreshToken = $this->obBx24App->getRefreshToken();
         $tokensRefreshResult = $this->obBx24App->getNewAccessToken();
         $this->bx24Logger->debug('refreshTokens - getNewAccessToken - result', [
-            '$tokensRefreshResult' => $tokensRefreshResult
+            'tokensRefreshResult' => $tokensRefreshResult
         ]);
         $this->obBx24App->setAccessToken($tokensRefreshResult["access_token"]);
         $this->obBx24App->setRefreshToken($tokensRefreshResult["refresh_token"]);
