@@ -39,15 +39,6 @@ class AppController extends Controller
     public $authExpires = null;
     public $domain = null;
 
-
-    public $isCallFromKaleyra = false;
-    public $wanumber = null;
-    public $from = null;
-    public $message = null;
-    public $mobile = null;
-    public $status = null;
-    public $messageId = null;
-
     /**
      * Initialization hook method.
      *
