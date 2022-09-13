@@ -57,27 +57,9 @@ class Bx24Component extends Component
         }
     }
 
-    public static function getActivityTypeAndName()
-    {
-        $postfix = Configure::read('AppConfig.itemsPostfix');
-        return [
-            'TYPE_ID' => 'TICKET' . (($postfix) ? "_" . strtoupper($postfix) : ''),
-            'NAME' => __('Ticket') . (($postfix) ? " " . $postfix : ''),
-        ];
-    }
-
-    public function getRouteUrl(string $routeName)
-    {
-        if (!$this->appBaseUrl) {
-            $this->appBaseUrl = Configure::read('AppConfig.appBaseUrl');
-        }
-        $routeProps = ['_name' => $routeName ];
-        return ($this->appBaseUrl)
-            ? $this->appBaseUrl . Router::url($routeProps, false)
-            : Router::url($routeProps, true);
-    }
-
-    #section 3. Script for installation application
+    #
+    #section Task 3. Script for installation application
+    #
 
     public function getInstalledData(): array
     {
@@ -194,8 +176,7 @@ class Bx24Component extends Component
         }
 
 
-        // Bind/unbind on OnCrmActivityAdd
-        // and OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete
+        // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete, OnCrmActivityDelete
         $arNeedEvents = [
             'ONCRMACTIVITYADD' => 'crm_activity_handler',
             'ONCRMACTIVITYUPDATE' => 'crm_activity_handler',
@@ -210,14 +191,15 @@ class Bx24Component extends Component
                     'event' => $event['event'],
                     'handler' => $event['handler']
                 ];
+
+                $this->obBx24App->addBatchCall('event.unbind', $arUnbindEventParams, function($result) use ($arUnbindEventParams)
+                {
+                    $this->bx24Logger->debug('installApplicationData - event.unbind', [
+                        'arParams' => $arUnbindEventParams,
+                        'result' => $result
+                    ]);
+                });
             }
-            $this->obBx24App->addBatchCall('event.unbind', $arUnbindEventParams, function($result) use ($arUnbindEventParams)
-            {
-                $this->bx24Logger->debug('installApplicationData - event.unbind', [
-                    'arParams' => $arUnbindEventParams,
-                    'result' => $result
-                ]);
-            });
         }
 
         foreach($arNeedEvents as $event => $routeName)
@@ -254,7 +236,29 @@ class Bx24Component extends Component
         $this->obBx24App->processBatchCalls();
     }
 
+    #
     #endsection
+    #
+
+    private static function getActivityTypeAndName()
+    {
+        $postfix = Configure::read('AppConfig.itemsPostfix');
+        return [
+            'TYPE_ID' => 'TICKET' . (($postfix) ? "_" . strtoupper($postfix) : ''),
+            'NAME' => __('Ticket') . (($postfix) ? " " . $postfix : ''),
+        ];
+    }
+
+    private function getRouteUrl(string $routeName)
+    {
+        if (!$this->appBaseUrl) {
+            $this->appBaseUrl = Configure::read('AppConfig.appBaseUrl');
+        }
+        $routeProps = ['_name' => $routeName ];
+        return ($this->appBaseUrl)
+            ? $this->appBaseUrl . Router::url($routeProps, false)
+            : Router::url($routeProps, true);
+    }
 
     private function refreshTokens()
     {
