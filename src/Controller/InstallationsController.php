@@ -55,18 +55,14 @@ class InstallationsController extends AppController
 
         // 1. save/updatre bitrix tokens in models
         $this->BitrixTokens = $this->getTableLocator()->get('BitrixTokens');
-
-        // 2.0 Install/reinstall connector
-        $this->Bx24->installConnector();
+        $this->BitrixTokens->writeAppTokens($this->memberId, $this->domain, $this->authId, $this->refreshId, $this->authExpires);
 
         // 2.1 Get installed data
         $arInstalledData = $this->Bx24->getInstalledData();
 
-        // 2.2 Register connector - https://dev.1c-bitrix.ru/rest_help/imconnector/methods/imconnector_register.php
-        // 2.3 Bind on OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete - https://dev.1c-bitrix.ru/rest_help/imconnector/events/index.php
-        // 2.4 Add application activity type - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/crm_activity_type_add.php
-        // 2.5 Placement in CRM cards
-
-        die();
+        // 2.2 Bind on OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete - https://dev.1c-bitrix.ru/rest_help/imconnector/events/index.php
+        // 2.3 Add application activity type - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/crm_activity_type_add.php
+        // 2.4 Placement in CRM cards
+        $this->Bx24->installApplicationData($arInstalledData);
     }
 }

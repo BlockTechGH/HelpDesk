@@ -18,6 +18,8 @@ class Bx24Component extends Component
     private $obBx24App = null;
     public $bx24Logger = null;
 
+    private $appBaseUrl = null;
+
     public function initialize(array $config = []): void
     {
         parent::initialize($config);
@@ -55,6 +57,205 @@ class Bx24Component extends Component
         }
     }
 
+    public static function getActivityTypeAndName()
+    {
+        $postfix = Configure::read('AppConfig.itemsPostfix');
+        return [
+            'TYPE_ID' => 'TICKET' . (($postfix) ? "_" . strtoupper($postfix) : ''),
+            'NAME' => __('Ticket') . (($postfix) ? " " . $postfix : ''),
+        ];
+    }
+
+    public function getRouteUrl(string $routeName)
+    {
+        if (!$this->appBaseUrl) {
+            $this->appBaseUrl = Configure::read('AppConfig.appBaseUrl');
+        }
+        $routeProps = ['_name' => $routeName ];
+        return ($this->appBaseUrl)
+            ? $this->appBaseUrl . Router::url($routeProps, false)
+            : Router::url($routeProps, true);
+    }
+
+    #section 3. Script for installation application
+
+    public function getInstalledData(): array
+    {
+        $arData = [
+            'placementList' => [],
+            'activityTypeList' => [],
+            'eventList' => []
+        ];
+
+        $this->obBx24App->addBatchCall('crm.activity.type.list', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['activityTypeList'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('placement.get', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['placementList'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('event.get', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['eventList'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        $this->bx24Logger->debug('getInstalledData - data', [
+            '$arData' => $arData,
+        ]);
+
+        return $arData;
+    }
+
+    public function installApplicationData($arInstalledData)
+    {
+        $wwwRoot = Configure::read('App.wwwRoot');
+        $iconFile = "whatsapp-logo-activity.png";
+        $iconPath = $wwwRoot . "img/" . $iconFile;
+        $activityDef = static::getActivityTypeAndName();
+
+
+        // add activity type
+        if (!count($arInstalledData['activityTypeList'])) {
+            $arActivityTypeParams['fields'] = array_merge(
+                [
+                    'ICON_FILE' => [
+                        $iconFile,
+                        base64_encode(file_get_contents($iconPath))
+                    ],
+                ],
+                $activityDef
+            );
+
+            $this->obBx24App->addBatchCall('crm.activity.type.add', $arActivityTypeParams, function ($result) use ($arActivityTypeParams) {
+                $this->bx24Logger->debug('installApplicationData - crm.activity.type.add', [
+                    'arParams' => $arActivityTypeParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+
+        // add placements in crm card
+        $arNeedPlacements = [
+            'CRM_LEAD_DETAIL_ACTIVITY',
+            'CRM_DEAL_DETAIL_ACTIVITY',
+            'CRM_CONTACT_DETAIL_ACTIVITY',
+            'CRM_COMPANY_DETAIL_ACTIVITY'
+        ];
+
+        foreach ($arInstalledData['placementList'] as $placement) {
+            // unbind old placements first
+            if (in_array($placement['placement'], $arNeedPlacements)) {
+                $arUnbindParams = [
+                    'PLACEMENT' => $placement['placement'],
+                    'HANDLER' => $placement['handler']
+                ];
+
+                $this->obBx24App->addBatchCall('placement.unbind', $arUnbindParams, function ($result) use ($arUnbindParams) {
+                    $this->bx24Logger->debug('installApplicationData - placement.unbind', [
+                        'arParams' => $arUnbindParams,
+                        'result' => $result
+                    ]);
+                });
+            }
+        }
+
+        foreach ($arNeedPlacements as $placement) {
+            $arBindParams = [
+                'PLACEMENT' => $placement,
+                'HANDLER' => $this->getRouteUrl('crm_interface'),
+                'LANG_ALL' => [
+                    'en' => [
+                        'TITLE' => $activityDef['NAME']
+                    ]
+                ]
+            ];
+
+            $this->obBx24App->addBatchCall('placement.bind', $arBindParams, function ($result) use ($arBindParams) {
+                $this->bx24Logger->debug('installApplicationData - placement.bind', [
+                    'arParams' => $arBindParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+
+        // Bind/unbind on OnCrmActivityAdd
+        // and OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete
+        $arNeedEvents = [
+            'ONCRMACTIVITYADD' => 'crm_activity_handler',
+            'ONCRMACTIVITYUPDATE' => 'crm_activity_handler',
+            'ONCRMACTIVITYDELETE' => 'crm_activity_handler',
+        ];
+
+        foreach($arInstalledData['eventList'] as $event)
+        {
+            if(isset($arNeedEvents[$event['event']]))
+            {
+                $arUnbindEventParams = [
+                    'event' => $event['event'],
+                    'handler' => $event['handler']
+                ];
+            }
+            $this->obBx24App->addBatchCall('event.unbind', $arUnbindEventParams, function($result) use ($arUnbindEventParams)
+            {
+                $this->bx24Logger->debug('installApplicationData - event.unbind', [
+                    'arParams' => $arUnbindEventParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+        foreach($arNeedEvents as $event => $routeName)
+        {
+            $arBindEventParams = [
+                'event' => $event,
+                'handler' => $this->getRouteUrl($routeName),
+            ];
+            $this->obBx24App->addBatchCall('event.bind', $arBindEventParams, function($result) use ($arBindEventParams)
+            {
+                $this->bx24Logger->debug('installApplicationData - event.bind', [
+                    'arParams' => $arBindEventParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+        $this->obBx24App->processBatchCalls();
+    }
+
+    public function removeActivityTypes($arInstalledData)
+    {
+        foreach($arInstalledData['activityTypeList'] as $activityType)
+        {
+            $arParams = [
+                'TYPE_ID' => $activityType['TYPE_ID']
+            ];
+
+            $this->obBx24App->addBatchCall('crm.activity.type.delete', $arParams, function($result)
+            {
+            });
+        }
+
+        $this->obBx24App->processBatchCalls();
+    }
+
+    #endsection
+
     private function refreshTokens()
     {
         $oldAccessToken = $this->obBx24App->getAccessToken();
@@ -65,6 +266,14 @@ class Bx24Component extends Component
         ]);
         $this->obBx24App->setAccessToken($tokensRefreshResult["access_token"]);
         $this->obBx24App->setRefreshToken($tokensRefreshResult["refresh_token"]);
+
+        $this->BitrixTokens->writeAppTokens(
+            $this->obBx24App->getMemberId(),
+            $this->obBx24App->getDomain(),
+            $this->obBx24App->getAccessToken(),
+            $this->obBx24App->getRefreshToken(),
+            $tokensRefreshResult["expires_in"]
+        );
 
         $this->bx24Logger->debug("refreshTokens - status", [
             "Access token refreshed" => $oldAccessToken != $tokensRefreshResult["access_token"],

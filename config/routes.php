@@ -63,14 +63,6 @@ return static function (RouteBuilder $routes) {
             ['controller' => 'Installations', 'action' => 'installApp']
         );
 
-        // status of Whatsapp messages and Incoming message from Whatsapp
-        $builder->connect('/kaleyra_handler',
-            [
-                'controller' => 'Kaleyra',
-                'action' => 'handle'
-            ], ['_name' => 'kaleyra_handler']
-        );
-
         // Interface for open channel settings
         $builder->connect('/oc_settings_interface',
             [
@@ -80,21 +72,14 @@ return static function (RouteBuilder $routes) {
         );
 
         // Handler for message from Bitrix chat
-        $builder->connect('/oc_message_handler',
+        $builder->connect('/crm_activity_handler',
             [
                 'controller' => 'Bitrix',
-                'action' => 'handleBitrixMessage'
-            ], ['_name' => 'oc_message_handler']
+                'action' => 'handleCrmActivity'
+            ], ['_name' => 'crm_activity_handler']
         );
 
-        // Handler open channel events - OnImConnectorLineDelete, OnImConnectorStatusDelete
-        $builder->connect('/oc_event_handler',
-            [
-                'controller' => 'Bitrix',
-                'action' => 'handleOCEvents'
-            ], ['_name' => 'oc_event_handler']
-        );
-        /*
+       /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */
         $builder->connect('/pages/*', 'Pages::display');
