@@ -64,11 +64,11 @@ return static function (RouteBuilder $routes) {
         );
 
         // Interface for open channel settings
-        $builder->connect('/oc_settings_interface',
+        $builder->connect('/crm_settings_interface',
             [
                 'controller' => 'Bitrix',
                 'action' => 'displaySettingsInterface'
-            ], ['_name' => 'oc_settings_interface']
+            ], ['_name' => 'crm_settings_interface']
         );
 
         // Handler for message from Bitrix chat

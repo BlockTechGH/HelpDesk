@@ -60,9 +60,8 @@ class InstallationsController extends AppController
         // 2.1 Get installed data
         $arInstalledData = $this->Bx24->getInstalledData();
 
-        // 2.2 Bind on OnImConnectorMessageAdd, OnImConnectorLineDelete, OnImConnectorStatusDelete - https://dev.1c-bitrix.ru/rest_help/imconnector/events/index.php
+        // 2.2 Bind on OnCrmActivityAdd, OnCrmActivityUpdate, OnCrmActivityDelete - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/events_business/index.php
         // 2.3 Add application activity type - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/crm_activity_type_add.php
-        // 2.4 Placement in CRM cards
         $this->Bx24->installApplicationData($arInstalledData);
     }
 }

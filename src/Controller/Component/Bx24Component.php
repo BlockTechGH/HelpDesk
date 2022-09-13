@@ -64,7 +64,6 @@ class Bx24Component extends Component
     public function getInstalledData(): array
     {
         $arData = [
-            'placementList' => [],
             'activityTypeList' => [],
             'eventList' => []
         ];
@@ -74,14 +73,6 @@ class Bx24Component extends Component
             if($result['result'])
             {
                 $arData['activityTypeList'] = $result['result'];
-            }
-        });
-
-        $this->obBx24App->addBatchCall('placement.get', [], function($result) use (&$arData)
-        {
-            if($result['result'])
-            {
-                $arData['placementList'] = $result['result'];
             }
         });
 
@@ -105,7 +96,8 @@ class Bx24Component extends Component
     public function installApplicationData($arInstalledData)
     {
         $wwwRoot = Configure::read('App.wwwRoot');
-        $iconFile = "whatsapp-logo-activity.png";
+        // "https://icons8.com/icon/6837/служба-поддержки"
+        $iconFile = "helpdesk.png";
         $iconPath = $wwwRoot . "img/" . $iconFile;
         $activityDef = static::getActivityTypeAndName();
 
