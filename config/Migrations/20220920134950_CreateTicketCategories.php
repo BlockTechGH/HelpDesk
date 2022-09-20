@@ -20,6 +20,16 @@ class CreateTicketCategories extends AbstractMigration
             'limit' => 255,
             'null' => false,
         ]);
+        $table->addColumn('member_id', 'string', [
+            'default' => null,
+            'limit' => 255,
+            'null' => false,
+        ]);
+        $table->addColumn('active', 'string', [
+            'default' => 1,
+            'limit' => 1,
+            'null' => false,
+        ]);
         $table->addColumn('created', 'datetime', [
             'default' => null,
             'null' => false,
