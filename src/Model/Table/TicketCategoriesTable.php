@@ -62,4 +62,13 @@ class TicketCategoriesTable extends Table
 
         return $validator;
     }
+
+    public function getStatusesFor(string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId
+            ])
+            ->toList();
+    }
 }
