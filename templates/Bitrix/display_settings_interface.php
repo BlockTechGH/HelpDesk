@@ -1,7 +1,7 @@
 <?= $this->Html->script('fit_window'); ?>
 <div id="setting_container" class="row">
     <div class="col">
-        <form method="POST" action="<?= $this->Url->build(['_name' => 'oc_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
+        <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
             <div class="form-group">
                 <label for="widgetName"><?= __('Widget title') ?></label>
                 <input type="text" class="form-control <?= (isset($errors['widget_name'])) ? 'border border-danger' : '' ?>"

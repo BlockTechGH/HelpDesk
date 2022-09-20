@@ -71,7 +71,6 @@ class AppController extends Controller
         if($controllerName == 'Installations')
         {
             $event = $this->request->getData('event');
-            $auth = $this->request->getData('auth');
 
             if($event && $auth)
             {
@@ -81,7 +80,25 @@ class AppController extends Controller
                 $this->refreshId = $auth['refresh_token'];
                 $this->authExpires = $auth['expires_in'];
                 $this->domain = $auth['domain'];
+            } else {
+                $this->authId = $this->request->getData('AUTH_ID');
+                $this->refreshId = $this->request->getData('REFRESH_ID');
+                $this->authExpires = (int)($this->request->getData('AUTH_EXPIRES'));
+                $this->memberId = $this->request->getData('member_id');
+                $this->domain = $this->request->getQuery('DOMAIN');
+                $this->isAccessFromBitrix = $this->authId && $this->memberId && $this->domain;
             }
+            $this->AppControllerLogger->debug(__METHOD__ , [
+                    'query' => $this->request->getQueryParams(),
+                    'body'  => $this->request->getParsedBody(),
+                    'auth'  => $auth,
+                    'event' => $event,
+                    'AUTH_ID' => $this->authId,
+                    'REFRESH_ID' => $this->refreshId,
+                    'AUTH_EXPIRES' => $this->authExpires,
+                    'member_id' => $this->memberId,
+                    'DOMAIN' => $this->domain,
+                ]);
         }
     }
 }
