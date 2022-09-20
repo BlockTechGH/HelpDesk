@@ -89,8 +89,6 @@ class AppController extends Controller
                 $this->isAccessFromBitrix = $this->authId && $this->memberId && $this->domain;
             }
             $this->AppControllerLogger->debug(__METHOD__ , [
-                    'query' => $this->request->getQueryParams(),
-                    'body'  => $this->request->getParsedBody(),
                     'auth'  => $auth,
                     'event' => $event,
                     'AUTH_ID' => $this->authId,

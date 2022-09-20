@@ -54,9 +54,9 @@ return static function (RouteBuilder $routes) {
         // we need here of dummy page
         $builder->connect('/',
             [
-                'controller' => 'Pages',
-                'action' => 'home'
-            ], ['_name' => 'home']
+                'controller' => 'Bitrix',
+                'action' => 'displaySettingsInterface'
+            ],
         );
 
         $builder->connect('/install',

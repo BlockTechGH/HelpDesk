@@ -10,7 +10,7 @@ use Cake\ORM\Entity;
  *
  * @property int $id
  * @property string $member_id
- * @property string $key
+ * @property string $opt
  * @property string $value
  */
 class HelpdeskOption extends Entity
@@ -26,7 +26,7 @@ class HelpdeskOption extends Entity
      */
     protected $_accessible = [
         'member_id' => true,
-        'key' => true,
+        'opt' => true,
         'value' => true,
     ];
 }

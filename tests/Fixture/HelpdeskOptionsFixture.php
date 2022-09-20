@@ -21,7 +21,7 @@ class HelpdeskOptionsFixture extends TestFixture
             [
                 'id' => 1,
                 'member_id' => 'Lorem ipsum dolor sit amet',
-                'key' => 'Lorem ipsum dolor sit amet',
+                'opt' => 'Lorem ipsum dolor sit amet',
                 'value' => 'Lorem ipsum dolor sit amet',
             ],
         ];

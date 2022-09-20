@@ -57,10 +57,10 @@ class HelpdeskOptionsTable extends Table
             ->notEmptyString('member_id');
 
         $validator
-            ->scalar('key')
-            ->maxLength('key', 255)
-            ->requirePresence('key', 'create')
-            ->notEmptyString('key');
+            ->scalar('opt')
+            ->maxLength('opt', 255)
+            ->requirePresence('opt', 'create')
+            ->notEmptyString('opt');
 
         $validator
             ->scalar('value')
@@ -69,5 +69,46 @@ class HelpdeskOptionsTable extends Table
             ->notEmptyString('value');
 
         return $validator;
+    }
+
+    public function getSettingsFor(string $member_id)
+    {
+        $memberOptions = $this->find()
+            ->where([
+                'member_id' => $member_id
+            ])
+            ->toList();
+        $allOptionNames = $this->find()
+            ->select(['opt'])
+            ->distinct(['opt'])
+            ->toList();
+        $resultOptions = array_combine($allOptionNames, array_fill(0, count($allOptionNames), ''));
+        foreach($memberOptions as $option) {
+            $resultOptions[$option->opt] = $option->value;
+        }
+        return $resultOptions;
+    }
+
+    public function updateOptions(array $settings)
+    {
+        foreach ($settings as $update)
+        {
+            $option = $this->find()
+                ->where([
+                    'member_id' => $update['member_id'],
+                    'opt' => $update['opt'],
+                ])
+                ->first();
+            if(!$option)
+            {
+                $option = $this->newEntity($update);
+            } else {
+                $option = $this->patchEntity($option, $update);
+            }
+            if(!$option->hasErrors())
+            {
+                $this->save($option);
+            }
+        }
     }
 }
