@@ -11,6 +11,7 @@ use Cake\ORM\Entity;
  * @property int $id
  * @property string $name
  * @property bool $active
+ * @property string $member_id
  * @property \Cake\I18n\FrozenTime $created
  * @property \Cake\I18n\FrozenTime $modified
  */
@@ -27,8 +28,9 @@ class TicketCategory extends Entity
      */
     protected $_accessible = [
         'name' => true,
+        'active' => true,
+        'member_id' => true,
         'created' => true,
         'modified' => true,
-        'active' => true,
     ];
 }
