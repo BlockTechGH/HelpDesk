@@ -10,6 +10,7 @@ use Cake\ORM\Entity;
  *
  * @property int $id
  * @property string $name
+ * @property bool $active
  */
 class TicketStatus extends Entity
 {
@@ -24,5 +25,6 @@ class TicketStatus extends Entity
      */
     protected $_accessible = [
         'name' => true,
+        'active' => true,
     ];
 }

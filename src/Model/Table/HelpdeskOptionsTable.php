@@ -73,20 +73,11 @@ class HelpdeskOptionsTable extends Table
 
     public function getSettingsFor(string $member_id)
     {
-        $memberOptions = $this->find()
+        return $this->find()
             ->where([
                 'member_id' => $member_id
             ])
             ->toList();
-        $allOptionNames = $this->find()
-            ->select(['opt'])
-            ->distinct(['opt'])
-            ->toList();
-        $resultOptions = array_combine($allOptionNames, array_fill(0, count($allOptionNames), ''));
-        foreach($memberOptions as $option) {
-            $resultOptions[$option->opt] = $option->value;
-        }
-        return $resultOptions;
     }
 
     public function updateOptions(array $settings)
