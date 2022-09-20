@@ -47,8 +47,6 @@ class InstallationsController extends AppController
 
     public function installApp()
     {
-        $this->viewBuilder()->disableAutoLayout();
-
         $data = $this->request->getParsedBody();
 
         $this->loadComponent('Bx24');

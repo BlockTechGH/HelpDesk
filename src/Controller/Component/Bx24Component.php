@@ -122,52 +122,6 @@ class Bx24Component extends Component
             });
         }
 
-
-        // add placements in crm card
-        $arNeedPlacements = [
-            'CRM_LEAD_DETAIL_ACTIVITY',
-            'CRM_DEAL_DETAIL_ACTIVITY',
-            'CRM_CONTACT_DETAIL_ACTIVITY',
-            'CRM_COMPANY_DETAIL_ACTIVITY'
-        ];
-
-        foreach ($arInstalledData['placementList'] as $placement) {
-            // unbind old placements first
-            if (in_array($placement['placement'], $arNeedPlacements)) {
-                $arUnbindParams = [
-                    'PLACEMENT' => $placement['placement'],
-                    'HANDLER' => $placement['handler']
-                ];
-
-                $this->obBx24App->addBatchCall('placement.unbind', $arUnbindParams, function ($result) use ($arUnbindParams) {
-                    $this->bx24Logger->debug('installApplicationData - placement.unbind', [
-                        'arParams' => $arUnbindParams,
-                        'result' => $result
-                    ]);
-                });
-            }
-        }
-
-        foreach ($arNeedPlacements as $placement) {
-            $arBindParams = [
-                'PLACEMENT' => $placement,
-                'HANDLER' => $this->getRouteUrl('crm_interface'),
-                'LANG_ALL' => [
-                    'en' => [
-                        'TITLE' => $activityDef['NAME']
-                    ]
-                ]
-            ];
-
-            $this->obBx24App->addBatchCall('placement.bind', $arBindParams, function ($result) use ($arBindParams) {
-                $this->bx24Logger->debug('installApplicationData - placement.bind', [
-                    'arParams' => $arBindParams,
-                    'result' => $result
-                ]);
-            });
-        }
-
-
         // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete, OnCrmActivityDelete
         $arNeedEvents = [
             'ONCRMACTIVITYADD' => 'crm_activity_handler',
@@ -236,8 +190,8 @@ class Bx24Component extends Component
     {
         $postfix = Configure::read('AppConfig.itemsPostfix');
         return [
-            'TYPE_ID' => 'TICKET' . (($postfix) ? "_" . strtoupper($postfix) : ''),
-            'NAME' => __('Ticket') . (($postfix) ? " " . $postfix : ''),
+            'TYPE_ID' => 'HELPDESK_TICKETING' . (($postfix) ? "_" . strtoupper($postfix) : ''),
+            'NAME' => __('Helpdesk Ticketing') . (($postfix) ? " " . $postfix : ''),
         ];
     }
 
