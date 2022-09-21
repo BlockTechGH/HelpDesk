@@ -59,7 +59,7 @@ class TicketStatusesTable extends Table
         return $validator;
     }
 
-    public function getCategoriesFor(string $memberId)
+    public function getStatusesFor(string $memberId)
     {
         return $this->find()
             ->where([

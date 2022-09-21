@@ -102,4 +102,15 @@ class HelpdeskOptionsTable extends Table
             }
         }
     }
+
+    public function addOption(string $name, string $value, string $memberId)
+    {
+        $option = $this->newEntity([
+            'member_id' => $memberId,
+            'opt' => $name,
+            'value' => $value,
+            'active' => (int)(true)
+        ]);
+        return $this->save($option);
+    }
 }

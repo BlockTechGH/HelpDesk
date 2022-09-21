@@ -37,6 +37,12 @@
                             <button type="button" class="btn <?=$option['active'] ? 'btn-first' : 'btn-second';?>"><?=$option['active'] ? __('Delete') : __('Restore');?></button>
                         </div>
                     <?php endforeach;?>
+                    <div class="form-group row">
+                        <div class="col">
+                            <input name="option_name" value="" placeholder="<?=__('Put option name');?>">
+                            <input name="option_value" value="" placeholder="<?=__('Put option value');?>">
+                        </div>
+                    </div>
 
                     <input type="hidden" name="AUTH_ID" value="<?=$authId?>" />
                     <input type="hidden" name="AUTH_EXPIRES" value="<?=$authExpires?>" />
