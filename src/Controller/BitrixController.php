@@ -84,7 +84,7 @@ class BitrixController extends AppController
                     'opt' => $optionName,
                     'value' => $data[$optionName]
                 ];
-            }, $optionName);
+            }, $optionNames);
             $this->Options->updateOptions($settings);
             $this->BxControllerLogger->debug(__FUNCTION__ - ' - options update', $optionNames); 
         }
