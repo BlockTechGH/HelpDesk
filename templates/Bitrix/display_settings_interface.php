@@ -4,11 +4,11 @@
         <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
             <button class="nav-link active" data-toggle="tab" type="button" role="tab" 
                 aria-selected="true"
-                id="options-tab" 
-                data-target="#options" 
-                aria-controls="options"
+                id="sources-tab" 
+                data-target="#sources" 
+                aria-controls="sources"
             >
-                <?=__('Options');?>
+                <?=__('Sources');?>
             </button>
             <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                 id="statuses-tab" 
@@ -28,20 +28,28 @@
     </div>
     <div class="col-10">
         <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="options" role="tabpanel" aria-labelledby="options-tab">
+            <div class="tab-pane fade show active" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
-                    <?php foreach($options as $option): ?>
-                        <div class="form-group">
-                            <label for="<?=$option['opt'];?>"><?=$option['opt'];?></label>
-                            <input class="form-control" name="<?=$option['opt'];?>" value="<?=$option['value'];?>"/>
-                            <button type="button" class="btn <?=$option['active'] ? 'btn-first' : 'btn-second';?>"><?=$option['active'] ? __('Delete') : __('Restore');?></button>
-                        </div>
-                    <?php endforeach;?>
-                    <div class="form-group row">
-                        <div class="col">
-                            <input name="option_name" value="" placeholder="<?=__('Put option name');?>">
-                            <input name="option_value" value="" placeholder="<?=__('Put option value');?>">
-                        </div>
+                    <div class="form-group">
+                        <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
+                        <input type="checkbox"
+                            id="sources_on_email" 
+                            name="sources_on_email"
+                            <?=$options['sources_on_email'] ? 'checked' : '';?>/>
+                    </div>
+                    <div class="form-group">
+                        <label for="sources_on_open_channel"><?=__('Create ticket by chat via Open Channel');?></label>
+                        <input type="checkbox"
+                            id="sources_on_open_channel" 
+                            name="sources_on_open_channel"
+                            <?=$options['sources_on_open_channel'] ? 'checked' : '';?>/>
+                    </div>
+                    <div class="form-group">
+                        <label for="sources_on_phone_calls"><?=__('Create ticket by phone call');?></label>
+                        <input type="checkbox"
+                            id="sources_on_phone_calls" 
+                            name="sources_on_phone_calls"
+                            <?=$options['sources_on_phone_calls'] ? 'checked' : '';?>/>
                     </div>
 
                     <input type="hidden" name="AUTH_ID" value="<?=$authId?>" />
@@ -69,7 +77,7 @@
                     <input type="hidden" name="REFRESH_ID" value="<?=$refreshId?>" />
                     <input type="hidden" name="member_id" value="<?=$memberId?>" />
 
-                    <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
+                    <button type="submit" name="saveCategories" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
             </div>
         </div>

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Model\Table\HelpdeskOptionsTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
@@ -92,27 +93,15 @@ class BitrixController extends AppController
 
     private function saveSettings(array $data) : array
     {
-        $none_options = ['AUTH_ID', 'REFRESH_ID', 'AUTH_EXPIRES', 'member_id', 'saveSettings', 'option_name', 'option_value'];
-        $optionNames = array_diff(array_keys($data), $none_options);
         $settings = array_map(function($optionName) use ($data) { 
             return [
                 'member_id' => $data['member_id'],
                 'opt' => $optionName,
-                'value' => $data[$optionName],
-                'active' => true
+                'value' => $data[$optionName] ?? 'off'
             ];
-        }, $optionNames);
+        }, HelpdeskOptionsTable::SOURCE_OPTIONS);
         $settings = $this->Options->updateOptions($settings);
-        $this->BxControllerLogger->debug(__FUNCTION__ - ' - options update', ['options' => $optionNames]);
-
-        if ($data['option_name'] && $data['option_value'])
-        {
-            $settings[] = $this->Options->addOption(
-                $data['option_name'], 
-                $data['option_value'],
-                $this->memberId
-            );
-        }
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - options', ['options' => $settings]);
         return $settings;
     }
 }

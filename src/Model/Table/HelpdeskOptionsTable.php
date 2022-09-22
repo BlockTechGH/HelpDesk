@@ -27,6 +27,12 @@ use Cake\Validation\Validator;
  */
 class HelpdeskOptionsTable extends Table
 {
+    public const SOURCE_OPTIONS = [
+        'sources_on_email',
+        'sources_on_phone_calls',
+        'sources_on_open_channel',
+    ];
+
     /**
      * Initialize method
      *
@@ -73,15 +79,26 @@ class HelpdeskOptionsTable extends Table
 
     public function getSettingsFor(string $member_id)
     {
-        return $this->find()
+        $optionsList = $this->find()
             ->where([
                 'member_id' => $member_id
             ])
             ->toList();
+        $options = [
+            'sources_on_phone_calls' => false, 
+            'sources_on_email' => false, 
+            'sources_on_open_channel' => false
+        ];
+        foreach ($optionsList as $option)
+        {
+            $options[$option['opt']] = $option['value'] != 'off';
+        }
+        return $options;
     }
 
     public function updateOptions(array $settings)
     {
+        $options = [];
         foreach ($settings as $update)
         {
             $option = $this->find()
@@ -99,18 +116,9 @@ class HelpdeskOptionsTable extends Table
             if(!$option->hasErrors())
             {
                 $this->save($option);
+                $options[$option->opt] = $option->value != 'off';
             }
         }
-    }
-
-    public function addOption(string $name, string $value, string $memberId)
-    {
-        $option = $this->newEntity([
-            'member_id' => $memberId,
-            'opt' => $name,
-            'value' => $value,
-            'active' => (int)(true)
-        ]);
-        return $this->save($option);
+        return $options;
     }
 }
