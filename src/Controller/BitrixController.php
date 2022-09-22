@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Model\Table\HelpdeskOptionsTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
@@ -53,6 +54,8 @@ class BitrixController extends AppController
 
         $this->loadComponent('Bx24');
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $this->Statuses = $this->getTableLocator()->get('TicketStatuses');
+        $this->Categories = $this->getTableLocator()->get('TicketCategories');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
@@ -61,13 +64,9 @@ class BitrixController extends AppController
     public function displaySettingsInterface()
     {
         $data = $this->request->getParsedBody();
-        $tabs = [
-            'sources' => ['title' => 'Sources', 'active' => true],
-            'categories' => ['title' => 'Categories', 'active' => true],
-            'statuses' => ['title' => 'Statuses', 'active' => true],
-        ];
-        $options['sources'] = $this->Options->getSettingsFor($this->memberId);
-        $options['statuses'] = $this->
+        $options = $this->Options->getSettingsFor($this->memberId);
+        $statuses = $this->Statuses->getStatusesFor($this->memberId);
+        $categories = $this->Categories->getCategoriesFor($this->memberId);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
 
         $flashOptions = [
@@ -78,26 +77,31 @@ class BitrixController extends AppController
 
         if(isset($data['saveSettings']))
         {
-            $none_options = ['AUTH_ID', 'REFRESH_ID', 'AUTH_EXPIRES', 'member_id', 'saveSettings'];
-            $optionNames = array_diff(array_keys($data), $none_options);
-            $settings = array_map(function($optionName) use ($data) { 
-                return [
-                    'member_id' => $data['member_id'],
-                    'opt' => $optionName,
-                    'value' => $data[$optionName]
-                ];
-            }, $optionName);
-            $this->Options->updateOptions($settings);
-            $this->BxControllerLogger->debug(__FUNCTION__ - ' - options update', $optionNames); 
+            $options = $this->saveSettings($data);
         }
 
         $this->set('domain', $this->domain);
         $this->set('options', $options);
-        $this->set('tabs', $tabs);
+        $this->set('statuses', $statuses);
+        $this->set('categories', $categories);
         // hidden fields from app installation
         $this->set('authId', $this->authId);
         $this->set('authExpires', $this->authExpires);
         $this->set('refreshId', $this->refreshId);
         $this->set('memberId', $this->memberId);
+    }
+
+    private function saveSettings(array $data) : array
+    {
+        $settings = array_map(function($optionName) use ($data) { 
+            return [
+                'member_id' => $data['member_id'],
+                'opt' => $optionName,
+                'value' => $data[$optionName] ?? 'off'
+            ];
+        }, HelpdeskOptionsTable::SOURCE_OPTIONS);
+        $settings = $this->Options->updateOptions($settings);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - options', ['options' => $settings]);
+        return $settings;
     }
 }
