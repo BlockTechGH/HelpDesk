@@ -60,26 +60,81 @@
                     <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
             </div>
-            <div class="tab-pane fade show" id="statuses" role="tabpanel" aria-labelledby="statuses-tab">
+            <div class="tab-pane fade show" 
+                id="statuses" 
+                role="tabpanel" 
+                aria-labelledby="statuses-tab"
+            >
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
-                    <input type="hidden" name="AUTH_ID" value="<?=$authId?>" />
-                    <input type="hidden" name="AUTH_EXPIRES" value="<?=$authExpires?>" />
-                    <input type="hidden" name="REFRESH_ID" value="<?=$refreshId?>" />
-                    <input type="hidden" name="member_id" value="<?=$memberId?>" />
+                <table class="table table-hover">
+                        <thead><tr>
+                            <th>{{ i18n.Name }}</th>
+                            <th>{{ i18n.Action }}</th>
+                            <th>{{ i18n.Active }}</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr v-for="(status, index) in statuses" :key="index">
+                                <td>{{ status.name }}</td>
+                                <td>
+                                    <button 
+                                        type="button" 
+                                        class="btn btn-primary"
+                                        v-on:click="edit(index)"
+                                    >
+                                        {{ i18n.Edit }}
+                                    </button>
+                                </td>
+                                <td class="btn-group">
+                                    <input type="checkbox" 
+                                        v-bind:name="status.name"
+                                        v-bind:class='{btn: true, "btn-primary": status.active, "btn-second": !status.active}' 
+                                        v-model="status.active"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="form-group">
+                        <label for="status_name">{{ i18n.Option }}</label>
+                        <input class="" id="status_name" v-model="currentStatus.name">
+                        <button type="button" v-on:click="append">
+                            {{ i18n.Add }}
+                        </button>
+                    </div>
 
-                    <button type="submit" name="saveStatuses" class="btn btn-primary"><?= __('Save') ?></button>
+                    <button 
+                        type="button" 
+                        name="saveStatuses" 
+                        class="btn btn-primary"
+                        v-on:click="update"
+                    >
+                        {{ i18n.Save }}
+                    </button>
                 </form>
             </div>
-            <div class="tab-pane fade show" id="categories" role="tabpanel" aria-labelledby="categories-tab">
+            <div 
+                class="tab-pane fade show" 
+                id="categories" 
+                role="tabpanel" 
+                aria-labelledby="categories-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <table class="table table-hover">
                         <thead><tr>
                             <th>{{ i18n.Name }}</th>
+                            <th>{{ i18n.Action }}</th>
                             <th>{{ i18n.Active }}</th>
                         </tr></thead>
                         <tbody>
                             <tr v-for="(category, index) in categories" :key="index">
                                 <td>{{ category.name }}</td>
+                                <td>
+                                    <button 
+                                        type="button" 
+                                        class="btn btn-primary"
+                                        v-on:click="edit(index)"
+                                    >
+                                        {{ i18n.Edit }}
+                                    </button>
+                                </td>
                                 <td class="btn-group">
                                     <input type="checkbox" 
                                         v-bind:name="category.name"
@@ -91,7 +146,7 @@
                     </table>
                     <div class="form-group">
                         <label for="opt_name">{{ i18n.Option }}</label>
-                        <input class="" id="opt_name" v-model="optName">
+                        <input class="" id="opt_name" v-model="currentCategory.name">
                         <button type="button" v-on:click="append">
                             {{ i18n.Add }}
                         </button>
@@ -123,7 +178,18 @@
             'REFRESH_ID' => $refreshId,
             'member_id' => $memberId,
         ])?>,
-        optName: "",
+        currentStatus: {
+            id: 0,
+            name: '',
+            active: 1,
+            member_id: "<?=$memberId;?>",
+        },
+        currentCategory: {
+            id: 0,
+            name: '',
+            active: 1,
+            member_id: "<?=$memberId;?>",
+        },
         memberId: "<?=$memberId?>",
         categories: <?=json_encode($categories);?>,
         statuses: <?=json_encode($statuses);?>,
@@ -133,7 +199,9 @@
             'Category' => __('Name of new category'),
             'Save' => __('Save'),
             'Active' => __('Active'),
-            'Add' => __('Add')
+            'Add' => __('Add'),
+            'Edit' => __('Edit'),
+            'Action' => __('Action'),
         ]);?>,
     };
 </script>
@@ -146,9 +214,7 @@ const categories = new Vue({
         {
             const parameters = Object.assign(
                 {
-                    optName: this.optName, 
-                    do: "add",
-                    entity: 'category'
+                    category: this.currentCategory,
                 }, 
                 this.required
             );
@@ -159,28 +225,103 @@ const categories = new Vue({
             }).then(async result => {
                 const stored = await result.json();
                 this.categories.push(stored);
-                this.optName = "";
+                this.create();
             });
+        },
+        edit: function (index)
+        {
+            this.currentCategory = this.categories[index];
         },
         update: function()
         {
             const parameters = Object.assign(
                 {
                     categories: this.categories,
-                    do: "update",
-                    entity: 'category'
                 }, 
                 this.required
             );
-            console.log("Send request to update a categories", this.categories);
+            console.log("Send request to update a categories", parameters);
             fetch(this.ajax, {
                 method: "POST",
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(parameters)
             }).then(async result => {
                 this.categories = await result.json();
-                this.optName = "";
+                this.create();
             });
+        },
+        create: function()
+        {
+            this.currentCategory = {
+                id: 0,
+                name: "",
+                active: 1,
+                member_id: this.memberId,
+            };
+        }
+    }
+});
+</script>
+<script>
+const statuses = new Vue({
+    'el': '#statuses',
+    'data': window.data,
+    'methods': {
+        append: function ()
+        {
+            const parameters = Object.assign(
+                {
+                    ticket_status: this.currentStatus,
+                }, 
+                this.required
+            );
+            if (this.currentStatus.id > 0)
+            {
+               parameters.do = "edit"; 
+            }
+            fetch(this.ajax, {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(parameters)
+            }).then(async result => {
+                const stored = await result.json();
+                if (this.currentStatus.id < 1)
+                {
+                    this.statuses.push(stored);
+                }
+                this.create();
+            });
+        },
+        edit: function (index)
+        {
+            this.currentStatus = this.statuses[index];
+        },
+        update: function()
+        {
+            const parameters = Object.assign(
+                {
+                    statuses: this.statuses,
+                }, 
+                this.required
+            );
+            console.log("Send request to update a statuses", parameters);
+            fetch(this.ajax, {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(parameters)
+            }).then(async result => {
+                this.statuses = await result.json();
+                this.create();
+            });
+        },
+        create: function()
+        {
+            this.currentStatus = {
+                id: 0,
+                name: "",
+                active: 1,
+                member_id: this.memberId,
+            };
         }
     }
 });

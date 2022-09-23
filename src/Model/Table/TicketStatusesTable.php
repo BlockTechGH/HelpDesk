@@ -64,7 +64,46 @@ class TicketStatusesTable extends Table
         return $this->find()
             ->where([
                 'member_id' => $memberId,
+                'active' => true
             ])
             ->toList();
+    }
+
+    public function editStatus($id = null, string $name, string $memberId, bool $active = true)
+    {
+        $insert = [
+            'member_id' => $memberId,
+            'name' => $name,
+            'active' => (int)$active
+        ];
+        if($id == null)
+        {
+            $status = $this->newEntity($insert);
+        } else {
+            $status = $this->get($id);
+            $status = $this->patchEntity($status, $insert);
+        }
+        $this->save($status);
+        
+        return [
+            'id' => $status->id,
+            'name' => $status->name,
+            'active' => !!$status->active,
+            'member_id' => $status->member_id,
+        ];
+    }
+
+    public function updateStatuses(array $statuses, string $memberId)
+    {
+        foreach($statuses as $i => $update)
+        {
+            $status = $this->get($update['id']);
+            if($status->member_id == $memberId)
+            {
+                $status->active = (int)(!!$update['active']);
+            }
+            $this->save($status); 
+        }
+        return $this->getStatusesFor($memberId);
     }
 }

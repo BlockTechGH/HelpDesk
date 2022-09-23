@@ -78,12 +78,26 @@ class BitrixController extends AppController
         if(isset($data['saveSettings']))
         {
             $options = $this->saveSettings($data);
-        } elseif(isset($data['optName'])) {
-            $category = $this->Categories->addCategory($data['optName'], $this->memberId);
+        } elseif(isset($data['category'])) {
+            $category = $this->Categories->editCategory(
+                $data['category']['id'] ?? 0, 
+                $data['category']['name'], 
+                $this->memberId
+            );
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['categories'])) {
             $categories = $this->Categories->updateCategories($data['categories'], $this->memberId);
             return new Response(['body' => json_encode($categories)]);
+        } elseif(isset($data['ticket_status'])) {
+            $status = $this->Statuses->editStatus(
+                $data['ticket_status']['id'], 
+                $data['ticket_status']['name'], 
+                $this->memberId,
+            );
+            return new Response(['body' => json_encode($status)]);
+        } elseif(isset($data['statuses'])) {
+            $statuses = $this->Statuses->updateStatuses($data['statuses'], $this->memberId);
+            return new Response(['body' => json_encode($statuses)]);
         }
 
         $this->set('domain', $this->domain);

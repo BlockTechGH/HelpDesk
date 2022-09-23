@@ -73,14 +73,20 @@ class TicketCategoriesTable extends Table
             ->toList();
     }
 
-    public function addCategory(string $name, string $memberId)
+    public function editCategory($id, string $name, string $memberId)
     {
         $insert = [
             'member_id' => $memberId,
             'name' => $name,
             'active' => 1
         ];
-        $category = $this->newEntity($insert);
+        if($id < 1)
+        {
+            $category = $this->newEntity($insert);
+        } else {
+            $category = $this->find($id);
+            $category = $this->patchEntity($category, $insert);
+        }
         $this->save($category);
         return [
             'id' => $category->id,
