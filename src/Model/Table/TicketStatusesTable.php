@@ -64,7 +64,6 @@ class TicketStatusesTable extends Table
         return $this->find()
             ->where([
                 'member_id' => $memberId,
-                'active' => true
             ])
             ->toList();
     }
@@ -91,19 +90,5 @@ class TicketStatusesTable extends Table
             'active' => !!$status->active,
             'member_id' => $status->member_id,
         ];
-    }
-
-    public function updateStatuses(array $statuses, string $memberId)
-    {
-        foreach($statuses as $i => $update)
-        {
-            $status = $this->get($update['id']);
-            if($status->member_id == $memberId)
-            {
-                $status->active = (int)(!!$update['active']);
-            }
-            $this->save($status); 
-        }
-        return $this->getStatusesFor($memberId);
     }
 }
