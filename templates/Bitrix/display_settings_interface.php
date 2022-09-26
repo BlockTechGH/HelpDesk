@@ -101,7 +101,7 @@
                         <button 
                             type="button" 
                             v-on:click="save" 
-                            class="btn btn-primary ml-1">
+                            class="btn btn-primary btn-sm ml-1">
                             {{ i18n.Save }}
                         </button>
                     </div>
@@ -147,8 +147,8 @@
                             />
     
                             
-                        <button type="button" v-on:click="save" class="btn btn-primary">
-                            {{ i18n.Add }}
+                        <button type="button" v-on:click="save" class="btn btn-primary btn-sm ml-1">
+                            {{ i18n.Save }}
                         </button>
                     </div>
                 </form>
