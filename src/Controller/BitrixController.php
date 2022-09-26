@@ -16,6 +16,7 @@ class BitrixController extends AppController
     private $Options;
     private $Categories;
     private $Statuses;
+    private $BitrixTokens;
 
     public function initialize() : void
     {
@@ -28,12 +29,12 @@ class BitrixController extends AppController
             $this->isAccessFromBitrix = true;
             $this->memberId = $auth['member_id'];
             $this->authId = $auth['access_token'];
-            $this->refreshId = $auth['refresh_token'];
+            $this->refreshId = $auth['refresh_token'] ?? "";
             $this->authExpires = $auth['expires_in'];
             $this->domain = $auth['domain'];
         } else {
             $this->authId = $this->request->getData('AUTH_ID');
-            $this->refreshId = $this->request->getData('REFRESH_ID');
+            $this->refreshId = $this->request->getData('REFRESH_ID') ?? '';
             $this->authExpires = (int)($this->request->getData('AUTH_EXPIRES'));
             $this->memberId = $this->request->getData('member_id');
             $this->domain = $this->request->getQuery('DOMAIN');
@@ -52,6 +53,11 @@ class BitrixController extends AppController
             ]);
         }
 
+        if (!$this->refreshId) {
+            $this->BitrixTokens = $this->getTableLocator()->get('BitrixTokens');
+            $tokenRecord = $this->BitrixTokens->getTokenObjectByMemberId($this->memberId);
+            $this->refreshId = $tokenRecord['refresh_id'];
+        }
         $this->loadComponent('Bx24');
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
         $this->Statuses = $this->getTableLocator()->get('TicketStatuses');
@@ -109,6 +115,48 @@ class BitrixController extends AppController
         $this->set('authExpires', $this->authExpires);
         $this->set('refreshId', $this->refreshId);
         $this->set('memberId', $this->memberId);
+    }
+
+    public function handleCrmActivity()
+    {
+        $this->disableAutoRender();
+        $this->viewBuilder()->disableAutoLayout();
+
+        $event = $this->request->getData('event');
+        $data = $this->request->getData('data');
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - request', $data);
+        $idActivity = $data['FIELDS']['ID'];
+        $activity = $this->Bx24->getActivity($idActivity);
+        $activityType = $activity['type'];
+
+        $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - settings', [
+            'memberId' => $this->memberId,
+            'settings' => $sourceTypeOptions
+        ]);
+
+        if($event == 'ONCRMACTIVITYADD')
+        {
+            if($activityType['NAME'] == 'E-mail' && $sourceTypeOptions['sources_on_email'])
+            {
+                $this->BxControllerLogger->debug("Create a ticket by e-mail");
+                $this->Bx24->createTicketBy($activity);
+            } elseif($activityType['NAME'] == 'User action' && $sourceTypeOptions['sources_on_open_channel'])
+            {
+                $this->BxControllerLogger->debug("Create a ticket by Open Channel chat");
+                $this->Bx24->createTicketBy($activity);
+            } elseif($activityType['NAME'] == 'Call' && $sourceTypeOptions['sources_on_phone_calls'])
+            {
+                $this->BxControllerLogger->debug("Create a ticket by phone call");
+                $this->Bx24->createTicketBy($activity);
+            } else {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - OnCrmActivityAdd - not match', [
+                    'activityType' => $activityType,
+                ]);
+            }
+        } else {
+            echo "None of";
+        }
     }
 
     private function saveSettings(array $data) : array

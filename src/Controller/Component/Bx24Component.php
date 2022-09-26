@@ -12,6 +12,9 @@ use Bitrix24\Exceptions\Bitrix24SecurityException;
 
 class Bx24Component extends Component
 {
+    public const INCOMMING = 1;
+    public const NOT_COMPLETED = 'N';
+
 
     private $controller = null;
     private $BitrixTokens = null;
@@ -180,6 +183,83 @@ class Bx24Component extends Component
         }
 
         $this->obBx24App->processBatchCalls();
+    }
+
+    #
+    #endsection
+    #
+
+    #
+    #section Task 5. Handling incoming event - adding an activity
+    #
+
+    public function getActivity($id)
+    {
+        $arParameters = [
+            'ID' => $id
+        ];
+        $response = $this->obBx24App->call('crm.activity.get', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.get', [
+            'arParameters' => $arParameters,
+            'response' => $response
+        ]);
+        $activity = $response['result'];
+        $typeID = $response['result']['TYPE_ID'];
+
+        $response = $this->obBx24App->call('crm.enum.activitytype', []);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.enum.activitytype', [
+            'arParameters' => $arParameters,
+            'response' => $response
+        ]);
+
+        foreach ($response['result'] as $activityType)
+        {
+            if($activityType['ID'] == $typeID)
+            {
+                $activity['type'] = $activityType;
+                break;
+            }
+        }
+        return $activity;
+    }
+
+    public function createTicketBy(array $activity)
+    {
+        $ticketActivityTypeIDs = $this->getActivityTypeAndName();
+        return $this->createActivity($ticketActivityTypeIDs, $activity);
+    }
+
+    public function createActivity($activityType, array $ownerActivity)
+    {
+        $parameters = [
+            'id' => $ownerActivity["AUTHOR_ID"]
+        ];
+        $response = $this->obBx24App->call('crm.contact.get', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
+            'arParameters' => $parameters,
+            'response' => $response
+        ]);
+        $contact = $response['result'];
+
+        $parameters = [
+            'fields' => [
+                'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
+                'COMMUNICATIONS' => [ $contact ],
+                'COMPLETED' => static::NOT_COMPLETED,
+                'DESCRIPTION' => __('A new tickket by ' . $ownerActivity['NAME']),
+                'DIRECTIONS' => static::INCOMMING,
+                'OWNER_ID' => $ownerActivity['ID'],
+                'OWNER_TYPE_ID' => $ownerActivity['type']['ID'],
+                'SUBJECT' => __('New ticket'),
+                'TYPE_ID' => $activityType['ID'],
+            ]
+        ];
+        $response = $this->obBx24App->call('crm.activity.add', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
+            'arParameters' => $parameters,
+            'response' => $response
+        ]);
+        return $response['result']['ID'];
     }
 
     #
