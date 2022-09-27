@@ -119,7 +119,7 @@ class TicketsTable extends Table
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
             'source_type_id' => $activity['type']['ID'],
-            'source_id' => $activity['type']['NAME'],
+            'source_id' => $activity['ASSOCIATED_ENTITY_ID'],
         ]);
         if (!$entity->hasErrors()) {
             $this->save($entity);
