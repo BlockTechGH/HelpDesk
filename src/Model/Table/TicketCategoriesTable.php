@@ -67,8 +67,31 @@ class TicketCategoriesTable extends Table
     {
         return $this->find()
             ->where([
-                'member_id' => $memberId
+                'member_id' => $memberId,
             ])
             ->toList();
+    }
+
+    public function editCategory($id, string $name, string $memberId)
+    {
+        $insert = [
+            'member_id' => $memberId,
+            'name' => $name,
+            'active' => 1
+        ];
+        if($id < 1)
+        {
+            $category = $this->newEntity($insert);
+        } else {
+            $category = $this->find($id);
+            $category = $this->patchEntity($category, $insert);
+        }
+        $this->save($category);
+        return [
+            'id' => $category->id,
+            'name' => $category->name,
+            'active' => !!$category->active,
+            'member_id' => $category->member_id,
+        ];
     }
 }

@@ -67,4 +67,28 @@ class TicketStatusesTable extends Table
             ])
             ->toList();
     }
+
+    public function editStatus($id = null, string $name, string $memberId, bool $active = true)
+    {
+        $insert = [
+            'member_id' => $memberId,
+            'name' => $name,
+            'active' => (int)$active
+        ];
+        if($id == null)
+        {
+            $status = $this->newEntity($insert);
+        } else {
+            $status = $this->get($id);
+            $status = $this->patchEntity($status, $insert);
+        }
+        $this->save($status);
+        
+        return [
+            'id' => $status->id,
+            'name' => $status->name,
+            'active' => !!$status->active,
+            'member_id' => $status->member_id,
+        ];
+    }
 }
