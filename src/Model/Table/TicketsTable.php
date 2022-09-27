@@ -132,6 +132,7 @@ class TicketsTable extends Table
         $record = $this->find()
             ->select(['id'])
             ->orderDesc('created')
+            ->orderDesc('id')
             ->first();
         return $record ? $record['id'] : 0;
     }

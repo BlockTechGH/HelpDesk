@@ -63,7 +63,7 @@ class TicketCategoriesTable extends Table
         return $validator;
     }
 
-    public function getStartCategoryForMemeberTickets(string $memberId)
+    public function getStartCategoryForMemberTickets(string $memberId)
     {
         return $this->find()
             ->where([

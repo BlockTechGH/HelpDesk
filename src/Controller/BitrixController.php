@@ -28,15 +28,15 @@ class BitrixController extends AppController
         if($event && $auth)
         {
             $this->isAccessFromBitrix = true;
-            $this->memberId = $auth['member_id'];
-            $this->authId = $auth['access_token'];
+            $this->memberId = $auth['member_id'] ?? "";
+            $this->authId = $auth['access_token'] ?? "";
             $this->refreshId = $auth['refresh_token'] ?? "";
-            $this->authExpires = $auth['expires_in'];
+            $this->authExpires = $auth['expires_in'] ?? "";
             $this->domain = $auth['domain'];
         } else {
-            $this->authId = $this->request->getData('AUTH_ID');
+            $this->authId = $this->request->getData('AUTH_ID') ?? '';
             $this->refreshId = $this->request->getData('REFRESH_ID') ?? '';
-            $this->authExpires = (int)($this->request->getData('AUTH_EXPIRES'));
+            $this->authExpires = (int)($this->request->getData('AUTH_EXPIRES')) ?? '';
             $this->memberId = $this->request->getData('member_id');
             $this->domain = $this->request->getQuery('DOMAIN');
             $this->isAccessFromBitrix = $this->authId && $this->memberId && $this->domain;
@@ -54,10 +54,13 @@ class BitrixController extends AppController
             ]);
         }
 
-        if (!$this->refreshId) {
+        if ($this->memberId && !($this->refreshId && $this->authId && $this->authExpires)) {
             $this->BitrixTokens = $this->getTableLocator()->get('BitrixTokens');
             $tokenRecord = $this->BitrixTokens->getTokenObjectByMemberId($this->memberId);
+            $this->authId = $tokenRecord['auth_id'];
             $this->refreshId = $tokenRecord['refresh_id'];
+            $this->authExpires = (int)$tokenRecord['auth_expires'];
+            $this->domain = $tokenRecord['domain'];
         }
         $this->loadComponent('Bx24');
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
@@ -137,41 +140,54 @@ class BitrixController extends AppController
             'settings' => $sourceTypeOptions
         ]);
 
-        if($event == 'ONCRMACTIVITYADD')
+        if(!$this->Bx24->checkOptionalActivity($activity['PROVIDER_ID'], intval($activity['DIRECTION'])))
         {
-            $yesCreateTicket = $activityType['NAME'] == 'E-mail' && $sourceTypeOptions['sources_on_email'];
-            //$yesCreateTicket |= $activityType['NAME'] == 'User action' && $sourceTypeOptions['sources_on_open_channel'];
-            $yesCreateTicket |= $activityType['NAME'] == 'Call' && $sourceTypeOptions['sources_on_phone_calls'];
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - skip activity', [
+                'provider' => $activity['PROVIDER_ID'],
+                'direction' => $activity['DIRECTION'],
+            ]);
+            return;
+        }
 
-            if($yesCreateTicket)
+        $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activityType['NAME']) && $sourceTypeOptions['sources_on_email'];
+        $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $activityType['NAME'], $activity['PROVIDER_TYPE_ID']) && $sourceTypeOptions['sources_on_open_channel'];
+        $yesCreateTicket |= $this->Bx24->checkCallActivity($event, $activityType['NAME']) && $sourceTypeOptions['sources_on_phone_calls'];
+
+        if($yesCreateTicket)
+        {
+            $ticketId = $this->Tickets->getLatestID() + 1;
+            $subject = "#{$ticketId}";                
+            if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
-                $this->BxControllerLogger->debug("Create a ticket by e-mail");
+                // ticket is activity
+                $activity = $this->Bx24->getActivity($activityId);
+                // Source of ticket
+                $activity['type'] = $activityType;
 
-                $ticketId = $this->Tickets->getLatestID();
-                $subject = "#{$ticketId}";                
-                if ($activityId = $this->Bx24->createTicketBy($activity, $subject)) {
-                    // ticket is activity
-                    $activity = $this->Bx24->getActivity($activityId);
-                    // Source of ticket
-                    $activity['type'] = $activityType;
-
-                    $category = $this->Categories->getStartCategoryForMemberTickets($this->memberId);
-                    $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
-                    $ticketRecord = $this->Tickets->create($this->memberId, $activity, $category['id'], $status['id']);
-                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
-                        'status' => $status,
-                        'category' => $category,
-                        'ticketActivity' => $activity,
-                        'ticketRecord' => $ticketRecord,
-                    ]);
-                }
-            } else {
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - OnCrmActivityAdd - not match', [
-                    'activityType' => $activityType,
+                $category = $this->Categories->getStartCategoryForMemberTickets($this->memberId);
+                $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
+                $ticketRecord = $this->Tickets->create(
+                    $this->memberId, 
+                    $activity, 
+                    $category['id'], 
+                    $status['id']
+                );
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
+                    'status' => $status,
+                    'category' => $category,
+                    'ticketActivity' => $activity,
+                    'ticketRecord' => $ticketRecord,
                 ]);
+            } else {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is created');
             }
         } else {
-            echo "None of";
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
+                'settings' => $sourceTypeOptions,
+                'event' => $event,
+                'activity' => $activityType['NAME'],
+                'provider' => $activity['PROVIDER_TYPE_ID']
+            ]);
         }
     }
 

@@ -14,6 +14,9 @@ class Bx24Component extends Component
 {
     public const INCOMMING = 1;
     public const NOT_COMPLETED = 'N';
+    public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
+    public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
+    public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
 
 
     private $controller = null;
@@ -207,8 +210,9 @@ class Bx24Component extends Component
                 'TYPE_ID',
                 'OWNER_ID',
                 'OWNER_TYPE_ID',
-                'SETTINGS',
-                'OIRIGIN_ID'
+                'PROVIDER_ID',
+                'PROVIDER_TYPE_ID',
+                'DIRECTION'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
@@ -252,7 +256,7 @@ class Bx24Component extends Component
                 'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
                 'COMMUNICATIONS' => $ownerActivity['COMMUNICATIONS'],
                 'COMPLETED' => static::NOT_COMPLETED,
-                'DESCRIPTION' => __('A new ticket by e-mail from ' . $ownerActivity['COMMUNICATIONS'][0]['ENTITY_SETTINGS']['NAME']),
+                'DESCRIPTION' => __(''),
                 'DIRECTION' => static::INCOMMING,
                 'OWNER_ID' => $ownerActivity['OWNER_ID'],
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
@@ -267,6 +271,30 @@ class Bx24Component extends Component
             'response' => $response
         ]);
         return $response['result'];
+    }
+
+    public function checkOptionalActivity(string $activityProviderId, int $direction)
+    {
+        return $activityProviderId == static::PROVIDER_OPEN_LINES 
+            && $direction == static::INCOMMING;
+    }
+
+    public function checkEmailActivity(string $event, string $activityTypeName)
+    {
+        return $event == static::CRM_NEW_ACTIVITY_EVENT
+            && $activityTypeName == 'E-mail';
+    }
+
+    public function checkCallActivity(string $event, string $activityTypeName)
+    {
+        return $event != static::CRM_DELETE_ACTIVITY_EVENT
+            && $activityTypeName == 'Call';
+    }
+
+    public function checkOCActivity(string $event, string $activityTypeName, string $providerTypeName)
+    {
+        return $event == static::CRM_NEW_ACTIVITY_EVENT
+            && $activityTypeName == 'User action';
     }
 
     #
