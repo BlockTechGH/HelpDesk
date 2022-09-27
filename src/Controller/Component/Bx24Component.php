@@ -212,7 +212,8 @@ class Bx24Component extends Component
                 'OWNER_TYPE_ID',
                 'PROVIDER_ID',
                 'PROVIDER_TYPE_ID',
-                'DIRECTION'
+                'DIRECTION',
+                'RESPONSIBLE_ID',
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
@@ -263,6 +264,7 @@ class Bx24Component extends Component
                 'SUBJECT' => $subject,
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
+                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
