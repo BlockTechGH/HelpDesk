@@ -79,7 +79,7 @@
                                 <td>
                                     <button 
                                         type="button" 
-                                        class="btn btn-primary"
+                                        class="btn btn-primary btn-sm"
                                         v-on:click="edit(index)"
                                     >
                                         {{ i18n.Edit }}
@@ -101,7 +101,7 @@
                         <button 
                             type="button" 
                             v-on:click="save" 
-                            class="btn btn-primary btn-sm ml-1">
+                            class="btn btn-primary ml-1">
                             {{ i18n.Save }}
                         </button>
                     </div>
@@ -126,7 +126,7 @@
                                 <td>
                                     <button 
                                         type="button" 
-                                        class="btn btn-primary"
+                                        class="btn btn-primary btn-sm"
                                         v-on:click="edit(index)"
                                     >
                                         {{ i18n.Edit }}
@@ -147,7 +147,7 @@
                             />
     
                             
-                        <button type="button" v-on:click="save" class="btn btn-primary btn-sm ml-1">
+                        <button type="button" v-on:click="save" class="btn btn-primary ml-1">
                             {{ i18n.Save }}
                         </button>
                     </div>
