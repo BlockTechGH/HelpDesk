@@ -17,6 +17,7 @@ class BitrixController extends AppController
     private $Categories;
     private $Statuses;
     private $BitrixTokens;
+    private $Tickets;
 
     public function initialize() : void
     {
@@ -62,6 +63,7 @@ class BitrixController extends AppController
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
         $this->Statuses = $this->getTableLocator()->get('TicketStatuses');
         $this->Categories = $this->getTableLocator()->get('TicketCategories');
+        $this->Tickets = $this->getTableLocator()->get('Tickets');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
@@ -137,18 +139,32 @@ class BitrixController extends AppController
 
         if($event == 'ONCRMACTIVITYADD')
         {
-            if($activityType['NAME'] == 'E-mail' && $sourceTypeOptions['sources_on_email'])
+            $yesCreateTicket = $activityType['NAME'] == 'E-mail' && $sourceTypeOptions['sources_on_email'];
+            //$yesCreateTicket |= $activityType['NAME'] == 'User action' && $sourceTypeOptions['sources_on_open_channel'];
+            $yesCreateTicket |= $activityType['NAME'] == 'Call' && $sourceTypeOptions['sources_on_phone_calls'];
+
+            if($yesCreateTicket)
             {
                 $this->BxControllerLogger->debug("Create a ticket by e-mail");
-                $this->Bx24->createTicketBy($activity);
-            } elseif($activityType['NAME'] == 'User action' && $sourceTypeOptions['sources_on_open_channel'])
-            {
-                $this->BxControllerLogger->debug("Create a ticket by Open Channel chat");
-                $this->Bx24->createTicketBy($activity);
-            } elseif($activityType['NAME'] == 'Call' && $sourceTypeOptions['sources_on_phone_calls'])
-            {
-                $this->BxControllerLogger->debug("Create a ticket by phone call");
-                $this->Bx24->createTicketBy($activity);
+
+                $ticketId = $this->Tickets->getLatestID();
+                $subject = "#{$ticketId}";                
+                if ($activityId = $this->Bx24->createTicketBy($activity, $subject)) {
+                    // ticket is activity
+                    $activity = $this->Bx24->getActivity($activityId);
+                    // Source of ticket
+                    $activity['type'] = $activityType;
+
+                    $category = $this->Categories->getStartCategoryForMemberTickets($this->memberId);
+                    $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
+                    $ticketRecord = $this->Tickets->create($this->memberId, $activity, $category['id'], $status['id']);
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
+                        'status' => $status,
+                        'category' => $category,
+                        'ticketActivity' => $activity,
+                        'ticketRecord' => $ticketRecord,
+                    ]);
+                }
             } else {
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - OnCrmActivityAdd - not match', [
                     'activityType' => $activityType,

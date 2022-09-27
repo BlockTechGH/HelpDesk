@@ -110,4 +110,29 @@ class TicketsTable extends Table
 
         return $rules;
     }
+
+    public function create(string $memberId, array $activity, int $categoryId, int $statusId)
+    {
+        $entity = $this->newEntity([
+            'status_id' => $statusId,
+            'category_id' => $categoryId,
+            'member_id' => $memberId,
+            'action_id' => $activity['ID'],
+            'source_type_id' => $activity['type']['ID'],
+            'source_id' => $activity['type']['NAME'],
+        ]);
+        if (!$entity->hasErrors()) {
+            $this->save($entity);
+        }
+        return $entity;
+    }
+
+    public function getLatestID()
+    {
+        $record = $this->find()
+            ->select(['id'])
+            ->orderDesc('created')
+            ->first();
+        return $record ? $record['id'] : 0;
+    }
 }

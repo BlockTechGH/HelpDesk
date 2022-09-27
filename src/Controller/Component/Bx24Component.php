@@ -196,19 +196,31 @@ class Bx24Component extends Component
     public function getActivity($id)
     {
         $arParameters = [
-            'ID' => $id
+            'filter' => [
+                'ID' => $id,
+            ],
+            'select' => [
+                'ASSOCIATED_ENTITY_ID',
+                'COMMUNICATIONS',
+                'ID',
+                'NAME',
+                'TYPE_ID',
+                'OWNER_ID',
+                'OWNER_TYPE_ID',
+                'SETTINGS',
+                'OIRIGIN_ID'
+            ]
         ];
-        $response = $this->obBx24App->call('crm.activity.get', $arParameters);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.get', [
+        $response = $this->obBx24App->call('crm.activity.list', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
             'response' => $response
         ]);
-        $activity = $response['result'];
-        $typeID = $response['result']['TYPE_ID'];
+        $activity = $response['result'][0];
+        $typeID = $activity['TYPE_ID'];
 
         $response = $this->obBx24App->call('crm.enum.activitytype', []);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.enum.activitytype', [
-            'arParameters' => $arParameters,
             'response' => $response
         ]);
 
@@ -217,41 +229,36 @@ class Bx24Component extends Component
             if($activityType['ID'] == $typeID)
             {
                 $activity['type'] = $activityType;
+                $this->bx24Logger->debug(__FUNCTION__ . ' - activity type found', [
+                    'typeID' => $typeID,
+                    'activityType' => $activityType
+                ]);
                 break;
             }
         }
         return $activity;
     }
 
-    public function createTicketBy(array $activity)
+    public function createTicketBy(array $activity, string $subject)
     {
         $ticketActivityTypeIDs = $this->getActivityTypeAndName();
-        return $this->createActivity($ticketActivityTypeIDs, $activity);
+        return $this->createActivity($subject, $ticketActivityTypeIDs, $activity);
     }
 
-    public function createActivity($activityType, array $ownerActivity)
+    public function createActivity(string $subject, $activityType, array $ownerActivity)
     {
-        $parameters = [
-            'id' => $ownerActivity["AUTHOR_ID"]
-        ];
-        $response = $this->obBx24App->call('crm.contact.get', $parameters);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
-            'arParameters' => $parameters,
-            'response' => $response
-        ]);
-        $contact = $response['result'];
-
         $parameters = [
             'fields' => [
                 'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
-                'COMMUNICATIONS' => [ $contact ],
+                'COMMUNICATIONS' => $ownerActivity['COMMUNICATIONS'],
                 'COMPLETED' => static::NOT_COMPLETED,
-                'DESCRIPTION' => __('A new tickket by ' . $ownerActivity['NAME']),
-                'DIRECTIONS' => static::INCOMMING,
-                'OWNER_ID' => $ownerActivity['ID'],
-                'OWNER_TYPE_ID' => $ownerActivity['type']['ID'],
-                'SUBJECT' => __('New ticket'),
-                'TYPE_ID' => $activityType['ID'],
+                'DESCRIPTION' => __('A new ticket by e-mail from ' . $ownerActivity['COMMUNICATIONS'][0]['ENTITY_SETTINGS']['NAME']),
+                'DIRECTION' => static::INCOMMING,
+                'OWNER_ID' => $ownerActivity['OWNER_ID'],
+                'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
+                'SUBJECT' => $subject,
+                'PROVIDER_ID' => 'REST_APP',
+                'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
@@ -259,7 +266,7 @@ class Bx24Component extends Component
             'arParameters' => $parameters,
             'response' => $response
         ]);
-        return $response['result']['ID'];
+        return $response['result'];
     }
 
     #
