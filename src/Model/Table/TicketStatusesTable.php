@@ -59,6 +59,17 @@ class TicketStatusesTable extends Table
         return $validator;
     }
 
+    public function getStartStatusForMemeberTickets(string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'active' => true,
+            ])
+            ->orderAsc('created')
+            ->first();
+    }
+
     public function getStatusesFor(string $memberId)
     {
         return $this->find()

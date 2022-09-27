@@ -63,6 +63,17 @@ class TicketCategoriesTable extends Table
         return $validator;
     }
 
+    public function getStartCategoryForMemeberTickets(string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'active' => true,
+            ])
+            ->orderAsc('created')
+            ->first();
+    }
+
     public function getCategoriesFor(string $memberId)
     {
         return $this->find()
