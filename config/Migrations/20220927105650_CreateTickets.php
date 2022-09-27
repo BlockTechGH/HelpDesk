@@ -41,6 +41,14 @@ class CreateTickets extends AbstractMigration
             'limit' => 255,
             'null' => false
         ]);
+        $table->addColumn('created', 'datetime', [
+            'default' => null,
+            'null' => false,
+        ]);
+        $table->addColumn('modified', 'datetime', [
+            'default' => null,
+            'null' => false,
+        ]);
         $table->addIndex(['status_id', 'category_id']);
         $table->addForeignKey('status_id', 'ticket_statuses', 'id');
         $table->addForeignKey('category_id', 'ticket_categories', 'id');
