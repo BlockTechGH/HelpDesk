@@ -79,7 +79,6 @@ class TicketCategoriesTable extends Table
         return $this->find()
             ->where([
                 'member_id' => $memberId,
-                'active' => true
             ])
             ->toList();
     }
@@ -105,28 +104,5 @@ class TicketCategoriesTable extends Table
             'active' => !!$category->active,
             'member_id' => $category->member_id,
         ];
-    }
-
-    public function updateCategories(array $categories, string $memberId)
-    {
-        $resultList = [];
-        foreach($categories as $i => $update)
-        {
-            $category = $this->get($update['id']);
-            if($category->member_id == $memberId)
-            {
-                $category->active = (int)(!!$update['active']);
-            }
-            $this->save($category);
-            if ($category->active) {
-                $resultList[] = [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'active' => !!$category->active,
-                    'member_id' => $category->member_id,
-                ];
-            } 
-        }
-        return $resultList;
     }
 }

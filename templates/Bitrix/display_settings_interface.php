@@ -69,46 +69,42 @@
                 <table class="table table-hover">
                         <thead><tr>
                             <th>{{ i18n.Name }}</th>
-                            <th>{{ i18n.Action }}</th>
                             <th>{{ i18n.Active }}</th>
+                            <th>{{ i18n.Action }}</th>
                         </tr></thead>
                         <tbody>
                             <tr v-for="(status, index) in statuses" :key="index">
                                 <td>{{ status.name }}</td>
+                                <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>
                                     <button 
                                         type="button" 
-                                        class="btn btn-primary"
+                                        class="btn btn-primary btn-sm"
                                         v-on:click="edit(index)"
                                     >
                                         {{ i18n.Edit }}
                                     </button>
-                                </td>
-                                <td class="btn-group">
-                                    <input type="checkbox" 
-                                        v-bind:name="status.name"
-                                        v-bind:class='{btn: true, "btn-primary": status.active, "btn-second": !status.active}' 
-                                        v-model="status.active"/>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                     <div class="form-group">
                         <label for="status_name">{{ i18n.Option }}</label>
-                        <input class="" id="status_name" v-model="currentStatus.name">
-                        <button type="button" v-on:click="append">
-                            {{ i18n.Add }}
+                        <input class="mr-2" id="status_name" v-model="currentStatus.name">
+                            
+                        <label for="status_active">{{ i18n.Active }}</label>
+                        <input type="checkbox" 
+                            id="status_active"
+                            v-bind:class="{btn: true, 'btn-primary': currentStatus.active}" 
+                            v-model="currentStatus.active"/>
+
+                        <button 
+                            type="button" 
+                            v-on:click="save" 
+                            class="btn btn-primary ml-1">
+                            {{ i18n.Save }}
                         </button>
                     </div>
-
-                    <button 
-                        type="button" 
-                        name="saveStatuses" 
-                        class="btn btn-primary"
-                        v-on:click="update"
-                    >
-                        {{ i18n.Save }}
-                    </button>
                 </form>
             </div>
             <div 
@@ -120,26 +116,21 @@
                     <table class="table table-hover">
                         <thead><tr>
                             <th>{{ i18n.Name }}</th>
-                            <th>{{ i18n.Action }}</th>
                             <th>{{ i18n.Active }}</th>
+                            <th>{{ i18n.Action }}</th>
                         </tr></thead>
                         <tbody>
                             <tr v-for="(category, index) in categories" :key="index">
                                 <td>{{ category.name }}</td>
+                                <td>{{ category.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>
                                     <button 
                                         type="button" 
-                                        class="btn btn-primary"
+                                        class="btn btn-primary btn-sm"
                                         v-on:click="edit(index)"
                                     >
                                         {{ i18n.Edit }}
                                     </button>
-                                </td>
-                                <td class="btn-group">
-                                    <input type="checkbox" 
-                                        v-bind:name="category.name"
-                                        v-bind:class="{btn: true, 'btn-primary': category.active, 'btn-second': !category.active}" 
-                                        v-model="category.active"/>
                                 </td>
                             </tr>
                         </tbody>
@@ -147,18 +138,19 @@
                     <div class="form-group">
                         <label for="opt_name">{{ i18n.Option }}</label>
                         <input class="" id="opt_name" v-model="currentCategory.name">
-                        <button type="button" v-on:click="append">
-                            {{ i18n.Add }}
+                            
+                        <label for="category_active">{{ i18n.Active }}</label>
+                        <input type="checkbox" 
+                            id="category_active"
+                            v-bind:class="{btn: true, 'btn-primary': currentCategory.active}" 
+                            v-model="currentCategory.active"
+                            />
+    
+                            
+                        <button type="button" v-on:click="save" class="btn btn-primary ml-1">
+                            {{ i18n.Save }}
                         </button>
                     </div>
-
-                    <button 
-                        type="button" 
-                        name="saveCategories"
-                        v-on:click="update"
-                        class="btn btn-primary">
-                        {{ i18n.Save }}
-                    </button>
                 </form>
             </div>
         </div>
@@ -202,6 +194,8 @@
             'Add' => __('Add'),
             'Edit' => __('Edit'),
             'Action' => __('Action'),
+            'Yes' => __('Yes'),
+            'No' => __('No')
         ]);?>,
     };
 </script>
@@ -210,7 +204,7 @@ const categories = new Vue({
     'el': '#categories',
     'data': window.data,
     'methods': {
-        append: function ()
+        save: function ()
         {
             const parameters = Object.assign(
                 {
@@ -232,24 +226,6 @@ const categories = new Vue({
         {
             this.currentCategory = this.categories[index];
         },
-        update: function()
-        {
-            const parameters = Object.assign(
-                {
-                    categories: this.categories,
-                }, 
-                this.required
-            );
-            console.log("Send request to update a categories", parameters);
-            fetch(this.ajax, {
-                method: "POST",
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(parameters)
-            }).then(async result => {
-                this.categories = await result.json();
-                this.create();
-            });
-        },
         create: function()
         {
             this.currentCategory = {
@@ -267,7 +243,7 @@ const statuses = new Vue({
     'el': '#statuses',
     'data': window.data,
     'methods': {
-        append: function ()
+        save: function ()
         {
             const parameters = Object.assign(
                 {
@@ -295,24 +271,6 @@ const statuses = new Vue({
         edit: function (index)
         {
             this.currentStatus = this.statuses[index];
-        },
-        update: function()
-        {
-            const parameters = Object.assign(
-                {
-                    statuses: this.statuses,
-                }, 
-                this.required
-            );
-            console.log("Send request to update a statuses", parameters);
-            fetch(this.ajax, {
-                method: "POST",
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(parameters)
-            }).then(async result => {
-                this.statuses = await result.json();
-                this.create();
-            });
         },
         create: function()
         {
