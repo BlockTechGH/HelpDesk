@@ -274,7 +274,7 @@
             member_id: "<?=$memberId;?>",
         },
         answer: {
-            from: "<?="";?>",
+            from: "<?=$from;?>",
             message: "",
             attachment: [],
         },

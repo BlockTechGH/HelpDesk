@@ -325,7 +325,7 @@ class Bx24Component extends Component
 
     public function getCurrentUser()
     {
-        $response = $this->obBx24App->call('current.user', []);
+        $response = $this->obBx24App->call('user.current', []);
         return $response['result'];
     }
 

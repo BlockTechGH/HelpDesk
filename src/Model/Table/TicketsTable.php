@@ -83,7 +83,7 @@ class TicketsTable extends Table
             ->notEmptyString('action_id');
 
         $validator
-            ->integer('source_type_id')
+            ->scalar('source_type_id')
             ->requirePresence('source_type_id', 'create')
             ->notEmptyString('source_type_id');
 

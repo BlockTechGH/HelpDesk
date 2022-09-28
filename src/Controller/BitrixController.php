@@ -78,6 +78,7 @@ class BitrixController extends AppController
         $options = $this->Options->getSettingsFor($this->memberId);
         $statuses = $this->Statuses->getStatusesFor($this->memberId);
         $categories = $this->Categories->getCategoriesFor($this->memberId);
+        $currentUser = $this->Bx24->getCurrentUser();
         $messages = [];
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
         $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? null, true);
@@ -130,6 +131,7 @@ class BitrixController extends AppController
         $this->set('categories', $categories);
         $this->set('ticket', $ticket);
         $this->set('messages', $messages);
+        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         // hidden fields from app installation
         $this->set('authId', $this->authId);
         $this->set('authExpires', $this->authExpires);
@@ -173,7 +175,8 @@ class BitrixController extends AppController
         {
             $ticketId = $this->Tickets->getLatestID() + 1;
             $subject = "#{$ticketId}";
-            $prevActivityId = $idActivity;       
+            $prevActivityId = $idActivity;
+            $prevActivity = $activity;
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
@@ -188,12 +191,12 @@ class BitrixController extends AppController
                     $activity, 
                     $category['id'], 
                     $status['id'],
-                    $prevActivityId
+                    (int)$prevActivityId
                 );
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
-                    'status' => $status,
-                    'category' => $category,
-                    'ticketActivity' => $activity,
+                    'prevActivityId' => $prevActivityId,
+                    'errors' => $ticketRecord->getErrors(),
+                    'prevActivity' => $prevActivity,
                     'ticketRecord' => $ticketRecord,
                 ]);
             } else {
