@@ -83,7 +83,7 @@ class TicketsTable extends Table
             ->notEmptyString('action_id');
 
         $validator
-            ->integer('source_type_id')
+            ->scalar('source_type_id')
             ->requirePresence('source_type_id', 'create')
             ->notEmptyString('source_type_id');
 
@@ -111,15 +111,15 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, int $categoryId, int $statusId)
+    public function create(string $memberId, array $activity, int $categoryId, int $statusId, $prevActivityId)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
             'category_id' => $categoryId,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
-            'source_type_id' => $activity['type']['ID'],
-            'source_id' => $activity['ASSOCIATED_ENTITY_ID'],
+            'source_type_id' => $activity['type']['NAME'],
+            'source_id' => $prevActivityId,
         ]);
         if (!$entity->hasErrors()) {
             $this->save($entity);
@@ -137,13 +137,42 @@ class TicketsTable extends Table
         return $record ? $record['id'] : 0;
     }
 
-    public function getRelatedBySource($sourceTypeId, $sourceEntityId, string $memberId)
+    public function getTicketsFor(string $memberId)
+    {
+        return $this->find()
+            ->where(['member_id' => $memberId])
+            ->toList();
+    }
+
+    public function editTicket(int $id, int $statusId, int $categoryId, string $memberId)
+    {
+        $insert = [
+            'member_id' => $memberId,
+            'status_id' => $statusId,
+            'category_id' => $categoryId,
+        ];
+        if($id < 1)
+        {
+            $ticket = $this->newEntity($insert);
+        } else {
+            $ticket = $this->get($id);
+            $ticket = $this->patchEntity($ticket, $insert);
+        }
+        $this->save($ticket);
+        return [
+            'id' => $ticket->id,
+            'member_id' => $ticket->member_id,
+            'status_id' => $ticket->status_id,
+            'category_id' => $ticket->category_id,
+        ];
+    }
+
+    public function getByActivityIdAndMemberId($activityId, $memberId)
     {
         return $this->find()
             ->where([
-                'member_id' => $memberId,
-                'source_type_id' => $sourceTypeId,
-                'source_id' => $sourceEntityId
+                'action_id' => $activityId,
+                'member_id' => $memberId
             ])
             ->first();
     }

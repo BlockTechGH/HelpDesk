@@ -72,11 +72,17 @@ class TicketStatusesTable extends Table
 
     public function getStatusesFor(string $memberId)
     {
-        return $this->find()
+        $rawList = $this->find()
             ->where([
                 'member_id' => $memberId,
             ])
             ->toList();
+        $list = [];
+        foreach($rawList as $status)
+        {
+            $list[$status->id] = $status;
+        }
+        return $list;
     }
 
     public function editStatus($id = null, string $name, string $memberId, bool $active = true)

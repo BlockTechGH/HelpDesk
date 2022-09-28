@@ -76,11 +76,16 @@ class TicketCategoriesTable extends Table
 
     public function getCategoriesFor(string $memberId)
     {
-        return $this->find()
+        $rawList = $this->find()
             ->where([
                 'member_id' => $memberId,
             ])
             ->toList();
+        $result = [];
+        foreach ($rawList as $category) {
+            $result[$category->id] = $category;
+        }
+        return $result;
     }
 
     public function editCategory($id, string $name, string $memberId)
@@ -94,7 +99,7 @@ class TicketCategoriesTable extends Table
         {
             $category = $this->newEntity($insert);
         } else {
-            $category = $this->find($id);
+            $category = $this->get($id);
             $category = $this->patchEntity($category, $insert);
         }
         $this->save($category);
