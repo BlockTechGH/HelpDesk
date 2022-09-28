@@ -165,7 +165,8 @@ class BitrixController extends AppController
         $ticketBy = false;
         $isEmail = $this->Bx24->checkEmailActivity($event, $activityType['NAME']);
         if ($isEmail) {
-            $ticketBy = mb_ereg('#-(\d+)', $activity['SUBJECT'], $matches) !== false;
+            mb_ereg('#-\d+', $activity['SUBJECT'], $matches);
+            $ticketBy = count($matches) > 0;
         }
         $yesCreateTicket = $isEmail && !$ticketBy && $sourceTypeOptions['sources_on_email'];
         $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $activityType['NAME'], $activity['PROVIDER_TYPE_ID']) && $sourceTypeOptions['sources_on_open_channel'];
