@@ -111,15 +111,15 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, int $categoryId, int $statusId)
+    public function create(string $memberId, array $activity, int $categoryId, int $statusId, $prevActivityId)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
             'category_id' => $categoryId,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
-            'source_type_id' => $activity['type']['ID'],
-            'source_id' => $activity['ASSOCIATED_ENTITY_ID'],
+            'source_type_id' => $activity['type']['NAME'],
+            'source_id' => $prevActivityId,
         ]);
         if (!$entity->hasErrors()) {
             $this->save($entity);

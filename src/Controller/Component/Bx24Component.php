@@ -9,6 +9,7 @@ use Cake\Controller\Component;
 use Monolog\Handler\StreamHandler;
 use Bitrix24\Exceptions\Bitrix24ApiException;
 use Bitrix24\Exceptions\Bitrix24SecurityException;
+use Cake\Http\Client;
 
 class Bx24Component extends Component
 {
@@ -304,6 +305,71 @@ class Bx24Component extends Component
     {
         return $event == static::CRM_NEW_ACTIVITY_EVENT
             && $activityTypeName == 'User action';
+    }
+
+    public function sendMessage($from, $messageText, $ticket, $attachment)
+    {
+        $source = $this->getActivity($ticket->source_id);
+        $currentUser = $this->getCurrentUser();
+        switch($ticket->source_type_id)
+        {
+            case 'E-mail':
+                return $this->sendEmail($from, $messageText, "#-{$ticket->id}", $attachment, $source['SETTINGS']['EMAIL_META']['from']);
+            case 'Call':
+                return $this->sendSMS($currentUser['PHONE'], $messageText, $source['SETTINGS']['CALL_META']['PHONE']);
+            case 'User action':
+                return $this->sendOCMessage($currentUser, $messageText, "$-{$ticket->id}", $attachment);
+        }
+        return null;
+    }
+
+    public function getCurrentUser()
+    {
+        $response = $this->obBx24App->call('current.user', []);
+        return $response['result'];
+    }
+
+    private function sendEmail(string $from, string $text, string $theme, $attachment, string $to)
+    {
+        return $this->makeMessageStructure($from, $text, $theme, $attachment);
+    }
+
+    private function sendSMS(string $from, string $text, string $to)
+    {
+        $http = new Client();
+        $http->get('http://api.clickatell.com/http/sendmsg', [
+            'to' => $to,
+            'from' => $from,
+            'msg' => $text
+        ]);
+        return $this->makeMessageStructure($from, $text, "", null);
+    }
+
+    private function sendOCMessage($currentUser, $ticket, string $text, $attachment)
+    {
+        $arParameters = [
+            'DIALOG_ID' => 'chat'.$ticket->source_id,
+            'MESSAGE' => $text,
+            'ATTACH' => $attachment
+        ];
+        $response = $this->obBx24App->call('im.message.add', $arParameters);
+        $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
+            'arParameters' => $arParameters,
+            'response' => $response
+        ]);
+
+        return $this->makeMessageStructure($currentUser['TITLE'], $text, "#-{$ticket->id}", $attachment);
+    }
+
+    private function makeMessageStructure(string $from, string $text, string $theme, $attachment)
+    {
+        return [
+            'from' => $from,
+            'date' => date(DATE_ATOM),
+            'text' => $text,
+            'theme' => $theme,
+            'attachment' => $attachment
+        ];
     }
 
     #

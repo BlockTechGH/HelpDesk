@@ -1,6 +1,6 @@
 <?= $this->Html->script('fit_window'); ?>
+<?php if(!isset($ticket)): ?>
 <div id="setting_container" class="row">
-    <?php if(!isset($ticket)): ?>
     <div class="col-2">
         <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
             <button class="nav-link active" data-toggle="tab" type="button" role="tab" 
@@ -165,8 +165,10 @@
             </div>
         </div>
     </div>
-    <?php else: ?>
-        <div class="" id="ticket" role="tabpanel" aria-labelledby="ticket-tab">
+</div>
+<?php else: ?>
+    <div id="setting_container" class="col">
+        <div class="row" id="ticket" role="tabpanel" aria-labelledby="ticket-tab">
             <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                 <div class="form-group">
                     <p>{{ currentTicket.id > 0 ? i18n.Ticket + currentTicket.id : "" }}</p>
@@ -206,9 +208,45 @@
                 </div>
             </form>
         </div>
-    <?php endif; ?>
-</div>
+        <div class="row" id="messages">
+            <div class="col">
+                <div class=""
+                    v-for="(message, index) in messages">
+                    <p class="">{{ message.from }} {{ message.created }}</p>
+                    <textarea readonly>{{ message.text }}</textarea>
+                </div>
+            </div>
+            <div class="form row">
+                <form 
+                    method="POST" 
+                    action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
+                    enctype="multipart/form-data"
+                >
 
+                    <div class="forn-group">{{ answer.from }}</div>
+                    <div class="form-group">
+                        <label for="message">{{ i18n.Reply }}</label>
+                        <textarea id="message" name="message"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="attachment">{{ i18n.Attachment }}</label>
+                        <input type="file" name="attachment" id="attachment" @change="upload($event)">
+                    </div>
+                    <div class="btn-group">
+                        <button
+                            type="button"
+                            name="answer"
+                            class="btn btn-primary"
+                            @click="send"
+                            >
+                            {{ i18n.Send }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <script>
     window.data = {
@@ -235,10 +273,16 @@
             active: 1,
             member_id: "<?=$memberId;?>",
         },
+        answer: {
+            from: "<?="";?>",
+            message: "",
+            attachment: [],
+        },
         currentTicket: <?=json_encode($ticket)?>,
         memberId: "<?=$memberId?>",
         categories: <?=json_encode($categories);?>,
         statuses: <?=json_encode($statuses);?>,
+        messages: <?=json_encode([]);?>,
         i18n: <?=json_encode([
             'Name' => 'Name',
             'Ticket' => __('Ticket #'),
@@ -252,6 +296,10 @@
             'Action' => __('Action'),
             'Yes' => __('Yes'),
             'No' => __('No'),
+            'Reply' => __('Your answer'),
+            'EnterReplicaText' => __('Enter your answer here'),
+            'Send' => __('Send'),
+            'Attachment' => __('Attache file'),
         ]);?>,
     };
 </script>
@@ -367,6 +415,37 @@ const statuses = new Vue({
                     const stored = await result.json();
                     this.currentTicket = stored;
                 });
+            },
+        }
+    });
+    const messages = new Vue({
+        'el': '#messages',
+        'data': window.data,
+        'methods': {
+            send: function() {
+                const formData = new FormData();
+                formData.append('from', this.answer.from);
+                formData.append('message', this.answer.message);
+                formData.append('attachment', this.answer.attachment);
+                formData.append('AUTH_ID', this.required.AUTH_ID);
+                formData.append('AUTH_EXPIES', this.required.AUTH_EXPIRES);
+                formData.append('REFRESH_ID', this.required.REFRESH_ID);
+                formData.append('member_id', this.required.member_id);
+                formData.append('PLACEMENT_OPTIONS', JSON.stringify(this.required.PLACEMENT_OPTIONS));
+                formData.append('ticket', <?=json_encode($ticket)?>);
+
+                const headers = { 'Content-Type': 'multipart/form-data' };
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers,
+                    body: formData
+                }).then(async result => {
+                    const all = await result.json();
+                    this.messages = all;
+                });
+            },
+            upload: function() {
+                this.attachment = this.$refs.attachment.files[0];
             }
         }
     });

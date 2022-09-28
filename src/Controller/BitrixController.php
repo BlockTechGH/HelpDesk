@@ -78,6 +78,7 @@ class BitrixController extends AppController
         $options = $this->Options->getSettingsFor($this->memberId);
         $statuses = $this->Statuses->getStatusesFor($this->memberId);
         $categories = $this->Categories->getCategoriesFor($this->memberId);
+        $messages = [];
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
         $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? null, true);
         if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
@@ -119,6 +120,8 @@ class BitrixController extends AppController
                 $this->memberId
             );
             return new Response(['body' => json_encode($ticket)]);
+        } elseif (isset($data['answer'])) {
+            $messages = $this->sendMessage();
         }
 
         $this->set('domain', $this->domain);
@@ -126,6 +129,7 @@ class BitrixController extends AppController
         $this->set('statuses', $statuses);
         $this->set('categories', $categories);
         $this->set('ticket', $ticket);
+        $this->set('messages', $messages);
         // hidden fields from app installation
         $this->set('authId', $this->authId);
         $this->set('authExpires', $this->authExpires);
@@ -168,7 +172,8 @@ class BitrixController extends AppController
         if($yesCreateTicket)
         {
             $ticketId = $this->Tickets->getLatestID() + 1;
-            $subject = "#{$ticketId}";                
+            $subject = "#{$ticketId}";
+            $prevActivityId = $idActivity;       
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
@@ -182,7 +187,8 @@ class BitrixController extends AppController
                     $this->memberId, 
                     $activity, 
                     $category['id'], 
-                    $status['id']
+                    $status['id'],
+                    $prevActivityId
                 );
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
                     'status' => $status,
@@ -215,5 +221,17 @@ class BitrixController extends AppController
         $settings = $this->Options->updateOptions($settings);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options', ['options' => $settings]);
         return $settings;
+    }
+
+    private function sendMessage()
+    {
+        $from = $this->request->getData('from');
+        $messageText = $this->request->getData('message');
+        $attachment = $this->request->getData('attachment');
+        $ticket = $this->request->getData('ticket');
+
+        $message = $this->Bx24->sendMessage($from, $messageText, $ticket, $attachment);
+        
+        return [ $message ];
     }
 }
