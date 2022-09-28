@@ -15,6 +15,8 @@ class Bx24Component extends Component
     public const INCOMMING = 1;
     public const NOT_COMPLETED = 'N';
     public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
+    public const PROVIDER_CRM_EMAIL = 'CRM_EMAIL';
+    public const PROVIDER_EMAIL = 'EMAIL';
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
 
@@ -214,12 +216,15 @@ class Bx24Component extends Component
                 'PROVIDER_TYPE_ID',
                 'DIRECTION',
                 'RESPONSIBLE_ID',
+                "SETTINGS",
+                'SUBJECT',
+                'ORIGIN_ID'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
-            'response' => $response
+            'response' => $response['result']
         ]);
         $activity = $response['result'][0];
         $typeID = $activity['TYPE_ID'];
@@ -264,20 +269,22 @@ class Bx24Component extends Component
                 'SUBJECT' => $subject,
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
-                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
+                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $parameters,
-            'response' => $response
+            'response' => $response['result']
         ]);
         return $response['result'];
     }
 
     public function checkOptionalActivity(string $activityProviderId, int $direction)
     {
-        return $activityProviderId == static::PROVIDER_OPEN_LINES 
+        return ($activityProviderId == static::PROVIDER_OPEN_LINES
+                || $activityProviderId == static::PROVIDER_CRM_EMAIL
+                || $activityProviderId == static::PROVIDER_EMAIL)
             && $direction == static::INCOMMING;
     }
 

@@ -136,4 +136,15 @@ class TicketsTable extends Table
             ->first();
         return $record ? $record['id'] : 0;
     }
+
+    public function getRelatedBySource($sourceTypeId, $sourceEntityId, string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'source_type_id' => $sourceTypeId,
+                'source_id' => $sourceEntityId
+            ])
+            ->first();
+    }
 }

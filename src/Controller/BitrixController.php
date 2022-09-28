@@ -125,27 +125,27 @@ class BitrixController extends AppController
 
         $event = $this->request->getData('event');
         $data = $this->request->getData('data');
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - request', $data);
         $idActivity = $data['FIELDS']['ID'];
         $activity = $this->Bx24->getActivity($idActivity);
         $activityType = $activity['type'];
 
         $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - settings', [
-            'memberId' => $this->memberId,
-            'settings' => $sourceTypeOptions
-        ]);
-
         if(!$this->Bx24->checkOptionalActivity($activity['PROVIDER_ID'], intval($activity['DIRECTION'])))
         {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - skip activity', [
+                'id' => $idActivity,
                 'provider' => $activity['PROVIDER_ID'],
                 'direction' => $activity['DIRECTION'],
             ]);
             return;
         }
 
-        $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activityType['NAME']) && $sourceTypeOptions['sources_on_email'];
+        $ticketBy = false;
+        $isEmail = $this->Bx24->checkEmailActivity($event, $activityType['NAME']);
+        if ($isEmail) {
+            $ticketBy = mb_ereg('#-(\d+)', $activity['SUBJECT'], $matches) !== false;
+        }
+        $yesCreateTicket = $isEmail && !$ticketBy && $sourceTypeOptions['sources_on_email'];
         $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $activityType['NAME'], $activity['PROVIDER_TYPE_ID']) && $sourceTypeOptions['sources_on_open_channel'];
         $yesCreateTicket |= $this->Bx24->checkCallActivity($event, $activityType['NAME']) && $sourceTypeOptions['sources_on_phone_calls'];
 
