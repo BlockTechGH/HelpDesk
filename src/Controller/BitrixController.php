@@ -143,7 +143,8 @@ class BitrixController extends AppController
         $ticketBy = false;
         $isEmail = $this->Bx24->checkEmailActivity($event, $activityType['NAME']);
         if ($isEmail) {
-            $ticketBy = mb_ereg('#-(\d+)', $activity['SUBJECT'], $matches) !== false;
+            mb_ereg('#-(\d+)', $activity['SUBJECT'], $matches);
+            $ticketBy = count($matches) > 0;
         }
         $yesCreateTicket = $isEmail && !$ticketBy && $sourceTypeOptions['sources_on_email'];
         $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $activityType['NAME'], $activity['PROVIDER_TYPE_ID']) && $sourceTypeOptions['sources_on_open_channel'];
@@ -152,7 +153,8 @@ class BitrixController extends AppController
         if($yesCreateTicket)
         {
             $ticketId = $this->Tickets->getLatestID() + 1;
-            $subject = "#{$ticketId}";                
+            $subject = "#{$ticketId}";
+            $prevActivityId = $idActivity;
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
@@ -166,12 +168,10 @@ class BitrixController extends AppController
                     $this->memberId, 
                     $activity, 
                     $category['id'], 
-                    $status['id']
+                    $status['id'],
+                    (int)$prevActivityId
                 );
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
-                    'status' => $status,
-                    'category' => $category,
-                    'ticketActivity' => $activity,
                     'ticketRecord' => $ticketRecord,
                 ]);
             } else {

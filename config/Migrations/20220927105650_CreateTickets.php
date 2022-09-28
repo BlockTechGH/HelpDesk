@@ -57,6 +57,6 @@ class CreateTickets extends AbstractMigration
 
     public function down()
     {
-        $this->table('ticket_statuses')->drop()->save();
+        $this->table('tickets')->drop()->save();
     }
 }
