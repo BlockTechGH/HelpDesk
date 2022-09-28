@@ -1,5 +1,6 @@
 <?= $this->Html->script('fit_window'); ?>
 <div id="setting_container" class="row">
+    <?php if(!isset($ticket)): ?>
     <div class="col-2">
         <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
             <button class="nav-link active" data-toggle="tab" type="button" role="tab" 
@@ -24,6 +25,15 @@
             >
                 <?=__('Categories');?>
             </button>
+            <?php if(isset($ticket)): ?>
+            <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                id="ticket-tab"
+                data-target="#ticket"
+                aria-controls="ticket"
+            >
+                <?=__('Ticket card');?>
+            </button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="col-10">
@@ -155,6 +165,48 @@
             </div>
         </div>
     </div>
+    <?php else: ?>
+        <div class="" id="ticket" role="tabpanel" aria-labelledby="ticket-tab">
+            <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
+                <div class="form-group">
+                    <p>{{ currentTicket.id > 0 ? i18n.Ticket + currentTicket.id : "" }}</p>
+                </div>
+                <div class="form-group">
+                    <label for="ticket_status">{{ i18n.Status }}</label>
+                    <select id="ticket_status" name="status" class="form-control" v-model="currentTicket.status_id">
+                        <option 
+                            v-for="(status, index) in statuses"
+                            :selected="status.id == currentTicket.status_id"
+                            :value="status.id"
+                        >
+                            {{ status.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ticket_category">{{ i18n.Category }}</label>
+                    <select id="ticket_categoty" name="category" class="form-control" v-model="currentTicket.category_id">
+                        <option 
+                            v-for="(category, index) in categories"
+                            :selected="category.id == currentTicket.category_id"
+                            :value="category.id"
+                        >
+                            {{ category.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button
+                        type="button"
+                        v-on:click="save"
+                        class="btn btn-primary"
+                    >
+                        {{ i18n.Save }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    <?php endif; ?>
 </div>
 
 
@@ -169,6 +221,7 @@
             'AUTH_EXPIRES' => $authExpires,
             'REFRESH_ID' => $refreshId,
             'member_id' => $memberId,
+            'PLACEMENT_OPTIONS' => json_encode($PLACEMENT_OPTIONS),
         ])?>,
         currentStatus: {
             id: 0,
@@ -182,23 +235,27 @@
             active: 1,
             member_id: "<?=$memberId;?>",
         },
+        currentTicket: <?=json_encode($ticket)?>,
         memberId: "<?=$memberId?>",
         categories: <?=json_encode($categories);?>,
         statuses: <?=json_encode($statuses);?>,
         i18n: <?=json_encode([
             'Name' => 'Name',
-            'Status' => __('Name of new status'),
-            'Category' => __('Name of new category'),
+            'Ticket' => __('Ticket #'),
+            'Status' => __('Status'),
+            'Category' => __('Category'),
             'Save' => __('Save'),
             'Active' => __('Active'),
             'Add' => __('Add'),
             'Edit' => __('Edit'),
+            'Response' => __('Response'),
             'Action' => __('Action'),
             'Yes' => __('Yes'),
-            'No' => __('No')
+            'No' => __('No'),
         ]);?>,
     };
 </script>
+<?php if(!isset($ticket)): ?>
 <script>
 const categories = new Vue({
     'el': '#categories',
@@ -284,3 +341,34 @@ const statuses = new Vue({
     }
 });
 </script>
+<?php else: ?>
+<script>
+    const ticket = new Vue({
+        'el': '#ticket',
+        'data': window.data,
+        'methods': {
+            save: function ()
+            {
+                const parameters = Object.assign(
+                    {
+                        ticket: this.currentTicket,
+                    }, 
+                    this.required
+                );
+                if (this.currentTicket.id > 0)
+                {
+                    parameters.do = "edit"; 
+                }
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    const stored = await result.json();
+                    this.currentTicket = stored;
+                });
+            }
+        }
+    });
+</script>
+<?php endif;?>

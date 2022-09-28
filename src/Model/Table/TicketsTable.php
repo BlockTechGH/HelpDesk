@@ -136,4 +136,44 @@ class TicketsTable extends Table
             ->first();
         return $record ? $record['id'] : 0;
     }
+
+    public function getTicketsFor(string $memberId)
+    {
+        return $this->find()
+            ->where(['member_id' => $memberId])
+            ->toList();
+    }
+
+    public function editTicket(int $id, int $statusId, int $categoryId, string $memberId)
+    {
+        $insert = [
+            'member_id' => $memberId,
+            'status_id' => $statusId,
+            'category_id' => $categoryId,
+        ];
+        if($id < 1)
+        {
+            $ticket = $this->newEntity($insert);
+        } else {
+            $ticket = $this->get($id);
+            $ticket = $this->patchEntity($ticket, $insert);
+        }
+        $this->save($ticket);
+        return [
+            'id' => $ticket->id,
+            'member_id' => $ticket->member_id,
+            'status_id' => $ticket->status_id,
+            'category_id' => $ticket->category_id,
+        ];
+    }
+
+    public function getByActivityIdAndMemberId($activityId, $memberId)
+    {
+        return $this->find()
+            ->where([
+                'action_id' => $activityId,
+                'member_id' => $memberId
+            ])
+            ->first();
+    }
 }

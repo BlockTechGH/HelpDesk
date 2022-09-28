@@ -79,6 +79,12 @@ class BitrixController extends AppController
         $statuses = $this->Statuses->getStatusesFor($this->memberId);
         $categories = $this->Categories->getCategoriesFor($this->memberId);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
+        $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? null, true);
+        if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
+            $ticket = $this->Tickets->getByActivityIdAndMemberId($placement['activity_id'], $this->memberId);
+        } else {
+            $ticket = null;
+        }
 
         $flashOptions = [
             'params' => [
@@ -105,17 +111,27 @@ class BitrixController extends AppController
                 $data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
+        } elseif (isset($data['ticket'])) {
+            $ticket = $this->Tickets->editTicket(
+                (int)$data['ticket']['id'],
+                (int)$data['ticket']['status_id'],
+                (int)$data['ticket']['category_id'],
+                $this->memberId
+            );
+            return new Response(['body' => json_encode($ticket)]);
         }
 
         $this->set('domain', $this->domain);
         $this->set('options', $options);
         $this->set('statuses', $statuses);
         $this->set('categories', $categories);
+        $this->set('ticket', $ticket);
         // hidden fields from app installation
         $this->set('authId', $this->authId);
         $this->set('authExpires', $this->authExpires);
         $this->set('refreshId', $this->refreshId);
         $this->set('memberId', $this->memberId);
+        $this->set('PLACEMENT_OPTIONS', $placement);
     }
 
     public function handleCrmActivity()
