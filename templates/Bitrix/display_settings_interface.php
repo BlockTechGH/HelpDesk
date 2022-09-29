@@ -1,5 +1,5 @@
 <?= $this->Html->script('fit_window'); ?>
-<div id="setting_container" class="row" style="margin-top: 30px;">
+<div id="setting_container" class="row mt-3">
     <div class="col-2">
         <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
             <button class="nav-link active" data-toggle="tab" type="button" role="tab" 
