@@ -165,7 +165,7 @@ class BitrixController extends AppController
         $ticketBy = false;
         $isEmail = $this->Bx24->checkEmailActivity($event, $activityType['NAME']);
         if ($isEmail) {
-            mb_ereg('#-\d+', $activity['SUBJECT'], $matches);
+            mb_ereg('#-(\d+)', $activity['SUBJECT'], $matches);
             $ticketBy = count($matches) > 0;
         }
         $yesCreateTicket = $isEmail && !$ticketBy && $sourceTypeOptions['sources_on_email'];
@@ -177,7 +177,6 @@ class BitrixController extends AppController
             $ticketId = $this->Tickets->getLatestID() + 1;
             $subject = "#{$ticketId}";
             $prevActivityId = $idActivity;
-            $prevActivity = $activity;
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
@@ -197,7 +196,6 @@ class BitrixController extends AppController
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
                     'prevActivityId' => $prevActivityId,
                     'errors' => $ticketRecord->getErrors(),
-                    'prevActivity' => $prevActivity,
                     'ticketRecord' => $ticketRecord,
                 ]);
             } else {
