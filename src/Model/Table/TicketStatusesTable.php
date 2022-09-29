@@ -59,13 +59,30 @@ class TicketStatusesTable extends Table
         return $validator;
     }
 
-    public function getStatusesFor(string $memberId)
+    public function getStartStatusForMemberTickets(string $memberId)
     {
         return $this->find()
             ->where([
                 'member_id' => $memberId,
+                'active' => true,
+            ])
+            ->orderAsc('created')
+            ->first();
+    }
+
+    public function getStatusesFor(string $memberId)
+    {
+        $rawList = $this->find()
+            ->where([
+                'member_id' => $memberId,
             ])
             ->toList();
+        $list = [];
+        foreach($rawList as $status)
+        {
+            $list[$status->id] = $status;
+        }
+        return $list;
     }
 
     public function editStatus($id = null, string $name, string $memberId, bool $active = true)
