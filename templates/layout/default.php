@@ -23,7 +23,7 @@
     <body>
         <div class="container">
             <div class="row">
-                <div class="col">
+                <div class="col mt-3">
                     <?= $this->Flash->render() ?>
                 </div>
             </div>

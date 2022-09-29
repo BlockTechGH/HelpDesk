@@ -89,12 +89,13 @@ class BitrixController extends AppController
         if(isset($data['saveSettings']))
         {
             $options = $this->saveSettings($data);
+            $this->Flash->success(__("All options saved"), $flashOptions);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
                 $data['category']['id'] ?? 0, 
                 $data['category']['name'], 
                 $this->memberId,
-                $data['category']['active']
+                (bool)$data['category']['active']
             );
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['ticket_status'])) {
@@ -102,7 +103,7 @@ class BitrixController extends AppController
                 $data['ticket_status']['id'], 
                 $data['ticket_status']['name'], 
                 $this->memberId,
-                $data['ticket_status']['active']
+                (bool)$data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
         }
