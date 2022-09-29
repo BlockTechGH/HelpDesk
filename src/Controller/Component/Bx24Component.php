@@ -17,6 +17,7 @@ class Bx24Component extends Component
     public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
     public const PROVIDER_CRM_EMAIL = 'CRM_EMAIL';
     public const PROVIDER_EMAIL = 'EMAIL';
+    public const PROVIDER_VOX_CALL = 'VOXIMPLANT_CALL';
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
 
@@ -284,7 +285,8 @@ class Bx24Component extends Component
     {
         return ($activityProviderId == static::PROVIDER_OPEN_LINES
                 || $activityProviderId == static::PROVIDER_CRM_EMAIL
-                || $activityProviderId == static::PROVIDER_EMAIL)
+                || $activityProviderId == static::PROVIDER_EMAIL
+                || $activityProviderId == static::PROVIDER_VOX_CALL)
             && $direction == static::INCOMMING;
     }
 
