@@ -218,13 +218,21 @@ const categories = new Vue({
                 body: JSON.stringify(parameters)
             }).then(async result => {
                 const stored = await result.json();
-                this.categories.push(stored);
+                if (this.currentCategory.id == 0) {
+                    this.categories.push(stored);
+                } else {
+                    this.categories[this.currentCategory.index] = stored;
+                }
                 this.create();
             });
         },
         edit: function (index)
         {
-            this.currentCategory = this.categories[index];
+            selected = this.categories[index];
+            this.currentCategory.id = selected.id;
+            this.currentCategory.name = selected.name;
+            this.currentCategory.active = selected.active;
+            this.currentCategory.index = index;
         },
         create: function()
         {
@@ -264,13 +272,19 @@ const statuses = new Vue({
                 if (this.currentStatus.id < 1)
                 {
                     this.statuses.push(stored);
+                } else {
+                    this.statuses[this.currentStatus.index] = stored;
                 }
                 this.create();
             });
         },
         edit: function (index)
         {
-            this.currentStatus = this.statuses[index];
+            selected = this.statuses[index];
+            this.currentStatus.id = selected.id;
+            this.currentStatus.name = selected.name;
+            this.currentStatus.active = selected.active;
+            this.currentStatus.index = index;
         },
         create: function()
         {

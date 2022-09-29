@@ -83,7 +83,7 @@ class BitrixController extends AppController
                 $data['category']['id'] ?? 0, 
                 $data['category']['name'], 
                 $this->memberId,
-                $data['category']['active']
+                (bool)$data['category']['active']
             );
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['ticket_status'])) {
@@ -91,7 +91,7 @@ class BitrixController extends AppController
                 $data['ticket_status']['id'], 
                 $data['ticket_status']['name'], 
                 $this->memberId,
-                $data['ticket_status']['active']
+                (bool)$data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
         }
