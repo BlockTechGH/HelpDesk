@@ -89,6 +89,7 @@ class BitrixController extends AppController
         if(isset($data['saveSettings']))
         {
             $options = $this->saveSettings($data);
+            $this->Flash->success(__("All options saved"), $flashOptions);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
                 $data['category']['id'] ?? 0, 
