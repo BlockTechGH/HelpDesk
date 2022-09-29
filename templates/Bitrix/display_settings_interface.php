@@ -218,7 +218,7 @@
                 <div class="border pt-2"
                     v-for="(message, index) in messages">
                     <p class="">{{ message.from }} {{ message.created }}</p>
-                    <textarea readonly>{{ message.text }}</textarea>
+                    <div class="">{{ message.text }}</div>
                 </div>
                 <div class="border pt-2">
                     <form 
@@ -306,9 +306,9 @@
             'Attachment' => __('Attache file'),
 
             'Source' => __('Source of ticket: '),
-            'OpenChannel' => __('Open Channel (chat)'),
-            'E-mail' => __('E-mail'),
-            'Call' => __('Phone call or SMS'),
+            'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
+            'CRM_EMAIL' => __('E-mail'),
+            'VOXIMPLANT_CALL' => __('Phone call'),
         ]);?>,
     };
 </script>

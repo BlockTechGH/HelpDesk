@@ -15,12 +15,16 @@ use Cake\Http\Client;
 class Bx24Component extends Component
 {
     public const INCOMMING = 1;
+    public const OUTCOMMING = 2;
+    public const HTML = 3;
+    public const COMPLETED = 'Y';
     public const NOT_COMPLETED = 'N';
     public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
     public const PROVIDER_CRM_EMAIL = 'CRM_EMAIL';
     public const PROVIDER_EMAIL = 'EMAIL';
     public const PROVIDER_VOX_CALL = 'VOXIMPLANT_CALL';
     public const PROVIDER_CALL = 'CALL';
+    public const PROVIDER_SMS = 'CRM_SMS';
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
     public const TICKET_PREFIX = 'GS-';
@@ -310,21 +314,24 @@ class Bx24Component extends Component
     #
 
     #
-    #section 6. 
+    #section 6. Sending a response from a ticket
     #
 
     public function sendMessage($from, $messageText, $ticket, $attachment)
     {
         $source = $this->getActivity($ticket->source_id);
         $currentUser = $this->getCurrentUser();
+        $contacts = $this->getContactsFor($currentUser['ID']);
+        $currentUser['contacts'] = $contacts;
+        $subject = $this->getTicketSubject($ticket->id);
         switch($ticket->source_type_id)
         {
-            case 'E-mail':
-                return $this->sendEmail($from, $messageText, "#-{$ticket->id}", $attachment, $source['SETTINGS']['EMAIL_META']['from']);
-            case 'Call':
-                return $this->sendSMS($currentUser['PHONE'], $messageText, $source['SETTINGS']['CALL_META']['PHONE']);
-            case 'User action':
-                return $this->sendOCMessage($currentUser, $messageText, "$-{$ticket->id}", $attachment);
+            case static::PROVIDER_CRM_EMAIL:
+                return $this->sendEmail($source, $currentUser, $messageText, $subject, $attachment);
+            case static::PROVIDER_VOX_CALL:
+                return $this->sendSMS($source, $currentUser, $subject, $messageText);
+            case static::PROVIDER_OPEN_LINES:
+                return $this->sendOCMessage($currentUser, $messageText, $subject, $attachment);
         }
         return null;
     }
@@ -332,18 +339,39 @@ class Bx24Component extends Component
     public function getCurrentUser()
     {
         $response = $this->obBx24App->call('user.current', []);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - user.current', [
+            'result' => $response['result']
+        ]);
+        return $response['result'];
+    }
+
+    public function getContactsFor($clientId)
+    {
+        $arParameters = [
+            'filter' => [
+                'ASSIGNED_BY_ID' => $clientId
+            ],
+            'order' => ['CREATED' => 'ASC']
+        ];
+        $response = $this->obBx24App->call('crm.contact.list', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.list', [
+            
+        ]);
         return $response['result'];
     }
 
     public function getMessages(Ticket $ticket) : array
     {
         switch ($ticket->source_type_id) {
-            case 'E-mail':
+            case self::PROVIDER_CRM_EMAIL:
                 return $this->getEmailsBy($ticket);
                 break;
 
-            case 'User action':
+            case self::PROVIDER_OPEN_LINES:
                 return $this->getOCMessages($ticket->source_id, $ticket->id);
+
+            case self::PROVIDER_SMS:
+                return [];
 
             default:
                 return [];
@@ -361,6 +389,8 @@ class Bx24Component extends Component
             'arParameters' => $arParameters,
             'result' => $response['result']
         ]);
+
+        $subject = $this->getTicketSubject($ticketId);
         $messages = [];
         foreach ($response['result']['messages'] as $arMessage)
         {
@@ -369,7 +399,7 @@ class Bx24Component extends Component
             {
                 continue;
             }
-            $messages[] = $this->makeMessageStructure($user['name'], $arMessage['text'], "#-{$ticketId}", null);
+            $messages[] = $this->makeMessageStructure($user['name'], $arMessage['text'], $subject, null);
         }
         return $messages;
     }
@@ -377,7 +407,7 @@ class Bx24Component extends Component
     public function getEmailsBy(Ticket $ticket) : array
     {
         $email = $this->getActivity($ticket->source_id);
-        $subject = "%#-{$ticket->id}%";
+        $subject = "%{$this->getTicketSubject($ticket->id)}%";
         $messages = [
             $this->makeMessageStructure($email['SETTINGS']['EMAIL_META']['from'], $email['DESCRIPTION'], $subject, null),
         ];
@@ -398,12 +428,12 @@ class Bx24Component extends Component
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
-            'result' => $response['result'],
+            'response' => $response,
         ]);
 
         foreach($response['result'] as $arActivity)
         {
-            $messages[] = $this->makeMessageStructure($email['SETTINGS']['EMAIL_META']['from'], $email['DESCRIPTION'], $subject, null);
+            $messages[] = $this->makeMessageStructure($arActivity['SETTINGS']['EMAIL_META']['from'], $arActivity['DESCRIPTION'], $subject, null);
         }
 
         return  $messages;
@@ -421,20 +451,69 @@ class Bx24Component extends Component
         return null;
     }
 
-    private function sendEmail(string $from, string $text, string $theme, $attachment, string $to)
+    private function sendEmail($startEmail, $currentUser, string $text, string $subject, $attachment)
     {
-        return $this->makeMessageStructure($from, $text, $theme, $attachment);
+        $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
+        $arParameters = array_merge_recursive([], $startEmail);
+        $arParameters['COMMUNICATIONS'] = [[
+            'ENTITY_ID' => $currentUser['ID'],
+            'ENTITY_TYPE_ID' => 3,
+            'VALUE' => $startEmail['SETTINGS']['EMAIL_META']['from'],
+        ]];
+        $arParameters['SUBJECT'] = $subject;
+        $arParameters['DIRECTION'] = static::INCOMMING;
+        $arParameters['START_TIME'] = date(DATE_ATOM);
+        $arParameters['END_TIME'] = $arParameters['START_TIME'];
+        $arParameters['RESPONSIBLE_ID'] = $currentUser['ID'];
+        $arParameters['COMPLETED'] = static::COMPLETED;
+        $arParameters['DESCRIPTION'] = $text;
+        $arParameters['DESCRIPTION_TYPE'] = static::HTML;
+        $arParameters['SETTINGS'] = [
+            'MESSAGE_FROM' => implode(
+                ' ',
+                [$currentUser['NAME'], $currentUser['LAST_NAME'], '<' . $from . '>']
+            ),
+        ];
+        $response = $this->obBx24App->call('crm.activity.add', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
+            'arParameters' => $arParameters,
+            'result' => $response['result']
+        ]);
+
+        return $this->makeMessageStructure($from, $text, $subject, $attachment);
     }
 
-    private function sendSMS(string $from, string $text, string $to)
+    private function sendSMS($arCall, $currentUser, string $subject, string $text)
     {
-        $http = new Client();
-        $http->get('http://api.clickatell.com/http/sendmsg', [
-            'to' => $to,
-            'from' => $from,
-            'msg' => $text
+        $from = $currentUser['WORK_PHONE'] ?? $currentUser['PHONE'];
+        $arParameters = [
+            'ASSOCIATED_ENTITY_ID' => $arCall['ASSOCIATED_ENTITY_ID'],
+            'SUBJECT' => $subject,
+            'DIRECTION' => static::INCOMMING,
+            'DESCRIPTION' => $text,
+            'START_TIME' => date(DATE_RFC822),
+            'END_TIME' => date(DATE_RFC822),
+            'COMPLETED' => static::COMPLETED,
+            'TYPE_ID' => 6,
+            "PROVIDER_ID" => "CRM_SMS",
+            "PROVIDER_TYPE_ID" => "SMS",
+            'RESPONSIBLE_ID' => $currentUser['ID'],
+            'COMMUNICATIONS' => [
+                [
+                    "TYPE" => "PHONE",
+                    "VALUE" => $from,
+                    "ENTITY_ID" => $currentUser['ID'],
+                    "ENTITY_TYPE_ID" => "1"
+                ]
+            ]
+        ];
+        $response = $this->obBx24App->call('crm.activity.add', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
+            'arParameters' => $arParameters,
+            'response' => $response,
         ]);
-        return $this->makeMessageStructure($from, $text, "", null);
+
+        return $this->makeMessageStructure($from, $text, $subject, null);
     }
 
     private function sendOCMessage($currentUser, $ticket, string $text, $attachment)

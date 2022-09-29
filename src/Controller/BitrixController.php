@@ -79,13 +79,20 @@ class BitrixController extends AppController
         $statuses = $this->Statuses->getStatusesFor($this->memberId);
         $categories = $this->Categories->getCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
-        $messages = [];
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
         $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? null, true);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - view ioptions', [
+            'options' => $placement
+        ]);
         if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
             $ticket = $this->Tickets->getByActivityIdAndMemberId($placement['activity_id'], $this->memberId);
+            $messages = $this->Bx24->getMessages($ticket);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - ticket', [
+                'ticket' => $ticket->toArray(),
+                'messages' => $messages
+            ]);
         } else {
             $ticket = null;
+            $messages = [];
         }
 
         $flashOptions = [
@@ -228,10 +235,12 @@ class BitrixController extends AppController
         $from = $this->request->getData('from');
         $messageText = $this->request->getData('message');
         $attachment = $this->request->getData('attachment');
-        $ticket = $this->request->getData('ticket');
+        $ticketRecord = $this->request->getData('ticket');
+        $ticket = $this->Tickets->get($ticketRecord['id']);
 
         $message = $this->Bx24->sendMessage($from, $messageText, $ticket, $attachment);
+        $messages = $this->Bx24->getMessages($ticket);
         
-        return [ $message ];
+        return array_merge([ $message ], $messages);
     }
 }
