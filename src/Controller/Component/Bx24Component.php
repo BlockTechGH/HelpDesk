@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller\Component;
 
+use App\Model\Entity\Ticket;
 use Bitrix24\Exceptions\Bitrix24TokenIsExpiredException;
 use Monolog\Logger;
 use Cake\Routing\Router;
@@ -216,6 +217,7 @@ class Bx24Component extends Component
                 'PROVIDER_ID',
                 'PROVIDER_TYPE_ID',
                 'DIRECTION',
+                'DESCRIPTION',
                 'RESPONSIBLE_ID',
                 "SETTINGS",
                 'SUBJECT',
@@ -307,6 +309,14 @@ class Bx24Component extends Component
             && $activityTypeName == 'User action';
     }
 
+    #
+    #endsection
+    #
+
+    #
+    #section 6. 
+    #
+
     public function sendMessage($from, $messageText, $ticket, $attachment)
     {
         $source = $this->getActivity($ticket->source_id);
@@ -327,6 +337,92 @@ class Bx24Component extends Component
     {
         $response = $this->obBx24App->call('user.current', []);
         return $response['result'];
+    }
+
+    public function getMessages(Ticket $ticket) : array
+    {
+        switch ($ticket->source_type_id) {
+            case 'E-mail':
+                return $this->getEmailsBy($ticket);
+                break;
+
+            case 'User action':
+                return $this->getOCMessages($ticket->source_id, $ticket->id);
+
+            default:
+                return [];
+        }
+    }
+
+    public function getOCMessages(int $chatId, int $ticketId) : array
+    {
+        $arParameters = [
+            'DIALOG_ID' => "chat{$chatId}",
+            'LIMIT' => 20,
+        ];
+        $response = $this->obBx24App->send('im.dialog.messages.get', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - im.dialog.messages.get', [
+            'arParameters' => $arParameters,
+            'result' => $response['result']
+        ]);
+        $messages = [];
+        foreach ($response['result']['messages'] as $arMessage)
+        {
+            $user = $this->findUserIn($arMessage['author_id'], $response['result']['users']);
+            if($user == null)
+            {
+                continue;
+            }
+            $messages[] = $this->makeMessageStructure($user['name'], $arMessage['text'], "#-{$ticketId}", null);
+        }
+        return $messages;
+    }
+
+    public function getEmailsBy(Ticket $ticket) : array
+    {
+        $email = $this->getActivity($ticket->source_id);
+        $subject = "%#-{$ticket->id}%";
+        $messages = [
+            $this->makeMessageStructure($email['SETTINGS']['EMAIL_META']['from'], $email['DESCRIPTION'], $subject, null),
+        ];
+
+        $arParameters = [
+            'filter' => [
+                'SUBJECT' => $subject,
+                'TYPE_ID' => 'E-mail'
+            ],
+            'order' => [
+                'CREATED' => 'ASK'
+            ],
+            'select' => [
+                'SETTINGS',
+                'DESCRIPTION'
+            ]
+        ];
+        $response = $this->obBx24App->call('crm.activity.list', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
+            'arParameters' => $arParameters,
+            'result' => $response['result'],
+        ]);
+
+        foreach($response['result'] as $arActivity)
+        {
+            $messages[] = $this->makeMessageStructure($email['SETTINGS']['EMAIL_META']['from'], $email['DESCRIPTION'], $subject, null);
+        }
+
+        return  $messages;
+    }
+
+    private function findUserIn($userId, array $enum)
+    {
+        foreach($enum as $user)
+        {
+            if($user['id'] == $userId)
+            {
+                return $user;
+            }
+        }
+        return null;
     }
 
     private function sendEmail(string $from, string $text, string $theme, $attachment, string $to)
@@ -361,7 +457,7 @@ class Bx24Component extends Component
         return $this->makeMessageStructure($currentUser['TITLE'], $text, "#-{$ticket->id}", $attachment);
     }
 
-    private function makeMessageStructure(string $from, string $text, string $theme, $attachment)
+    private function makeMessageStructure(string $from, string $text, string $theme, $attachment) : array
     {
         return [
             'from' => $from,
