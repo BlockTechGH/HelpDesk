@@ -12,6 +12,17 @@ use Bitrix24\Exceptions\Bitrix24SecurityException;
 
 class Bx24Component extends Component
 {
+    public const INCOMMING = 1;
+    public const NOT_COMPLETED = 'N';
+    public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
+    public const PROVIDER_CRM_EMAIL = 'CRM_EMAIL';
+    public const PROVIDER_EMAIL = 'EMAIL';
+    public const PROVIDER_VOX_CALL = 'VOXIMPLANT_CALL';
+    public const PROVIDER_CALL = 'CALL';
+    public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
+    public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
+    public const TICKET_PREFIX = 'GS-';
+
 
     private $controller = null;
     private $BitrixTokens = null;
@@ -180,6 +191,115 @@ class Bx24Component extends Component
         }
 
         $this->obBx24App->processBatchCalls();
+    }
+
+    #
+    #endsection
+    #
+
+    #
+    #section Task 5. Handling incoming event - adding an activity
+    #
+
+    public function getActivity($id)
+    {
+        $arParameters = [
+            'filter' => [
+                'ID' => $id,
+            ],
+            'select' => [
+                'ASSOCIATED_ENTITY_ID',
+                'COMMUNICATIONS',
+                'ID',
+                'NAME',
+                'TYPE_ID',
+                'OWNER_ID',
+                'OWNER_TYPE_ID',
+                'PROVIDER_ID',
+                'PROVIDER_TYPE_ID',
+                'DIRECTION',
+                'RESPONSIBLE_ID',
+                "SETTINGS",
+                'SUBJECT',
+                'ORIGIN_ID'
+            ]
+        ];
+        $response = $this->obBx24App->call('crm.activity.list', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
+            'arParameters' => $arParameters,
+            'response' => $response['result']
+        ]);
+        return $response['result'][0];
+    }
+
+    public function getTicketSubject(int $ticketId)
+    {
+        return static::TICKET_PREFIX . $ticketId;
+    }
+
+    public function createTicketBy(array $activity, string $subject)
+    {
+        $ticketActivityTypeIDs = $this->getActivityTypeAndName();
+        return $this->createActivity($subject, $ticketActivityTypeIDs, $activity);
+    }
+
+    public function createActivity(string $subject, $activityType, array $ownerActivity)
+    {
+        $parameters = [
+            'fields' => [
+                'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
+                'COMMUNICATIONS' => $ownerActivity['COMMUNICATIONS'],
+                'COMPLETED' => static::NOT_COMPLETED,
+                'DESCRIPTION' => __(''),
+                'DIRECTION' => static::INCOMMING,
+                'OWNER_ID' => $ownerActivity['OWNER_ID'],
+                'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
+                'SUBJECT' => $subject,
+                'PROVIDER_ID' => 'REST_APP',
+                'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
+                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
+            ]
+        ];
+        $response = $this->obBx24App->call('crm.activity.add', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
+            'arParameters' => $parameters,
+            'response' => $response['result']
+        ]);
+        return $response['result'];
+    }
+
+    public function checkOptionalActivity(string $activityProviderId, int $direction)
+    {
+        return ($activityProviderId == static::PROVIDER_OPEN_LINES
+                || $activityProviderId == static::PROVIDER_CRM_EMAIL
+                || $activityProviderId == static::PROVIDER_VOX_CALL
+                || $activityProviderId == static::PROVIDER_CALL)
+            && $activityProviderId != 'REST_APP'
+            && $direction == static::INCOMMING;
+    }
+
+    public function checkEmailActivity(string $event, string $subject, string $providerTypeName)
+    {
+        $isEmail = $event == static::CRM_NEW_ACTIVITY_EVENT
+            && $providerTypeName == static::PROVIDER_EMAIL;
+        $ticketBy = false;
+        if ($isEmail) {
+            mb_ereg(static::TICKET_PREFIX . '(\d+)', $subject, $matches);
+            $ticketBy = count($matches) > 0;
+        }
+        return $isEmail && !$ticketBy;
+    }
+
+    public function checkCallActivity(string $event, string $activityTypeName)
+    {
+        return $event != static::CRM_DELETE_ACTIVITY_EVENT
+            && $activityTypeName == static::PROVIDER_VOX_CALL;
+    }
+
+    public function checkOCActivity(string $event, string $providerTypeName)
+    {
+        return $event == static::CRM_NEW_ACTIVITY_EVENT
+            && $providerTypeName == static::PROVIDER_OPEN_LINES;
     }
 
     #
