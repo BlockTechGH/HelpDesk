@@ -88,12 +88,12 @@ class TicketCategoriesTable extends Table
         return $result;
     }
 
-    public function editCategory($id, string $name, string $memberId)
+    public function editCategory($id, string $name, string $memberId, $active)
     {
         $insert = [
             'member_id' => $memberId,
             'name' => $name,
-            'active' => 1
+            'active' => (int)$active
         ];
         if($id < 1)
         {
