@@ -118,7 +118,7 @@ class TicketsTable extends Table
             'category_id' => $categoryId,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
-            'source_type_id' => $activity['type']['NAME'],
+            'source_type_id' => $activity['PROVIDER_TYPE_ID'],
             'source_id' => $prevActivityId,
         ]);
         if (!$entity->hasErrors()) {

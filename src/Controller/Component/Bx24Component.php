@@ -19,8 +19,11 @@ class Bx24Component extends Component
     public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
     public const PROVIDER_CRM_EMAIL = 'CRM_EMAIL';
     public const PROVIDER_EMAIL = 'EMAIL';
+    public const PROVIDER_VOX_CALL = 'VOXIMPLANT_CALL';
+    public const PROVIDER_CALL = 'CALL';
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
+    public const TICKET_PREFIX = 'GS-';
 
 
     private $controller = null;
@@ -229,27 +232,12 @@ class Bx24Component extends Component
             'arParameters' => $arParameters,
             'response' => $response['result']
         ]);
-        $activity = $response['result'][0];
-        $typeID = $activity['TYPE_ID'];
+        return $response['result'][0];
+    }
 
-        $response = $this->obBx24App->call('crm.enum.activitytype', []);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.enum.activitytype', [
-            'response' => $response
-        ]);
-
-        foreach ($response['result'] as $activityType)
-        {
-            if($activityType['ID'] == $typeID)
-            {
-                $activity['type'] = $activityType;
-                $this->bx24Logger->debug(__FUNCTION__ . ' - activity type found', [
-                    'typeID' => $typeID,
-                    'activityType' => $activityType
-                ]);
-                break;
-            }
-        }
-        return $activity;
+    public function getTicketSubject(int $ticketId)
+    {
+        return static::TICKET_PREFIX . $ticketId;
     }
 
     public function createTicketBy(array $activity, string $subject)
@@ -287,26 +275,34 @@ class Bx24Component extends Component
     {
         return ($activityProviderId == static::PROVIDER_OPEN_LINES
                 || $activityProviderId == static::PROVIDER_CRM_EMAIL
-                || $activityProviderId == static::PROVIDER_EMAIL)
+                || $activityProviderId == static::PROVIDER_VOX_CALL
+                || $activityProviderId == static::PROVIDER_CALL)
+            && $activityProviderId != 'REST_APP'
             && $direction == static::INCOMMING;
     }
 
-    public function checkEmailActivity(string $event, string $activityTypeName)
+    public function checkEmailActivity(string $event, string $subject, string $providerTypeName)
     {
-        return $event == static::CRM_NEW_ACTIVITY_EVENT
-            && $activityTypeName == 'E-mail';
+        $isEmail = $event == static::CRM_NEW_ACTIVITY_EVENT
+            && $providerTypeName == static::PROVIDER_EMAIL;
+        $ticketBy = false;
+        if ($isEmail) {
+            mb_ereg(static::TICKET_PREFIX . '(\d+)', $subject, $matches);
+            $ticketBy = count($matches) > 0;
+        }
+        return $isEmail && !$ticketBy;
     }
 
     public function checkCallActivity(string $event, string $activityTypeName)
     {
         return $event != static::CRM_DELETE_ACTIVITY_EVENT
-            && $activityTypeName == 'Call';
+            && $activityTypeName == static::PROVIDER_VOX_CALL;
     }
 
-    public function checkOCActivity(string $event, string $activityTypeName, string $providerTypeName)
+    public function checkOCActivity(string $event, string $providerTypeName)
     {
         return $event == static::CRM_NEW_ACTIVITY_EVENT
-            && $activityTypeName == 'User action';
+            && $providerTypeName == static::PROVIDER_OPEN_LINES;
     }
 
     #
