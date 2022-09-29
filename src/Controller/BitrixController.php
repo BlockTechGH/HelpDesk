@@ -79,13 +79,13 @@ class BitrixController extends AppController
         $statuses = $this->Statuses->getStatusesFor($this->memberId);
         $categories = $this->Categories->getCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
-        $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? null, true);
+        $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? "", true);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - view ioptions', [
             'options' => $placement
         ]);
         if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
             $ticket = $this->Tickets->getByActivityIdAndMemberId($placement['activity_id'], $this->memberId);
-            $messages = $this->Bx24->getMessages($ticket);
+            $messages = []; //$this->Bx24->getMessages($ticket);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - ticket', [
                 'ticket' => $ticket->toArray(),
                 'messages' => $messages
@@ -239,9 +239,9 @@ class BitrixController extends AppController
         $ticketRecord = $this->request->getData('ticket');
         $ticket = $this->Tickets->get($ticketRecord['id']);
 
-        $message = $this->Bx24->sendMessage($from, $messageText, $ticket, $attachment);
+        $this->Bx24->sendMessage($from, $messageText, $ticket, $attachment);
         $messages = $this->Bx24->getMessages($ticket);
         
-        return array_merge([ $message ], $messages);
+        return $messages;
     }
 }

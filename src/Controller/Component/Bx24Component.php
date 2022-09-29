@@ -384,7 +384,7 @@ class Bx24Component extends Component
             'DIALOG_ID' => "chat{$chatId}",
             'LIMIT' => 20,
         ];
-        $response = $this->obBx24App->send('im.dialog.messages.get', $arParameters);
+        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - im.dialog.messages.get', [
             'arParameters' => $arParameters,
             'result' => $response['result']

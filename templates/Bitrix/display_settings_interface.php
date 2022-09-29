@@ -25,15 +25,6 @@
             >
                 <?=__('Categories');?>
             </button>
-            <?php if(isset($ticket)): ?>
-            <button class="nav-link" data-toggle="tab" type="button" role="tab"
-                id="ticket-tab"
-                data-target="#ticket"
-                aria-controls="ticket"
-            >
-                <?=__('Ticket card');?>
-            </button>
-            <?php endif; ?>
         </div>
     </div>
     <div class="col-10">
@@ -449,7 +440,7 @@ const statuses = new Vue({
                 formData.append('REFRESH_ID', this.required.REFRESH_ID);
                 formData.append('member_id', this.required.member_id);
                 formData.append('PLACEMENT_OPTIONS', JSON.stringify(this.required.PLACEMENT_OPTIONS));
-                formData.append('ticket', <?=json_encode($ticket)?>);
+                formData.append('ticket', '<?=json_encode($ticket->toArray())?>');
 
                 const headers = { 'Content-Type': 'multipart/form-data' };
                 fetch(this.ajax, {
