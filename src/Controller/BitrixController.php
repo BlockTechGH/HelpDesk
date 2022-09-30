@@ -19,6 +19,10 @@ class BitrixController extends AppController
     private $BitrixTokens;
     private $Tickets;
 
+    private $placement;
+    private $ticket = null;
+    private $messages = [];
+
     public function initialize() : void
     {
         parent::initialize();
@@ -70,23 +74,45 @@ class BitrixController extends AppController
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
+        $action = $this->request->getParam('action');
+        $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+
+        // hidden fields from app installation
+        $this->set('required', [
+            'AUTH_ID' => $this->authId,
+            'AUTH_EXPIRES' => $this->authExpires,
+            'REFRESH_ID'=> $this->refreshId,
+            'member_id' => $this->memberId,
+            'PLACEMENT_OPTIONS' => json_encode($this->placement),
+        ]);
+        $this->set('memberId', $this->memberId);
+        $this->set('domain', $this->domain);
+        $this->set('PLACEMENT_OPTIONS', $this->placement);
+
+        if ($action == 'displaySettingsInterface') 
+        {
+            $this->options = $this->Options->getSettingsFor($this->memberId);
+            $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
+            $this->categories = [];
+
+            $this->set('options', $this->options);
+            $this->set('statuses', $this->statuses);
+            $this->set('categories', $this->categories);
+
+            if (isset($this->placement['activity_id']) 
+                && $this->placement['action'] == 'view_activity')
+            {
+                $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                $this->messages = []; //$this->Bx24->getMessages($ticket);
+                return $this->displayTicketCard();
+            }
+        }
     }
 
     public function displaySettingsInterface()
     {
         $data = $this->request->getParsedBody();
-        $options = $this->Options->getSettingsFor($this->memberId);
-        $statuses = $this->Statuses->getStatusesFor($this->memberId);
-        $categories = $this->Categories->getCategoriesFor($this->memberId);
-        $currentUser = $this->Bx24->getCurrentUser();
-        $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? "", true);
-        if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
-            $ticket = $this->Tickets->getByActivityIdAndMemberId($placement['activity_id'], $this->memberId);
-            $messages = []; //$this->Bx24->getMessages($ticket);
-        } else {
-            $ticket = null;
-            $messages = [];
-        }
 
         $flashOptions = [
             'params' => [
@@ -96,8 +122,9 @@ class BitrixController extends AppController
 
         if(isset($data['saveSettings']))
         {
-            $options = $this->saveSettings($data);
+            $this->options = $this->saveSettings($data);
             $this->Flash->success(__("All options saved"), $flashOptions);
+            $this->set('options', $this->options);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
                 $data['category']['id'] ?? 0, 
@@ -114,8 +141,19 @@ class BitrixController extends AppController
                 (bool)$data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
-        }  elseif (isset($data['answer'])) {
-            $messages = $this->sendMessage();
+        }           
+    }
+
+    public function displayTicketCard()
+    {
+        $this->BxControllerLogger->debug('displayTicketCard');
+        $this->disableAutoRender();
+
+        $data = $this->request->getParsedBody();
+        $currentUser = $this->Bx24->getCurrentUser();
+        
+        if (isset($data['answer'])) {
+            $this->messages = $this->sendMessage();
         } elseif (isset($data['ticket'])) {
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
@@ -126,19 +164,11 @@ class BitrixController extends AppController
             return new Response(['body' => json_encode($ticket)]);
         }
 
-        $this->set('domain', $this->domain);
-        $this->set('options', $options);
-        $this->set('statuses', $statuses);
-        $this->set('categories', $categories);
-        $this->set('ticket', $ticket);
-        $this->set('messages', $messages);
-        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
-        // hidden fields from app installation
-        $this->set('authId', $this->authId);
-        $this->set('authExpires', $this->authExpires);
-        $this->set('refreshId', $this->refreshId);
-        $this->set('memberId', $this->memberId);
-        $this->set('PLACEMENT_OPTIONS', $placement);
+        $this->set('messages', $this->messages);
+        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}"); 
+        $this->set('ticket', $this->ticket);
+        $this->set('PLACEMENT_OPTIONS', $this->placement);
+        return $this->render('display_ticket_card');
     }
 
     public function handleCrmActivity()
@@ -184,12 +214,11 @@ class BitrixController extends AppController
                 // ticket is activity
                 $activity = $this->Bx24->getActivity($activityId);
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
-                $category = $this->Categories->getStartCategoryForMemberTickets($this->memberId);
                 $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
                     $activity, 
-                    $category['id'], 
+                    null, 
                     $status['id'],
                     (int)$prevActivityId
                 );
