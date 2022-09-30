@@ -31,6 +31,13 @@
                     >
                         {{ i18n.Save }}
                     </button>
+                    <button
+                        type="button"
+                        v-on:click="feedback"
+                        class="btn btn-primary ml-1"
+                    >
+                        {{ i18n.Reply }}
+                    </button>
                 </div>
             </form>
         </div>
@@ -38,34 +45,7 @@
             <div class="border pt-2"
                 v-for="(message, index) in messages">
                 <p class="">{{ message.from }} {{ message.created }}</p>
-                <div class="">{{ message.text }}</div>
-            </div>
-            <div class="border pt-2">
-                <form 
-                    method="POST" 
-                    action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
-                    enctype="multipart/form-data"
-                >
-                    <div class="forn-group">{{ answer.from }}</div>
-                    <div class="form-group pt-1">
-                        <label for="message">{{ i18n.Reply }}</label>
-                        <textarea id="message" name="message" v-model="answer.message"></textarea>
-                    </div>
-                    <div class="form-group pt-1">
-                        <label for="attachment">{{ i18n.Attachment }}</label>
-                        <input type="file" name="attachment" id="attachment" @change="upload($event)">
-                    </div>
-                    <div class="btn-group pt-1">
-                        <button
-                            type="button"
-                            name="answer"
-                            class="btn btn-primary"
-                            @click="send"
-                        >
-                            {{ i18n.Send }}
-                        </button>
-                    </div>
-                </form>
+                <div class="" v-html="message.text"></div>
             </div>
         </div>
     </div> 
@@ -73,10 +53,7 @@
 
 <script>
     window.data = {
-        ajax: "<?= $this->Url->build([
-            '_name' => 'crm_settings_interface', 
-            '?' => ['DOMAIN' => $domain]
-        ]); ?>",
+        ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
         answer: {
             from: "<?=$from;?>",
@@ -87,18 +64,14 @@
         memberId: "<?=$memberId?>",
         statuses: <?=json_encode($statuses);?>,
         messages: <?=json_encode($messages);?>,
+        subject: '<?=$subject;?>',
         i18n: <?=json_encode([
             'Name' => 'Name',
             'Ticket' => __('Ticket #'),
             'Status' => __('Status'),
             'Save' => __('Save'),
             'Add' => __('Add'),
-            'Response' => __('Response'),
-            'Reply' => __('Your answer'),
-            'EnterReplicaText' => __('Enter your answer here'),
-            'Send' => __('Send'),
-            'Attachment' => __('Attache file'),
-
+            'Reply' => __('Answer'),
             'Source' => __('Source of ticket: '),
             'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
             'CRM_EMAIL' => __('E-mail'),
@@ -133,24 +106,44 @@
                     this.ticket = stored;
                 });
             },
-            send: function() {
+            feedback: function() {
                 const parameters = Object.assign(
                     {
-                        answer: this.answer,
-                        ticket: this.ticket,
+                        'bx24_label': {
+                            'bgColor':'pink', // aqua/green/orange/brown/pink/blue/grey/violet
+                            'text': this.subject,
+                            'color': '#07ff0e',
+                        },
+                        answer: true,
+                        subject: this.subject,
                     },
+                    JSON.parse(this.required.PLACEMENT_OPTIONS),
                     this.required
                 );
-
-                const headers = { 'Content-Type': 'application/json' };
-                fetch(this.ajax, {
-                    method: "POST",
-                    headers,
-                    body: JSON.stringify(parameters),
-                }).then(async result => {
-                    const all = await result.json();
-                    this.messages = all;
-                });
+                delete parameters.PLACEMENT_OPTIONS;
+                console.log("feedback - arguments", parameters);
+                BX24.openApplication(
+                    parameters, 
+                    function () {
+                        console.log(this.data);
+                        const parameters = Object.assign(
+                            {
+                                fetch_messages: true,
+                                ticket_id: this.data.ticket.id
+                            },
+                            this.data.required
+                        );
+                        const headers = { 'Content-Type': 'application/json' };
+                        fetch('<?=$ajax;?>', {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify(parameters),
+                        }).then(async result => {
+                            const all = await result.json();
+                            this.data.messages = all;
+                        });
+                    }
+                );
             },
             upload: function() {
             //    this.answer.attachment = this.$refs.attachment.files[0];
