@@ -17,13 +17,6 @@
             >
                 <?=__('Statuses');?>
             </button>
-            <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                id="categories-tab" 
-                data-target="#categories" 
-                aria-controls="categories"
-            >
-                <?=__('Categories');?>
-            </button>
         </div>
     </div>
     <div class="col-10">
@@ -111,7 +104,8 @@
                 class="tab-pane fade show" 
                 id="categories" 
                 role="tabpanel" 
-                aria-labelledby="categories-tab">
+                aria-labelledby="categories-tab"
+                v-show="false">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <table class="table table-hover">
                         <thead><tr>
