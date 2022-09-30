@@ -102,16 +102,15 @@ class BitrixController extends AppController
             $this->set('statuses', $this->statuses);
             $this->set('categories', $this->categories);
 
+            $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+            $ticketActivity = $this->Bx24->getActivity($this->ticket->action_id);
+            $subject = $ticketActivity['SUBJECT'];
             if (isset($this->placement['answer'])) {
-                $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
-                $subject = $this->Bx24->getTicketSubject($this->ticket->id);
                 $this->set('subject', $subject);
                 return $this->sendFeedback(true);
             } elseif((isset($this->placement['activity_id']) 
                 && $this->placement['action'] == 'view_activity'))
             {
-                $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
-                $subject = $this->Bx24->getTicketSubject($this->ticket->id);
                 $this->set('subject', $subject);
                 $this->messages = []; //$this->Bx24->getMessages($ticket);
                 if(!!$answer) {
@@ -255,7 +254,7 @@ class BitrixController extends AppController
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
                     $activity, 
-                    null, 
+                    1, 
                     $status['id'],
                     (int)$prevActivityId
                 );

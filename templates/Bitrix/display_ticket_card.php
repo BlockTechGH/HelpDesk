@@ -6,7 +6,7 @@
                 action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
             >
                 <div class="input-group">
-                    <p>{{ ticket.id > 0 ? i18n.Ticket + ticket.id : "" }}</p>
+                    <p>{{ i18n.Ticket }}</p>
                 </div>
                 <div class="input-group pt-2">
                     <label for="ticket_status">{{ i18n.Status }}</label>
@@ -55,19 +55,18 @@
     window.data = {
         ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
-        answer: {
-            from: "<?=$from;?>",
-            message: "",
-            attachment: [],
-        },
         ticket: <?=json_encode($ticket)?>,
         memberId: "<?=$memberId?>",
+        <?php /** Пункт №3 шаблона - статусы */ ?>
         statuses: <?=json_encode($statuses);?>,
-        messages: <?=json_encode($messages);?>,
+        <?php /** Не отображать переписку */ ?>
+        messages: <?=json_encode([]);?>,
+        <?php /** Пункт №5 шаблона - номер обращения */ ?>
+        <?php /** Пункт №6 шаблона - тема оригинального сообщения */ ?>
         subject: '<?=$subject;?>',
         i18n: <?=json_encode([
             'Name' => 'Name',
-            'Ticket' => __('Ticket #'),
+            'Ticket' => "{$subject}",
             'Status' => __('Status'),
             'Save' => __('Save'),
             'Add' => __('Add'),

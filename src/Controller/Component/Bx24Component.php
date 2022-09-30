@@ -263,7 +263,7 @@ class Bx24Component extends Component
                 'DIRECTION' => static::INCOMMING,
                 'OWNER_ID' => $ownerActivity['OWNER_ID'],
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
-                'SUBJECT' => $subject,
+                'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
