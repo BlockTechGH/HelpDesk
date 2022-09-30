@@ -29,6 +29,8 @@ class Bx24Component extends Component
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
     public const TICKET_PREFIX = 'GS-';
 
+    public const OWNER_TYPE_CONTACT = 3;
+
 
     private $controller = null;
     private $BitrixTokens = null;
@@ -317,12 +319,11 @@ class Bx24Component extends Component
     #section 6. Sending a response from a ticket
     #
 
-    public function sendMessage($from, $messageText, $ticket, $attachment)
+    public function sendMessage($from, string $messageText, Ticket $ticket, $attachment)
     {
         $source = $this->getActivity($ticket->source_id);
         $currentUser = $this->getCurrentUser();
-        $contacts = $this->getContactsFor($currentUser['ID']);
-        $currentUser['contacts'] = $contacts;
+        $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
         switch($ticket->source_type_id)
         {
@@ -331,7 +332,7 @@ class Bx24Component extends Component
             case static::PROVIDER_VOX_CALL:
                 return $this->sendSMS($source, $currentUser, $subject, $messageText);
             case static::PROVIDER_OPEN_LINES:
-                return $this->sendOCMessage($currentUser, $messageText, $subject, $attachment);
+                return $this->sendOCMessage($currentUser, $ticket, $messageText, $subject, $attachment);
         }
         return null;
     }
@@ -355,7 +356,8 @@ class Bx24Component extends Component
         ];
         $response = $this->obBx24App->call('crm.contact.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.list', [
-            
+            'arParameters' => $arParameters,
+            'response' => $response,
         ]);
         return $response['result'];
     }
@@ -455,11 +457,13 @@ class Bx24Component extends Component
     {
         $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
         $arParameters = array_merge_recursive([], $startEmail);
-        $arParameters['COMMUNICATIONS'] = [[
-            'ENTITY_ID' => $currentUser['ID'],
-            'ENTITY_TYPE_ID' => 3,
-            'VALUE' => $startEmail['SETTINGS']['EMAIL_META']['from'],
-        ]];
+        $arParameters['COMMUNICATIONS'] = array_map(function ($contact) {
+            return [
+                'ENTITY_ID' => $contact['ID'],
+                'ENTITY_TYPE_ID' => static::OWNER_TYPE_CONTACT,
+                'VALUE' => $contact['NAME']
+            ];
+        }, $currentUser['contacts']);
         $arParameters['SUBJECT'] = $subject;
         $arParameters['DIRECTION'] = static::INCOMMING;
         $arParameters['START_TIME'] = date(DATE_ATOM);
@@ -474,7 +478,7 @@ class Bx24Component extends Component
                 [$currentUser['NAME'], $currentUser['LAST_NAME'], '<' . $from . '>']
             ),
         ];
-        $response = $this->obBx24App->call('crm.activity.add', $arParameters);
+        $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $arParameters,
             'result' => $response['result']
@@ -489,7 +493,7 @@ class Bx24Component extends Component
         $arParameters = [
             'ASSOCIATED_ENTITY_ID' => $arCall['ASSOCIATED_ENTITY_ID'],
             'SUBJECT' => $subject,
-            'DIRECTION' => static::INCOMMING,
+            'DIRECTION' => static::OUTCOMMING,
             'DESCRIPTION' => $text,
             'START_TIME' => date(DATE_RFC822),
             'END_TIME' => date(DATE_RFC822),
@@ -498,14 +502,7 @@ class Bx24Component extends Component
             "PROVIDER_ID" => "CRM_SMS",
             "PROVIDER_TYPE_ID" => "SMS",
             'RESPONSIBLE_ID' => $currentUser['ID'],
-            'COMMUNICATIONS' => [
-                [
-                    "TYPE" => "PHONE",
-                    "VALUE" => $from,
-                    "ENTITY_ID" => $currentUser['ID'],
-                    "ENTITY_TYPE_ID" => "1"
-                ]
-            ]
+            'COMMUNICATIONS' => $currentUser['contacts']
         ];
         $response = $this->obBx24App->call('crm.activity.add', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
@@ -516,7 +513,7 @@ class Bx24Component extends Component
         return $this->makeMessageStructure($from, $text, $subject, null);
     }
 
-    private function sendOCMessage($currentUser, $ticket, string $text, $attachment)
+    private function sendOCMessage($currentUser, $ticket, string $text, string $subject, $attachment)
     {
         $arParameters = [
             'DIALOG_ID' => 'chat'.$ticket->source_id,
@@ -529,7 +526,7 @@ class Bx24Component extends Component
             'response' => $response
         ]);
 
-        return $this->makeMessageStructure($currentUser['TITLE'], $text, "#-{$ticket->id}", $attachment);
+        return $this->makeMessageStructure($currentUser['TITLE'], $text, $subject, $attachment);
     }
 
     private function makeMessageStructure(string $from, string $text, string $theme, $attachment) : array

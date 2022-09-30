@@ -220,7 +220,7 @@
                         <div class="forn-group">{{ answer.from }}</div>
                         <div class="form-group pt-1">
                             <label for="message">{{ i18n.Reply }}</label>
-                            <textarea id="message" name="message"></textarea>
+                            <textarea id="message" name="message" v-model="answer.message"></textarea>
                         </div>
                         <div class="form-group pt-1">
                             <label for="attachment">{{ i18n.Attachment }}</label>
@@ -431,6 +431,13 @@ const statuses = new Vue({
                 });
             },
             send: function() {
+                const parameters = Object.assign(
+                    {
+                        answer: this.answer,
+                        ticket: <?= json_encode($ticket);?>,
+                    },
+                    this.required
+                );
                 const formData = new FormData();
                 formData.append('from', this.answer.from);
                 formData.append('message', this.answer.message);
@@ -442,53 +449,20 @@ const statuses = new Vue({
                 formData.append('PLACEMENT_OPTIONS', JSON.stringify(this.required.PLACEMENT_OPTIONS));
                 formData.append('ticket', '<?=json_encode($ticket->toArray())?>');
 
-                const headers = { 'Content-Type': 'multipart/form-data' };
+                const headers = { 'Content-Type': 'application/json' };
                 fetch(this.ajax, {
                     method: "POST",
                     headers,
-                    body: formData
+                    body: JSON.stringify(parameters),
                 }).then(async result => {
                     const all = await result.json();
                     this.messages = all;
                 });
             },
             upload: function() {
-                this.attachment = this.$refs.attachment.files[0];
+            //    this.answer.attachment = this.$refs.attachment.files[0];
             }
         }
     });
-    /*
-    const messages = new Vue({
-        'el': '#messages',
-        'data': window.data,
-        'methods': {
-            send: function() {
-                const formData = new FormData();
-                formData.append('from', this.answer.from);
-                formData.append('message', this.answer.message);
-                formData.append('attachment', this.answer.attachment);
-                formData.append('AUTH_ID', this.required.AUTH_ID);
-                formData.append('AUTH_EXPIES', this.required.AUTH_EXPIRES);
-                formData.append('REFRESH_ID', this.required.REFRESH_ID);
-                formData.append('member_id', this.required.member_id);
-                formData.append('PLACEMENT_OPTIONS', JSON.stringify(this.required.PLACEMENT_OPTIONS));
-                formData.append('ticket', <?=json_encode($ticket)?>);
-
-                const headers = { 'Content-Type': 'multipart/form-data' };
-                fetch(this.ajax, {
-                    method: "POST",
-                    headers,
-                    body: formData
-                }).then(async result => {
-                    const all = await result.json();
-                    this.messages = all;
-                });
-            },
-            upload: function() {
-                this.attachment = this.$refs.attachment.files[0];
-            }
-        }
-    });
-    */
 </script>
 <?php endif;?>

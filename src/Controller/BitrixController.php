@@ -80,16 +80,9 @@ class BitrixController extends AppController
         $categories = $this->Categories->getCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $placement = json_decode($data['PLACEMENT_OPTIONS'] ?? "", true);
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - view ioptions', [
-            'options' => $placement
-        ]);
         if (isset($placement['activity_id']) && $placement['action'] == 'view_activity') {
             $ticket = $this->Tickets->getByActivityIdAndMemberId($placement['activity_id'], $this->memberId);
             $messages = []; //$this->Bx24->getMessages($ticket);
-            $this->BxControllerLogger->debug(__FUNCTION__ . ' - ticket', [
-                'ticket' => $ticket->toArray(),
-                'messages' => $messages
-            ]);
         } else {
             $ticket = null;
             $messages = [];
@@ -121,6 +114,8 @@ class BitrixController extends AppController
                 (bool)$data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
+        }  elseif (isset($data['answer'])) {
+            $messages = $this->sendMessage();
         } elseif (isset($data['ticket'])) {
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
@@ -129,8 +124,6 @@ class BitrixController extends AppController
                 $this->memberId
             );
             return new Response(['body' => json_encode($ticket)]);
-        } elseif (isset($data['answer'])) {
-            $messages = $this->sendMessage();
         }
 
         $this->set('domain', $this->domain);
@@ -206,7 +199,7 @@ class BitrixController extends AppController
                     'ticketRecord' => $ticketRecord,
                 ]);
             } else {
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is created');
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not created');
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
@@ -233,13 +226,14 @@ class BitrixController extends AppController
 
     private function sendMessage()
     {
-        $from = $this->request->getData('from');
-        $messageText = $this->request->getData('message');
-        $attachment = $this->request->getData('attachment');
+        $answer = $this->request->getData('answer');
+        $from = $answer['from'];
+        $messageText = $answer['message'];
+        //$attachment = $this->request->getData('attachment');
         $ticketRecord = $this->request->getData('ticket');
         $ticket = $this->Tickets->get($ticketRecord['id']);
 
-        $this->Bx24->sendMessage($from, $messageText, $ticket, $attachment);
+        $this->Bx24->sendMessage($from, $messageText, $ticket, null);
         $messages = $this->Bx24->getMessages($ticket);
         
         return $messages;
