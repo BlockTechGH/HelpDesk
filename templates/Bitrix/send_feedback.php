@@ -14,14 +14,13 @@ $this->end();
         <div class="form-group">
             <h1><?=__('New reply in ticket {0}', $subject);?></h1>
         </div>
-        <div class="forn-group">{{ answer.from }}</div>
         <div class="form-group pt-1">
-            <label for="message">{{ i18n.Reply }}</label>
-            <textarea id="message" name="message" v-model="answer.message"></textarea>
+            <label for="message" class="form-label">{{ answer.from }}, {{ i18n.Reply }}</label>
+            <textarea id="message" name="message" v-model="answer.message" class="form-control" rows="10"></textarea>
         </div>
         <div class="form-group pt-1">
-            <label for="attachment">{{ i18n.Attachment }}</label>
-            <input type="file" name="attachment" id="attachment" @change="upload($event)">
+            <label for="attachment" class="form-label">{{ i18n.Attachment }}</label>
+            <input type="file" name="attachment" id="attachment" @change="upload($event)" class="form-control">
         </div>
         <div class="btn-group pt-1">
             <button type="button" name="answer" class="btn btn-primary" @click="send">
@@ -36,10 +35,11 @@ $this->end();
         ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
         answer: <?=json_encode($answer)?>,
+        ticket: <?=json_encode($ticket);?>,
         subject: '<?=$subject;?>',
         i18n: <?=json_encode([
             'Response' => __('Response'),
-            'Reply' => __('Your answer'),
+            'Reply' => __('your answer'),
             'EnterReplicaText' => __('Enter your answer here'),
             'Send' => __('Send'),
             'Attachment' => __('Attache file'),
@@ -53,10 +53,11 @@ $this->end();
         'data': window.data,
         'methods': {
             send: function() {
+                console.log("Send message");
                 const parameters = Object.assign(
                     {
                         answer: this.answer,
-                        ticket: this.ticket,
+                        ticket_id: this.ticket.id,
                     },
                     this.required
                 );
@@ -67,8 +68,7 @@ $this->end();
                     headers,
                     body: JSON.stringify(parameters),
                 }).then(async result => {
-                    const all = await result.json();
-                    this.messages = all;
+                    BX24.closeApplication();
                 });
             },
             upload: function() {

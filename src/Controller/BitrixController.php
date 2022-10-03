@@ -103,13 +103,11 @@ class BitrixController extends AppController
             $this->set('categories', $this->categories);
 
             $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+            $this->set('ticket', $this->ticket);
             $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
-            $this->BxControllerLogger->debug(__FUNCTION__ . ' - getTicketAttributes', [
-                'result' => $ticketAttributes
-            ]);
             if (isset($this->placement['answer'])) {
-                $this->set('ticketAttributes', $ticketAttributes);
-                return $this->sendFeedback(true);
+                $this->set('subject', $ticketAttributes['subject']);
+                return $this->sendFeedback($answer ?? true);
             } elseif((isset($this->placement['activity_id']) 
                 && $this->placement['action'] == 'view_activity'))
             {
@@ -202,6 +200,8 @@ class BitrixController extends AppController
                 "attach" => [],
             ];
         } else {
+            $ticketId = $this->request->getData('ticket_id');
+            $this->ticket = $this->Tickets->get($ticketId);
             $this->sendMessage($answer);
         }
         $this->set('answer', $answer);
@@ -297,12 +297,18 @@ class BitrixController extends AppController
         $from = $answer['from'];
         $messageText = $answer['message'];
         //$attachment = $this->request->getData('attachment');
-        $ticketRecord = $this->request->getData('ticket');
-        $ticket = $this->Tickets->get($ticketRecord['id']);
 
-        $this->Bx24->sendMessage($from, $messageText, $ticket, null);
-        $messages = $this->Bx24->getMessages($ticket);
+        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, null);
+        //$messages = $this->Bx24->getMessages($ticket);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - Bx24 - sendMessage', [
+            'parameters' => [
+                'from' => $from,
+                'message' => $messageText,
+                'ticket' => $this->ticket->toArray()
+            ],
+            'result' => $messageObj
+        ]);
         
-        return $messages;
+        return [];
     }
 }

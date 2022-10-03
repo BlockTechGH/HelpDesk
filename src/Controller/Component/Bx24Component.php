@@ -30,6 +30,7 @@ class Bx24Component extends Component
     public const TICKET_PREFIX = 'GS-';
 
     public const OWNER_TYPE_CONTACT = 3;
+    public const ACTIVITY_TYPE_EMAIL = 4;
 
 
     private $controller = null;
@@ -236,9 +237,9 @@ class Bx24Component extends Component
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
-            'response' => $response['result']
+            'result' => $response['result']
         ]);
-        return $response['result'][0];
+        return count($response['result']) ? $response['result'][0] : null;
     }
 
     public function getTicketSubject(int $ticketId)
@@ -322,6 +323,11 @@ class Bx24Component extends Component
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment)
     {
         $source = $this->getActivity($ticket->source_id);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
+            'id' => $ticket->source_id,
+            'type' => $ticket->source_type_id,
+            'result' => $source
+        ]);
         $currentUser = $this->getCurrentUser();
         $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
@@ -454,12 +460,7 @@ class Bx24Component extends Component
 
     public function getEmailsBy(Ticket $ticket) : array
     {
-        $email = $this->getActivity($ticket->source_id);
         $subject = "%{$this->getTicketSubject($ticket->id)}%";
-        $messages = [
-            $this->makeMessageStructure($email['SETTINGS']['EMAIL_META']['from'], $email['DESCRIPTION'], $subject, null),
-        ];
-
         $arParameters = [
             'filter' => [
                 'SUBJECT' => $subject,
@@ -479,12 +480,7 @@ class Bx24Component extends Component
             'response' => $response,
         ]);
 
-        foreach($response['result'] as $arActivity)
-        {
-            $messages[] = $this->makeMessageStructure($arActivity['SETTINGS']['EMAIL_META']['from'], $arActivity['DESCRIPTION'], $subject, null);
-        }
-
-        return  $messages;
+        return  [];
     }
 
     private function findUserIn($userId, array $enum)
@@ -502,14 +498,16 @@ class Bx24Component extends Component
     private function sendEmail($startEmail, $currentUser, string $text, string $subject, $attachment)
     {
         $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
-        $arParameters = array_merge_recursive([], $startEmail);
+        $arParameters = [
+            'TYPE_ID' => static::ACTIVITY_TYPE_EMAIL,
+        ];//array_merge_recursive([], $startEmail);
         $arParameters['COMMUNICATIONS'] = array_map(function ($contact) {
             return [
-                'ENTITY_ID' => $contact['ID'],
+                'ENTITY_ID' => $contact['ENTITY_ID'],
                 'ENTITY_TYPE_ID' => static::OWNER_TYPE_CONTACT,
-                'VALUE' => $contact['NAME']
+                'VALUE' => $contact['VALUE']
             ];
-        }, $currentUser['contacts']);
+        }, $startEmail['COMMUNICATIONS']);
         $arParameters['SUBJECT'] = $subject;
         $arParameters['DIRECTION'] = static::INCOMMING;
         $arParameters['START_TIME'] = date(DATE_ATOM);
