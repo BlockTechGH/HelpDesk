@@ -11,6 +11,7 @@ use Monolog\Handler\StreamHandler;
 use Bitrix24\Exceptions\Bitrix24ApiException;
 use Bitrix24\Exceptions\Bitrix24SecurityException;
 use Cake\Http\Client;
+use Exception;
 
 class Bx24Component extends Component
 {
@@ -231,13 +232,13 @@ class Bx24Component extends Component
                 'RESPONSIBLE_ID',
                 "SETTINGS",
                 'SUBJECT',
-                'ORIGIN_ID'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
-            'result' => $response['result']
+            'result' => $response['result'],
+            'response' => $response
         ]);
         return count($response['result']) ? $response['result'][0] : null;
     }
@@ -323,6 +324,9 @@ class Bx24Component extends Component
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment)
     {
         $source = $this->getActivity($ticket->source_id);
+        if (!$source) {
+            throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not foiund");
+        }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
             'id' => $ticket->source_id,
             'type' => $ticket->source_type_id,
@@ -504,12 +508,12 @@ class Bx24Component extends Component
         $arParameters['COMMUNICATIONS'] = array_map(function ($contact) {
             return [
                 'ENTITY_ID' => $contact['ENTITY_ID'],
-                'ENTITY_TYPE_ID' => static::OWNER_TYPE_CONTACT,
+                'ENTITY_TYPE_ID' => $contact['ENTITY_TYPE_ID'],
                 'VALUE' => $contact['VALUE']
             ];
         }, $startEmail['COMMUNICATIONS']);
-        $arParameters['SUBJECT'] = $subject;
-        $arParameters['DIRECTION'] = static::INCOMMING;
+        $arParameters['SUBJECT'] = $subject . " " . $startEmail['SUBJECT'];
+        $arParameters['DIRECTION'] = static::OUTCOMMING;
         $arParameters['START_TIME'] = date(DATE_ATOM);
         $arParameters['END_TIME'] = $arParameters['START_TIME'];
         $arParameters['RESPONSIBLE_ID'] = $currentUser['ID'];
@@ -522,6 +526,7 @@ class Bx24Component extends Component
                 [$currentUser['NAME'], $currentUser['LAST_NAME'], '<' . $from . '>']
             ),
         ];
+
         $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $arParameters,
