@@ -346,6 +346,12 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
+    public function getUserById($uid)
+    {
+        $arParameters = [ 'ID' => $uid ];
+        return $this->obBx24App->call('user.get', $arParameters)['result'][0];
+    }
+
     public function getContactsFor($clientId)
     {
         $arParameters = [
@@ -360,6 +366,46 @@ class Bx24Component extends Component
             'response' => $response,
         ]);
         return $response['result'];
+    }
+
+    public function getTicketAttributes($ticketId)
+    {
+        $ticketActivity = $this->getActivity($ticketId);
+        $responsibleContacts = $this->getUserById($ticketActivity['RESPONSIBLE_ID']);
+        $customerContacts = $ticketActivity['COMMUNICATIONS'][0];
+        $customerNames = $customerContacts['ENTITY_SETTINGS'];
+        $additionContact = null;
+        if (isset($ticketActivity['COMMUNICATIONS'][1])) {
+            $additionContact = $ticketActivity['COMMUNICATIONS'][1];
+        }
+
+        return [
+            'responsible' => [
+                'id' => intval($responsibleContacts['ID']),
+                'abr' => $this->makeNameAbbreviature($responsibleContacts),
+                'title' => $this->makeFullName($responsibleContacts),
+                'email' => $responsibleContacts['EMAIL'],
+                'phone' => $responsibleContacts['UF_PHONE_INNER'] ?? $responsibleContacts['PERSONAL_PHONE'] ?? $responsibleContacts['PERSONAL_MOBILE']
+            ],
+            'customer' => [
+                'id' => (int)$customerContacts['ENTITY_ID'],
+                'abr' => $this->makeNameAbbreviature($customerNames),
+                'title' => $this->makeFullName($customerNames),
+                'email' => $customerContacts['TYPE'] == 'EMAIL' 
+                    ? $customerContacts['VALUE'] 
+                    : ($additionContact && $additionContact['TYPE'] == 'EMAIL'
+                        ? $additionContact['VALUE'] 
+                        : ''
+                    ),
+                'phone' => $customerContacts['TYPE'] == 'PHONE' 
+                    ? $customerContacts['VALUE'] 
+                    : ($additionContact && $additionContact['TYPE'] == 'PHONE'
+                        ? $additionContact['VALUE'] 
+                        : ''
+                    ),
+            ],
+            'subject' => $ticketActivity['SUBJECT'],
+        ];
     }
 
     public function getMessages(Ticket $ticket) : array
@@ -538,6 +584,19 @@ class Bx24Component extends Component
             'theme' => $theme,
             'attachment' => $attachment
         ];
+    }
+
+    private function makeNameAbbreviature($person)
+    {
+        $f = mb_substr($person['NAME'] ?? "", 0, 1);
+        $s = mb_substr($person['SECOND_NAME'] ?? "", 0, 1);
+        $l = mb_substr($person['LAST_NAME'] ?? "", 0, 1);
+        return "$f$s$l";
+    }
+
+    private function makeFullName(array $arNames)
+    {
+        return implode(" ", [$arNames['NAME'], $arNames['SECOND_NAME'], $arNames['LAST_NAME']]);
     }
 
     #

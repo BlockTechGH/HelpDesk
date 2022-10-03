@@ -103,19 +103,22 @@ class BitrixController extends AppController
             $this->set('categories', $this->categories);
 
             $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
-            $ticketActivity = $this->Bx24->getActivity($this->ticket->action_id);
-            $subject = $ticketActivity['SUBJECT'];
+            $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - getTicketAttributes', [
+                'result' => $ticketAttributes
+            ]);
             if (isset($this->placement['answer'])) {
-                $this->set('subject', $subject);
+                $this->set('ticketAttributes', $ticketAttributes);
                 return $this->sendFeedback(true);
             } elseif((isset($this->placement['activity_id']) 
                 && $this->placement['action'] == 'view_activity'))
             {
-                $this->set('subject', $subject);
                 $this->messages = []; //$this->Bx24->getMessages($ticket);
                 if(!!$answer) {
+                    $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer);
                 }
+                $this->set('ticketAttributes', $ticketAttributes);
                 return $this->displayTicketCard();
             }
         }
@@ -177,7 +180,7 @@ class BitrixController extends AppController
             $this->messages = $this->Bx24->getMessages($ticket);
             return new Response(['body' => json_encode($this->messages)]);
         }
-
+ 
         $this->set('messages', $this->messages);
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}"); 
         $this->set('ticket', $this->ticket);
