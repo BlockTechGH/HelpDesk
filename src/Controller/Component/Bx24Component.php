@@ -238,7 +238,6 @@ class Bx24Component extends Component
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
             'result' => $response['result'],
-            'response' => $response
         ]);
         return count($response['result']) ? $response['result'][0] : null;
     }
@@ -342,7 +341,7 @@ class Bx24Component extends Component
             case static::PROVIDER_VOX_CALL:
                 return $this->sendSMS($source, $currentUser, $subject, $messageText);
             case static::PROVIDER_OPEN_LINES:
-                return $this->sendOCMessage($currentUser, $ticket, $messageText, $subject, $attachment);
+                return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
         }
         return null;
     }
@@ -438,28 +437,28 @@ class Bx24Component extends Component
 
     public function getOCMessages(int $chatId, int $ticketId) : array
     {
+        $subject = "%{$this->getTicketSubject($ticketId)}%";
         $arParameters = [
-            'DIALOG_ID' => "chat{$chatId}",
-            'LIMIT' => 20,
+            'filter' => [
+                'SUBJECT' => $subject,
+                'PROVIDER_ID' => 'REST_APP',
+                'ASSOCIATED_ENTITY_ID' => $chatId
+            ],
+            'order' => [
+                'CREATED' => 'ASK'
+            ],
+            'select' => [
+                'SETTINGS',
+                'DESCRIPTION'
+            ]
         ];
-        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - im.dialog.messages.get', [
+        $response = $this->obBx24App->call('crm.activity.list', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
             'arParameters' => $arParameters,
-            'result' => $response['result']
+            'response' => $response,
         ]);
 
-        $subject = $this->getTicketSubject($ticketId);
-        $messages = [];
-        foreach ($response['result']['messages'] as $arMessage)
-        {
-            $user = $this->findUserIn($arMessage['author_id'], $response['result']['users']);
-            if($user == null)
-            {
-                continue;
-            }
-            $messages[] = $this->makeMessageStructure($user['name'], $arMessage['text'], $subject, null);
-        }
-        return $messages;
+        return  [];
     }
 
     public function getEmailsBy(Ticket $ticket) : array
@@ -502,22 +501,8 @@ class Bx24Component extends Component
     private function sendEmail($startEmail, $currentUser, string $text, string $subject, $attachment)
     {
         $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
-        $arParameters = [
-            'TYPE_ID' => static::ACTIVITY_TYPE_EMAIL,
-        ];//array_merge_recursive([], $startEmail);
-        $arParameters['COMMUNICATIONS'] = array_map(function ($contact) {
-            return [
-                'ENTITY_ID' => $contact['ENTITY_ID'],
-                'ENTITY_TYPE_ID' => $contact['ENTITY_TYPE_ID'],
-                'VALUE' => $contact['VALUE']
-            ];
-        }, $startEmail['COMMUNICATIONS']);
-        $arParameters['SUBJECT'] = $subject . " " . $startEmail['SUBJECT'];
-        $arParameters['DIRECTION'] = static::OUTCOMMING;
-        $arParameters['START_TIME'] = date(DATE_ATOM);
-        $arParameters['END_TIME'] = $arParameters['START_TIME'];
-        $arParameters['RESPONSIBLE_ID'] = $currentUser['ID'];
-        $arParameters['COMPLETED'] = static::COMPLETED;
+        $arParameters = static::prepareNewActivityParameters($startEmail, $currentUser, $subject, $text);
+        $arParameters['TYPE_ID'] = static::ACTIVITY_TYPE_EMAIL;
         $arParameters['DESCRIPTION'] = $text;
         $arParameters['DESCRIPTION_TYPE'] = static::HTML;
         $arParameters['SETTINGS'] = [
@@ -527,11 +512,7 @@ class Bx24Component extends Component
             ),
         ];
 
-        $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
-            'arParameters' => $arParameters,
-            'result' => $response['result']
-        ]);
+        $this->createActivityWith($arParameters);
 
         return $this->makeMessageStructure($from, $text, $subject, $attachment);
     }
@@ -539,43 +520,38 @@ class Bx24Component extends Component
     private function sendSMS($arCall, $currentUser, string $subject, string $text)
     {
         $from = $currentUser['WORK_PHONE'] ?? $currentUser['PHONE'];
-        $arParameters = [
-            'ASSOCIATED_ENTITY_ID' => $arCall['ASSOCIATED_ENTITY_ID'],
-            'SUBJECT' => $subject,
-            'DIRECTION' => static::OUTCOMMING,
-            'DESCRIPTION' => $text,
-            'START_TIME' => date(DATE_RFC822),
-            'END_TIME' => date(DATE_RFC822),
-            'COMPLETED' => static::COMPLETED,
-            'TYPE_ID' => 6,
-            "PROVIDER_ID" => "CRM_SMS",
-            "PROVIDER_TYPE_ID" => "SMS",
-            'RESPONSIBLE_ID' => $currentUser['ID'],
-            'COMMUNICATIONS' => $currentUser['contacts']
-        ];
-        $response = $this->obBx24App->call('crm.activity.add', $arParameters);
-        $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
-            'arParameters' => $arParameters,
-            'response' => $response,
-        ]);
+        $arParameters = static::prepareNewActivityParameters($arCall, $currentUser, $subject, $text);
+        $arParameters['TYPE_ID'] = 6;
+        $arParameters['PROVIDER_ID'] = static::PROVIDER_SMS;
+        $arParameters['PROVIDER_TYPE_ID']=  'SMS';
+
+        $this->createActivityWith($arParameters);
 
         return $this->makeMessageStructure($from, $text, $subject, null);
     }
 
-    private function sendOCMessage($currentUser, $ticket, string $text, string $subject, $attachment)
+    private function sendOCMessage($source, $currentUser, string $text, string $subject, $attachment)
     {
+        $chat = $this->obBx24App->call('im.chat.get', [
+            'ENTITY_ID' => $source['ORIGIN_ID'],
+            'ENTITY_TYPE' => $source['PROVIDER_ID']
+        ]);
+
         $arParameters = [
-            'DIALOG_ID' => 'chat'.$ticket->source_id,
+            'DIALOG_ID' => 'chat'.$chat['result'],
             'MESSAGE' => $text,
             'ATTACH' => $attachment
         ];
-        $response = $this->obBx24App->call('im.message.add', $arParameters);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'arParameters' => $arParameters,
+        ]);
+        sleep(100);
+        $response = $this->obBx24App->call('im.message.add', $arParameters);
+        $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'response' => $response
         ]);
 
-        return $this->makeMessageStructure($currentUser['TITLE'], $text, $subject, $attachment);
+        return $this->makeMessageStructure($currentUser['NAME'], $text, $subject, $attachment);
     }
 
     private function makeMessageStructure(string $from, string $text, string $theme, $attachment) : array
@@ -600,6 +576,43 @@ class Bx24Component extends Component
     private function makeFullName(array $arNames)
     {
         return implode(" ", [$arNames['NAME'], $arNames['SECOND_NAME'], $arNames['LAST_NAME']]);
+    }
+
+    private function createActivityWith(array $arParameters)
+    {
+        $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
+        $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
+            'arParameters' => $arParameters,
+            'response' => $response
+        ]);
+        return $response['result'];
+    }
+
+    private static function prepareNewActivityParameters(array $source, $currentUser, string $subject, $text)
+    {
+        return [
+            'ASSOCIATED_ENTITY_ID' => $source['ASSOCIATED_ENTITY_ID'],
+            'TYPE_ID' => $source['TYPE_ID'],
+            'SUBJECT' => "{$subject} {$source['SUBJECT']}",
+            'DESCRIPTION' => $text,
+            'RESPONSIBLE_ID' => $currentUser['ID'],
+            'START_TIME' => date(DATE_ATOM),
+            'END_TIME' => date(DATE_ATOM),
+            'COMPLETED' => static::COMPLETED,
+            'DIRECTION' => static::OUTCOMMING,
+            'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS'])
+        ];
+    }
+
+    private static function copyContacts($contacts)
+    {
+        return array_map(function ($contact) {
+            return [
+                'ENTITY_ID' => $contact['ENTITY_ID'],
+                'ENTITY_TYPE_ID' => $contact['ENTITY_TYPE_ID'],
+                'VALUE' => $contact['VALUE']
+            ];
+        }, $contacts);
     }
 
     #
