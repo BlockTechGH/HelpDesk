@@ -45,10 +45,10 @@
                             <?=$options['sources_on_phone_calls'] ? 'checked' : '';?>/>
                     </div>
 
-                    <input type="hidden" name="AUTH_ID" value="<?=$authId?>" />
-                    <input type="hidden" name="AUTH_EXPIRES" value="<?=$authExpires?>" />
-                    <input type="hidden" name="REFRESH_ID" value="<?=$refreshId?>" />
-                    <input type="hidden" name="member_id" value="<?=$memberId?>" />
+                    <input type="hidden" name="AUTH_ID" value="<?=$required['AUTH_ID']?>" />
+                    <input type="hidden" name="AUTH_EXPIRES" value="<?=$required['AUTH_EXPIRES']?>" />
+                    <input type="hidden" name="REFRESH_ID" value="<?=$required['REFRESH_ID']?>" />
+                    <input type="hidden" name="member_id" value="<?=$required['member_id']?>" />
 
                     <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
@@ -162,15 +162,15 @@
             id: 0,
             name: '',
             active: 1,
-            member_id: "<?=$memberId;?>",
+            member_id: "<?=$required['member_id'];?>",
         },
         currentCategory: {
             id: 0,
             name: '',
             active: 1,
-            member_id: "<?=$memberId;?>",
+            member_id: "<?=$required['member_id'];?>",
         },
-        memberId: "<?=$memberId?>",
+        memberId: "<?=$required['member_id']?>",
         categories: <?=json_encode($categories);?>,
         statuses: <?=json_encode($statuses);?>,
         i18n: <?=json_encode([
