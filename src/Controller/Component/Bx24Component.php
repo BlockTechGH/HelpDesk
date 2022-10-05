@@ -320,26 +320,26 @@ class Bx24Component extends Component
     #section 6. Sending a response from a ticket
     #
 
-    public function sendMessage($from, string $messageText, Ticket $ticket, $attachment)
+    public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
     {
         $source = $this->getActivity($ticket->source_id);
         if (!$source) {
-            throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not foiund");
+            throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not found");
         }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
             'id' => $ticket->source_id,
             'type' => $ticket->source_type_id,
             'result' => $source
         ]);
-        $currentUser = $this->getCurrentUser();
         $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
+        $arParameters = static::prepareNewActivityParameters($source, $currentUser, $subject, $messageText);
         switch($ticket->source_type_id)
         {
             case static::PROVIDER_CRM_EMAIL:
-                return $this->sendEmail($source, $currentUser, $messageText, $subject, $attachment);
+                return $this->sendEmail($arParameters, $currentUser, $attachment);
             case static::PROVIDER_VOX_CALL:
-                return $this->sendSMS($source, $currentUser, $subject, $messageText);
+                return $this->sendSMS($arParameters, $currentUser, $attachment);
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
         }
@@ -498,12 +498,11 @@ class Bx24Component extends Component
         return null;
     }
 
-    private function sendEmail($startEmail, $currentUser, string $text, string $subject, $attachment)
+    private function sendEmail(array &$arParameters, $currentUser, $attachment)
     {
         $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
-        $arParameters = static::prepareNewActivityParameters($startEmail, $currentUser, $subject, $text);
+        //
         $arParameters['TYPE_ID'] = static::ACTIVITY_TYPE_EMAIL;
-        $arParameters['DESCRIPTION'] = $text;
         $arParameters['DESCRIPTION_TYPE'] = static::HTML;
         $arParameters['SETTINGS'] = [
             'MESSAGE_FROM' => implode(
@@ -511,23 +510,58 @@ class Bx24Component extends Component
                 [$currentUser['NAME'], $currentUser['LAST_NAME'], '<' . $from . '>']
             ),
         ];
+        if (!is_array($attachment)) {
+            $attachment = [$attachment];
+        }
+        foreach($attachment as $file)
+        {
+            $tmpName = $file->getStream()->getMetadata('uri');
+            $content = base64_encode(file_get_contents($tmpName));
+            $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
+                'tmpFile' => $tmpName,
+                'content' => mb_substr($content, 0, 20) . '...', 
+            ]);
+            $arParameters['FILES'][] = ['fileData' => [$file->getClientFilename(), $content]];
+        }
 
         $this->createActivityWith($arParameters);
 
-        return $this->makeMessageStructure($from, $text, $subject, $attachment);
+        return $this->makeMessageStructure(
+            $arParameters['SETTINGS']['MESSAGE_FROM'], 
+            $arParameters['DESCRIPTION'], 
+            $arParameters['SUBJECT'], 
+            $attachment
+        );
     }
 
-    private function sendSMS($arCall, $currentUser, string $subject, string $text)
+    private function sendSMS(array &$arParameters, $currentUser, array $attachments)
     {
         $from = $currentUser['WORK_PHONE'] ?? $currentUser['PHONE'];
-        $arParameters = static::prepareNewActivityParameters($arCall, $currentUser, $subject, $text);
         $arParameters['TYPE_ID'] = 6;
         $arParameters['PROVIDER_ID'] = static::PROVIDER_SMS;
         $arParameters['PROVIDER_TYPE_ID']=  'SMS';
+        if (!is_array($attachments)) {
+            $attachments = [$attachments];
+        }
+        foreach($attachments as $file)
+        {
+            $tmpName = $file->getStream()->getMetadata('uri');
+            $content = base64_encode(file_get_contents($tmpName));
+            $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
+                'tmpFile' => $tmpName,
+                'content' => mb_substr($content, 0, 20) . '...', 
+            ]);
+            $arParameters['FILES'][] = ['fileData' => [$file->getClientFilename(), $content]];
+        }
 
         $this->createActivityWith($arParameters);
 
-        return $this->makeMessageStructure($from, $text, $subject, null);
+        return $this->makeMessageStructure(
+            $from, 
+            $arParameters['DESCRIPTION'], 
+            $arParameters['SUBJECT'], 
+            $attachments
+        );
     }
 
     private function sendOCMessage($source, $currentUser, string $text, string $subject, $attachment)
@@ -535,12 +569,54 @@ class Bx24Component extends Component
         $chat = $this->obBx24App->call('im.chat.get', [
             'ENTITY_ID' => $source['ORIGIN_ID'],
             'ENTITY_TYPE' => $source['PROVIDER_ID']
-        ]);
+        ])['result'];
+
+        /*
+        $uploads = [];
+        foreach($attachment as $file)
+        {
+            $arParams = [
+                'ENTITY' => 'menu',
+                'NAME' => date(DATE_ATOM) . $file->getClientName(),
+                'DETAIL_PICTURE' => $file,
+            ];
+            $this->obBx24App->addBatchCall('entity.item.add', $arParams, function ($result) use (&$uploads, $file) {
+                $arParams = [
+                    ''
+                ];
+                $this->obBx24App->addBatchCall('entity.item.get', [])
+                $uploads[] = [
+                    'id' => $result['result'],
+                    'file' => $file->getStream(),
+                ];
+            });
+        }
+
+        // Wait all files uploading
+        while (count($uploads) < count($attachment)) {
+            usleep(500000);
+        }
+
+        $attach = array_map(
+            function ($entity) use ($chat) { 
+                
+
+                return [
+                    'FILE' => [
+                        'NAME' => $file->getClientFileName(),
+                        'LINK' => $file->getLink(),
+                        'SIZE' => $entity['file']->getSize(),
+                    ]
+                ];
+            }, $uploads
+        );
+        */
+        $attach = null;
 
         $arParameters = [
-            'DIALOG_ID' => 'chat'.$chat['result'],
+            'DIALOG_ID' => 'chat'.$chat,
             'MESSAGE' => $text,
-            'ATTACH' => $attachment
+            'ATTACH' => $attach
         ];
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'arParameters' => $arParameters,

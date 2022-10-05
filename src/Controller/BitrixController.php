@@ -102,22 +102,24 @@ class BitrixController extends AppController
             $this->set('statuses', $this->statuses);
             $this->set('categories', $this->categories);
 
-            $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
-            $this->set('ticket', $this->ticket);
-            $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
-            if (isset($this->placement['answer'])) {
-                $this->set('subject', $ticketAttributes['subject']);
-                return $this->sendFeedback($answer ?? true);
-            } elseif((isset($this->placement['activity_id']) 
-                && $this->placement['action'] == 'view_activity'))
-            {
-                $this->messages = []; //$this->Bx24->getMessages($ticket);
-                if(!!$answer) {
+            if (isset($this->placement['activity_id'])) {
+                $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                $this->set('ticket', $this->ticket);
+                $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
+                if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
-                    return $this->sendFeedback($answer);
+                    return $this->sendFeedback($answer ?? true);
+                } elseif((isset($this->placement['activity_id']) 
+                    && $this->placement['action'] == 'view_activity'))
+                {
+                    $this->messages = []; //$this->Bx24->getMessages($ticket);
+                    if(!!$answer) {
+                        $this->set('subject', $ticketAttributes['subject']);
+                        return $this->sendFeedback($answer);
+                    }
+                    $this->set('ticketAttributes', $ticketAttributes);
+                    return $this->displayTicketCard();
                 }
-                $this->set('ticketAttributes', $ticketAttributes);
-                return $this->displayTicketCard();
             }
         }
     }
@@ -159,7 +161,9 @@ class BitrixController extends AppController
 
     public function displayTicketCard()
     {
-        $this->BxControllerLogger->debug('displayTicketCard');
+        $this->BxControllerLogger->debug('displayTicketCard', [
+            'ticket' => $this->ticket
+        ]);
         $this->disableAutoRender();
 
         $data = $this->request->getParsedBody();
@@ -174,9 +178,9 @@ class BitrixController extends AppController
             );
             return new Response(['body' => json_encode($ticket)]);
         } elseif (isset($data['fetch_messages'])) {
-            $ticket = $this->Tickets->get((int)$data['ticket_id']);
-            $this->messages = $this->Bx24->getMessages($ticket);
-            return new Response(['body' => json_encode($this->messages)]);
+            //$ticket = $this->Tickets->get((int)$data['ticket_id']);
+            //$this->messages = $this->Bx24->getMessages($ticket);
+            return new Response(['body' => json_encode([])]);
         }
  
         $this->set('messages', $this->messages);
@@ -188,7 +192,7 @@ class BitrixController extends AppController
 
     public function sendFeedback($answer)
     {
-        $this->BxControllerLogger->debug('sendFeedback');
+        $this->BxControllerLogger->debug('sendFeedback', ['answer' => $answer]);
         $this->disableAutoRender();
 
         $currentUser = $this->Bx24->getCurrentUser();
@@ -200,12 +204,13 @@ class BitrixController extends AppController
                 "attach" => [],
             ];
         } else {
-            $ticketId = $this->request->getData('ticket_id');
+            $ticketId = $this->request->getData('ticket_id') ?? $_POST['ticket_id'];
             $this->ticket = $this->Tickets->get($ticketId);
-            $this->sendMessage($answer);
+            $this->sendMessage($answer, $currentUser);
         }
         $this->set('answer', $answer);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - render view');
 
         return $this->render('send_feedback');
     }
@@ -292,13 +297,18 @@ class BitrixController extends AppController
         return $settings;
     }
 
-    private function sendMessage($answer)
+    private function sendMessage($answer, $currentUser)
     {
         $from = $answer['from'];
         $messageText = $answer['message'];
-        //$attachment = $this->request->getData('attachment');
+        $attachment = $this->request->getData('attachment');
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - request data', [
+            'from' => $from,
+            'message' => $messageText,
+            'attachment' => $attachment,
+        ]);
 
-        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, null);
+        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, $attachment, $currentUser);
         //$messages = $this->Bx24->getMessages($ticket);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - Bx24 - sendMessage', [
             'parameters' => [
@@ -308,7 +318,5 @@ class BitrixController extends AppController
             ],
             'result' => $messageObj
         ]);
-        
-        return [];
     }
 }

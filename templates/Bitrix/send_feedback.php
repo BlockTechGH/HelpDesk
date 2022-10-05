@@ -16,20 +16,20 @@ $this->end();
         <?php endforeach;?>
         <input type="hidden" name="answer[from]" v-model="answer.from">
         <input type="hidden" name="answer[user_id]" v-model="answer.user_id">
+        <input type="hidden" name="ticket_id" v-model="ticket.id">
         <div class="form-group">
             <h1><?=__('New reply in ticket {0}', $subject);?></h1>
         </div>
         <div class="form-group pt-1">
             <label for="answer[message]" class="form-label">{{ answer.from }}, {{ i18n.Reply }}</label>
-            <textarea id="answer[message]" name="message" v-model="answer.message" class="form-control" rows="10"></textarea>
+            <textarea id="answer[message]" name="answer[message]" v-model="answer.message" class="form-control" rows="10"></textarea>
         </div>
         <div class="form-group pt-1" id="file_block">
-            <button type="button" @click="upload" class="btn btn-primary">+</button>
-            <label for="attachment" class="form-label">{{ i18n.Attachment }}</label>
-            <input type="file" name="attachment[]" ref="file" class="form-control">
+            <label for="attachment[]" class="form-label">{{ i18n.Attachment }}</label>
+            <input type="file" name="attachment[]" ref="file" @change="upload" class="form-control" multiple>
         </div>
         <div class="btn-group pt-1">
-            <button type="submit" name="answer" class="btn btn-primary" @click="send">
+            <button type="submit" class="btn btn-primary" @click="send">
                 {{ i18n.Send }}
             </button>
         </div>
@@ -82,9 +82,7 @@ $this->end();
                     method: "POST",
                     headers,
                     body: formData,
-                }).then(async result => {
-                    BX24.closeApplication();
-                });
+                }).catch(reason => console.error(reason));
                 */
                 BX24.closeApplication();
             },
@@ -96,8 +94,7 @@ $this->end();
                     this.answer.attach.push(file);
                 }
                 console.log("Files uploaded", this.answer.attach.length, files.length);
-                 */
-                $('#file_block').append("<input type='file' name='attachment[]' @change='upload' class='form-control'>");
+                */
                 console.log('File input added');
             }
         }

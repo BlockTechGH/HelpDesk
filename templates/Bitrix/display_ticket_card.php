@@ -172,11 +172,9 @@
                     this.required
                 );
                 delete parameters.PLACEMENT_OPTIONS;
-                console.log("feedback - arguments", parameters);
                 BX24.openApplication(
                     parameters, 
                     function () {
-                        console.log(this.data);
                         const parameters = Object.assign(
                             {
                                 fetch_messages: true,
