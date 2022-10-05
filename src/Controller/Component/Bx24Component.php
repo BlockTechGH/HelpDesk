@@ -232,6 +232,8 @@ class Bx24Component extends Component
                 'RESPONSIBLE_ID',
                 "SETTINGS",
                 'SUBJECT',
+                'ORIGIN_ID',
+                'PROVIDER_PARAMS'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
@@ -545,23 +547,23 @@ class Bx24Component extends Component
 
     private function sendOCMessage($source, $currentUser, string $text, string $subject, $attachment)
     {
-        $chat = $this->obBx24App->call('im.chat.get', [
-            'ENTITY_ID' => $source['ORIGIN_ID'],
-            'ENTITY_TYPE' => $source['PROVIDER_ID']
-        ])['result'];
+        $arParameters = [
+            'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
+            'ENTITY_TYPE' => 'LINES'
+        ];
+        $chat = $this->obBx24App->call('im.chat.get', $arParameters)['result'];
         if (!is_array($attachment)) {
             $attachment = [$attachment];
         }
 
         $arParameters = [
-            'DIALOG_ID' => 'chat'.$chat,
+            'DIALOG_ID' => 'chat'.$chat['ID'],
             'MESSAGE' => $text,
-            'ATTACH' => $this->getFileAttachArray($attachment)
         ];
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'arParameters' => $arParameters,
         ]);
-        sleep(100);
+        $arParameters['ATTACH'] = $this->getFileAttachArray($attachment);
         $response = $this->obBx24App->call('im.message.add', $arParameters);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'response' => $response
@@ -660,6 +662,9 @@ class Bx24Component extends Component
         $attachment = [];
         foreach($attaches as $file)
         {
+            if ($file->getSize() == 0) {
+                continue;
+            }
             $tmpName = $file->getStream()->getMetadata('uri');
             $content = base64_encode(file_get_contents($tmpName));
             $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
