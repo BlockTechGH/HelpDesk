@@ -513,16 +513,7 @@ class Bx24Component extends Component
         if (!is_array($attachment)) {
             $attachment = [$attachment];
         }
-        foreach($attachment as $file)
-        {
-            $tmpName = $file->getStream()->getMetadata('uri');
-            $content = base64_encode(file_get_contents($tmpName));
-            $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
-                'tmpFile' => $tmpName,
-                'content' => mb_substr($content, 0, 20) . '...', 
-            ]);
-            $arParameters['FILES'][] = ['fileData' => [$file->getClientFilename(), $content]];
-        }
+        $arParameters['FILES'] = $this->getFileAttachArray($attachment);
 
         $this->createActivityWith($arParameters);
 
@@ -540,19 +531,7 @@ class Bx24Component extends Component
         $arParameters['TYPE_ID'] = 6;
         $arParameters['PROVIDER_ID'] = static::PROVIDER_SMS;
         $arParameters['PROVIDER_TYPE_ID']=  'SMS';
-        if (!is_array($attachments)) {
-            $attachments = [$attachments];
-        }
-        foreach($attachments as $file)
-        {
-            $tmpName = $file->getStream()->getMetadata('uri');
-            $content = base64_encode(file_get_contents($tmpName));
-            $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
-                'tmpFile' => $tmpName,
-                'content' => mb_substr($content, 0, 20) . '...', 
-            ]);
-            $arParameters['FILES'][] = ['fileData' => [$file->getClientFilename(), $content]];
-        }
+        $arParameters['FILES'] = $this->getFileAttachArray($attachments);
 
         $this->createActivityWith($arParameters);
 
@@ -570,53 +549,14 @@ class Bx24Component extends Component
             'ENTITY_ID' => $source['ORIGIN_ID'],
             'ENTITY_TYPE' => $source['PROVIDER_ID']
         ])['result'];
-
-        /*
-        $uploads = [];
-        foreach($attachment as $file)
-        {
-            $arParams = [
-                'ENTITY' => 'menu',
-                'NAME' => date(DATE_ATOM) . $file->getClientName(),
-                'DETAIL_PICTURE' => $file,
-            ];
-            $this->obBx24App->addBatchCall('entity.item.add', $arParams, function ($result) use (&$uploads, $file) {
-                $arParams = [
-                    ''
-                ];
-                $this->obBx24App->addBatchCall('entity.item.get', [])
-                $uploads[] = [
-                    'id' => $result['result'],
-                    'file' => $file->getStream(),
-                ];
-            });
+        if (!is_array($attachment)) {
+            $attachment = [$attachment];
         }
-
-        // Wait all files uploading
-        while (count($uploads) < count($attachment)) {
-            usleep(500000);
-        }
-
-        $attach = array_map(
-            function ($entity) use ($chat) { 
-                
-
-                return [
-                    'FILE' => [
-                        'NAME' => $file->getClientFileName(),
-                        'LINK' => $file->getLink(),
-                        'SIZE' => $entity['file']->getSize(),
-                    ]
-                ];
-            }, $uploads
-        );
-        */
-        $attach = null;
 
         $arParameters = [
             'DIALOG_ID' => 'chat'.$chat,
             'MESSAGE' => $text,
-            'ATTACH' => $attach
+            'ATTACH' => $this->getFileAttachArray($attachment)
         ];
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'arParameters' => $arParameters,
@@ -713,6 +653,22 @@ class Bx24Component extends Component
         return ($this->appBaseUrl)
             ? $this->appBaseUrl . Router::url($routeProps, false)
             : Router::url($routeProps, true);
+    }
+
+    private function getFileAttachArray(array $attaches) : array
+    {
+        $attachment = [];
+        foreach($attaches as $file)
+        {
+            $tmpName = $file->getStream()->getMetadata('uri');
+            $content = base64_encode(file_get_contents($tmpName));
+            $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
+                'tmpFile' => $tmpName,
+                'content' => mb_substr($content, 0, 20) . '...', 
+            ]);
+            $attachment[] = ['fileData' => [$file->getClientFilename(), $content]];
+        }
+        return $attachment;
     }
 
     private function refreshTokens()
