@@ -80,6 +80,7 @@ class TicketCategoriesTable extends Table
             ->where([
                 'member_id' => $memberId,
             ])
+            ->all()
             ->toList();
         $result = [];
         foreach ($rawList as $category) {

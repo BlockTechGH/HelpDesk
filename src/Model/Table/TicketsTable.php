@@ -141,6 +141,7 @@ class TicketsTable extends Table
     {
         return $this->find()
             ->where(['member_id' => $memberId])
+            ->all()
             ->toList();
     }
 
