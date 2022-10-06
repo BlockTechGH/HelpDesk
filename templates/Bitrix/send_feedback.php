@@ -11,6 +11,7 @@ $this->end();
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
         enctype="multipart/form-data"
     >
+        <input type="hidden" name="MAX_FILE_SIZE" :value="filesizeLimit" />
         <?php foreach ($required as $property => $value): ?>
             <input type="hidden" name="<?=$property;?>" value='<?=$value;?>'>
         <?php endforeach;?>
@@ -23,6 +24,9 @@ $this->end();
         <div class="form-group pt-1">
             <label for="answer[message]" class="form-label">{{ answer.from }}, {{ i18n.Reply }}</label>
             <textarea id="answer[message]" name="answer[message]" v-model="answer.message" class="form-control" rows="10"></textarea>
+            <div :class="{fade: !fileOversize, alert: true, 'alert-warning': true}">
+                {{ fileControl }}
+            </div>
         </div>
         <div class="form-group pt-1" id="file_block">
             <label for="attachment[]" class="form-label">{{ i18n.Attachment }}</label>
@@ -50,6 +54,9 @@ $this->end();
             'Send' => __('Send'),
             'Attachment' => __('Attache file'),
         ]);?>,
+        fileControl: "",
+        fileOversize: false,
+        filesizeLimit: 5*1024*1024
     };
 </script>
 
@@ -87,15 +94,16 @@ $this->end();
                 BX24.closeApplication();
             },
             upload: function() {
-                /**
+                let fileResultSize = 0;
                 const files = this.$refs.file.files;
                 for(let i = 0 ; i < files.length; i++) {
                     let file = files[i];
                     this.answer.attach.push(file);
+                    fileResultSize += file.size;
                 }
-                console.log("Files uploaded", this.answer.attach.length, files.length);
-                */
-                console.log('File input added');
+                this.fileOversize = fileResultSize > this.filesizeLimit;
+                this.fileControl = "Files uploaded for " + fileResultSize  + " bytes. It is " + (this.fileOversize ? "oversize" : "ok");
+                console.log(this.fileControl);
             }
         }
     });

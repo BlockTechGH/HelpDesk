@@ -551,6 +551,7 @@ class Bx24Component extends Component
 
     private function sendOCMessage($source, $currentUser, string $text, string $subject, $attachment)
     {
+        // GET ID CHAT
         $arParameters = [
             'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
             'ENTITY_TYPE' => 'LINES'
@@ -560,6 +561,33 @@ class Bx24Component extends Component
             $attachment = [$attachment];
         }
 
+        $arParams = [
+            'CONNECTOR' => $source['PROVIDER_TYPE_ID'],
+            'LINE' => $source['ASSOCIATED_ENTITY_ID'],
+            'MESSAGES' => [
+                [
+                    'user' => [
+                        'name' => $currentUser['NAME'],
+                        'lastName' => $currentUser['LAST_NAME'],
+                        'email' => $currentUser['EMAIL'],
+                        'phone' => $currentUser['PERSONAL_MOBILE'],
+                    ],
+                    'message' => [
+                        'id' => time(),
+                        'date' => date(DATE_RFC3339),
+                        'text' => $text,
+                    ],
+                    'chat' => [
+                        'id' => $chat['ID'],
+                    ]
+                ]
+            ]
+        ];
+        $this->bx24Logger->debug(__FUNCTION__ . ' - imconnector.send.messages - params', $arParams);
+        $response = $this->obBx24App->call('imconnector.send.messages', $arParams);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - imconnector.send.messages - response', $response);
+
+        /*
         $arParameters = [
             'DIALOG_ID' => 'chat'.$chat['ID'],
             'MESSAGE' => $text,
@@ -572,6 +600,7 @@ class Bx24Component extends Component
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'response' => $response
         ]);
+        */
 
         return $this->makeMessageStructure($currentUser['NAME'], $text, $subject, $attachment);
     }
