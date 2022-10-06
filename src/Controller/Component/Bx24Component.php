@@ -233,12 +233,13 @@ class Bx24Component extends Component
                 "SETTINGS",
                 'SUBJECT',
                 'ORIGIN_ID',
-                'PROVIDER_PARAMS'
+                'PROVIDER_PARAMS',
+                'CREATED'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
-            'arParameters' => $arParameters,
+            'filter' => $arParameters['filter'],
             'result' => $response['result'],
         ]);
         return count($response['result']) ? $response['result'][0] : null;
@@ -341,7 +342,8 @@ class Bx24Component extends Component
             case static::PROVIDER_CRM_EMAIL:
                 return $this->sendEmail($arParameters, $currentUser, $attachment);
             case static::PROVIDER_VOX_CALL:
-                return $this->sendSMS($arParameters, $currentUser, $attachment);
+                //return $this->sendSMS($arParameters, $currentUser, $attachment);
+                break;
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
         }
@@ -416,6 +418,8 @@ class Bx24Component extends Component
                     ),
             ],
             'subject' => $ticketActivity['SUBJECT'],
+            'text' => $ticketActivity['DESCRIPTION'],
+            'date' => $ticketActivity['CREATED']
         ];
     }
 

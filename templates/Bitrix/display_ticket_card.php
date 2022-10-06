@@ -82,6 +82,13 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="row pt-4">
+                    <div class="border m-4">
+                        <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
+                        <div class=""><?=$source['text'];?></div>
+                    </div>
+                </div>
             
                 <div class="row pt-4">
                     <div class="border pt-2"
