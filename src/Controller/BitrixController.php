@@ -106,6 +106,7 @@ class BitrixController extends AppController
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
+                $source = $this->Bx24->getTicketAttributes($this->ticket->source_id);
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer ?? true);
@@ -118,6 +119,7 @@ class BitrixController extends AppController
                         return $this->sendFeedback($answer);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
+                    $this->set('source', $source);
                     return $this->displayTicketCard();
                 }
             }
@@ -192,7 +194,6 @@ class BitrixController extends AppController
 
     public function sendFeedback($answer)
     {
-        $this->BxControllerLogger->debug('sendFeedback', ['answer' => $answer]);
         $this->disableAutoRender();
 
         $currentUser = $this->Bx24->getCurrentUser();
@@ -210,7 +211,6 @@ class BitrixController extends AppController
         }
         $this->set('answer', $answer);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - render view');
 
         return $this->render('send_feedback');
     }
