@@ -593,13 +593,13 @@ class Bx24Component extends Component
             'DIALOG_ID' => 'chat'.$chat['ID'],
             'MESSAGE' => $text,
         ];
+        $arParameters['ATTACH'] = $this->saveFilesAndMakeAttach($attachment, $currentUser['ID']);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
             'arParameters' => $arParameters,
         ]);
-        $arParameters['ATTACH'] = $this->getFileAttachArray($attachment);
         $response = $this->obBx24App->call('im.message.add', $arParameters);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
-            'response' => $response
+            'response' => $response,
         ]);
 
         return $this->makeMessageStructure($currentUser['NAME'], $text, $subject, $attachment);
@@ -732,5 +732,38 @@ class Bx24Component extends Component
             "Access token refreshed" => $oldAccessToken != $tokensRefreshResult["access_token"],
             "Refresh token refreshed" => $oldRefreshToken != $tokensRefreshResult["refresh_token"],
         ]);
+    }
+
+    private function saveFilesAndMakeAttach(array $files, $userID)
+    {
+        $baseFolder = "{$_SERVER['DOCUMENT_ROOT']}/webroot/files/";
+        $appBaseURL = Configure::read('AppConfig.appBaseUrl');
+        $baseUrl = (!$appBaseURL) 
+            ? Router::url('/files', true) 
+            : $appBaseURL . Router::url('/files', false);
+        foreach($files as $i => $file)
+        {
+            // Save in folder
+            $origName = $file->getClientFileName();
+            $parts = explode(".", $origName);
+            $ext = array_pop($parts);
+            $fileName = mb_substr(md5($origName . date(DATE_ATOM) . $userID), -16) . '.' . $ext;
+            $subFolder = date('Ymd') . bin2hex(random_bytes(6));
+            $folder = $baseFolder . DS . $subFolder . DS;
+            if (!file_exists($folder)) {
+                mkdir($folder);
+                chmod($folder, 655);
+            }
+            $file->moveTo($folder . DS . $fileName);
+
+            // Make attach block
+            $link = $baseUrl . DS . $subFolder  . DS. $fileName;
+            $files[$i] = ["IMAGE" => [
+                'NAME' => $origName,
+                'LINK' => $link,
+                'PREVIEW' => $link,
+            ]];
+        }
+        return $files;
     }
 }
