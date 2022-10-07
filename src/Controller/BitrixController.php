@@ -105,8 +105,8 @@ class BitrixController extends AppController
             if (isset($this->placement['activity_id'])) {
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
                 $this->set('ticket', $this->ticket);
-                $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket->action_id);
-                $source = $this->Bx24->getTicketAttributes($this->ticket->source_id);
+                $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
+                $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer ?? true);
