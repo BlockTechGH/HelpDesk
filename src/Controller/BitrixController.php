@@ -78,6 +78,7 @@ class BitrixController extends AppController
         $action = $this->request->getParam('action');
         $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
         $answer = $this->request->getData('answer');
+        $activity_id = $this->request->getData('activity_id');
 
         // hidden fields from app installation
         $this->set('required', [
@@ -117,6 +118,12 @@ class BitrixController extends AppController
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
                         return $this->sendFeedback($answer);
+                    }
+                    if(!!$activity_id)
+                    {
+                        $set = $this->request->getData('set', false);
+                        $this->Bx24->setCompleteStatus($activity_id, !!$set);
+                        return new Response(['body' => json_encode(['status' => 'OK'])]);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
