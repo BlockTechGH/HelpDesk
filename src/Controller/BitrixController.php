@@ -103,24 +103,25 @@ class BitrixController extends AppController
             $this->set('categories', $this->categories);
 
             if (isset($this->placement['activity_id'])) {
+                $currentUser = $this->Bx24->getCurrentUser();
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
-                    return $this->sendFeedback($answer ?? true);
+                    return $this->sendFeedback($answer ?? true, $currentUser);
                 } elseif((isset($this->placement['activity_id']) 
                     && $this->placement['action'] == 'view_activity'))
                 {
                     $this->messages = []; //$this->Bx24->getMessages($ticket);
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
-                        return $this->sendFeedback($answer);
+                        return $this->sendFeedback($answer, $currentUser);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
-                    return $this->displayTicketCard();
+                    return $this->displayTicketCard($currentUser);
                 }
             }
         }
@@ -128,7 +129,6 @@ class BitrixController extends AppController
 
     public function displaySettingsInterface()
     {
-        $this->BxControllerLogger->debug('displaySettingsInterface');
         $data = $this->request->getParsedBody();
 
         $flashOptions = [
@@ -161,15 +161,11 @@ class BitrixController extends AppController
         }           
     }
 
-    public function displayTicketCard()
+    public function displayTicketCard($currentUser)
     {
-        $this->BxControllerLogger->debug('displayTicketCard', [
-            'ticket' => $this->ticket
-        ]);
         $this->disableAutoRender();
 
         $data = $this->request->getParsedBody();
-        $currentUser = $this->Bx24->getCurrentUser();
         
         if (isset($data['ticket'])) {
             $ticket = $this->Tickets->editTicket(
@@ -192,11 +188,10 @@ class BitrixController extends AppController
         return $this->render('display_ticket_card');
     }
 
-    public function sendFeedback($answer)
+    public function sendFeedback($answer, $currentUser)
     {
         $this->disableAutoRender();
 
-        $currentUser = $this->Bx24->getCurrentUser();
         if (is_bool($answer)) {
             $answer = [
                 'from' => $currentUser['NAME'],
@@ -225,6 +220,10 @@ class BitrixController extends AppController
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
         $activity = $this->Bx24->getActivity($idActivity);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
+            'id' => $idActivity,
+            'object' => $activity
+        ]);
         $sourceProviderType = $activity['PROVIDER_ID'];
 
         $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
@@ -270,9 +269,8 @@ class BitrixController extends AppController
                     'prevActivityId' => $prevActivityId,
                     'errors' => $ticketRecord->getErrors(),
                     'ticketRecord' => $ticketRecord,
+                    'ticketActivity' => $activity
                 ]);
-            } else {
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not created');
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [

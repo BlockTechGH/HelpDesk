@@ -55,7 +55,6 @@ class Bx24Component extends Component
 
         $this->obBx24App = new \Bitrix24\Bitrix24(false, $this->bx24Logger);
         $this->obBx24App->setOnExpiredToken(function() {
-            $this->bx24Logger->debug("Access token is expired. Refresh tokens");
             $this->refreshTokens();
             return true;
         });
@@ -238,10 +237,13 @@ class Bx24Component extends Component
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
-            'filter' => $arParameters['filter'],
-            'result' => $response['result'],
-        ]);
+        if(!!$response['error'])
+        {
+            $this->bx24Logger->error(__FUNCTION__ . ' - crm.activity.list - error', [
+                'filter' => $arParameters['filter'],
+                'context' => $response
+            ]);
+        }
         return count($response['result']) ? $response['result'][0] : null;
     }
 
@@ -594,11 +596,9 @@ class Bx24Component extends Component
             'MESSAGE' => $text,
         ];
         $arParameters['ATTACH'] = $this->saveFilesAndMakeAttach($attachment, $currentUser['ID']);
-        $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
-            'arParameters' => $arParameters,
-        ]);
         $response = $this->obBx24App->call('im.message.add', $arParameters);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
+            'arParameters' => $arParameters,
             'response' => $response,
         ]);
 
@@ -714,9 +714,6 @@ class Bx24Component extends Component
         $oldAccessToken = $this->obBx24App->getAccessToken();
         $oldRefreshToken = $this->obBx24App->getRefreshToken();
         $tokensRefreshResult = $this->obBx24App->getNewAccessToken();
-        $this->bx24Logger->debug('refreshTokens - getNewAccessToken - result', [
-            'tokensRefreshResult' => $tokensRefreshResult
-        ]);
         $this->obBx24App->setAccessToken($tokensRefreshResult["access_token"]);
         $this->obBx24App->setRefreshToken($tokensRefreshResult["refresh_token"]);
 
@@ -763,6 +760,11 @@ class Bx24Component extends Component
                 'LINK' => $link,
                 'PREVIEW' => $link,
             ]];
+            if (in_array(mb_convert_case($ext, MB_CASE_LOWER), ['png', 'jpg', 'gif'])) {
+                list($width, $height) = getimagesize($folder . DS . $fileName);
+                $files[$i]['IMAGE']['WIDTH'] = $width;
+                $files[$i]['IMAGE']['HEIGHT'] = $height;
+            }
         }
         return $files;
     }
