@@ -17,6 +17,8 @@ class Bx24Component extends Component
 {
     public const INCOMMING = 1;
     public const OUTCOMMING = 2;
+    public const STATUS_AWAIT = 1;
+    public const STATUS_COMPLETED = 2;
     public const HTML = 3;
     public const COMPLETED = 'Y';
     public const NOT_COMPLETED = 'N';
@@ -705,7 +707,8 @@ class Bx24Component extends Component
         $arParameters = [
             'id' => $idActivity,
             'fields' => [
-                'COMPLETED' => !$value ? static::COMPLETED : static::NOT_COMPLETED
+                'COMPLETED' => !$value ? static::COMPLETED : static::NOT_COMPLETED,
+                'STATUS' => !$value ? static::STATUS_COMPLETED : static::STATUS_AWAIT,
             ]
         ];
         $this->obBx24App->call('crm.activity.update', $arParameters);
