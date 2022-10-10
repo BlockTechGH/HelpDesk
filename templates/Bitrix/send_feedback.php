@@ -32,6 +32,12 @@ $this->end();
             <label for="attachment[]" class="form-label">{{ i18n.Attachment }}</label>
             <input type="file" name="attachment[]" ref="file" @change="upload" class="form-control" multiple>
         </div>
+        <div :class="{alert: true, 'alert-success': true, 'alert-dismissible': true, fade: true, 'pt-1': true, show: saved}" role="alert">
+            {{ i18n.Sent }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
         <div class="btn-group pt-1">
             <button type="submit" class="btn btn-primary" @click="send">
                 {{ i18n.Send }}
@@ -53,10 +59,12 @@ $this->end();
             'EnterReplicaText' => __('Enter your answer here'),
             'Send' => __('Send'),
             'Attachment' => __('Attache file'),
+            'Sent' => __('Your message sent to client'),
         ]);?>,
         fileControl: "",
         fileOversize: false,
-        filesizeLimit: 5*1024*1024
+        filesizeLimit: 5*1024*1024,
+        saved: false,
     };
 </script>
 
@@ -91,7 +99,13 @@ $this->end();
                     body: formData,
                 }).catch(reason => console.error(reason));
                 */
-                BX24.closeApplication();
+                this.saved = true;
+                    setTimeout(function () {
+                        this.saved = false;
+                        BX24.closeApplication();
+                    }, 
+                    5000
+                );
             },
             upload: function() {
                 let fileResultSize = 0;

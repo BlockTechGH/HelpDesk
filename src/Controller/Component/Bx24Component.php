@@ -427,7 +427,8 @@ class Bx24Component extends Component
             ],
             'subject' => $ticketActivity['SUBJECT'],
             'text' => $ticketActivity['DESCRIPTION'],
-            'date' => $ticketActivity['CREATED']
+            'date' => $ticketActivity['CREATED'],
+            'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS']
         ];
     }
 
@@ -447,6 +448,31 @@ class Bx24Component extends Component
             default:
                 return [];
         }
+    }
+
+    public function getFirstMessageInOpenChannelChat(array $source)
+    {
+        // GET ID CHAT
+        $arParameters = [
+            'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
+            'ENTITY_TYPE' => 'LINES'
+        ];
+        $chatId = 0;
+        $result = $this->obBx24App->call('im.chat.get', $arParameters);
+        $chatId = intval($result['result']['ID']);
+
+        // GET FIRST MESSAGE
+        $arParameters = [
+            'DIALOG_ID' => "chat{$chatId}",
+            'FIRST_ID' => 0,
+            'LIMIT' => 5, // Can be system: Conversation started, Data received, Enquiry assigned to, etc.
+        ];
+        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
+        $noSystemMessages = array_filter($response['result']['messages'], function ($message) {
+            return $message['author_id'] != 0;
+        });
+        // Messages is sorted by creation date descending
+        return array_pop($noSystemMessages); 
     }
 
     public function getOCMessages(int $chatId, int $ticketId) : array
@@ -739,8 +765,12 @@ class Bx24Component extends Component
             ? Router::url('/files', true) 
             : $appBaseURL . Router::url('/files', false);
         $attach = [];
+        $j = 0;
         foreach($files as $i => $file)
         {
+            if($file->getSize() == 0) {
+                continue;
+            }
             // Save in folder
             $origName = $file->getClientFileName();
             $parts = explode(".", $origName);
@@ -768,7 +798,8 @@ class Bx24Component extends Component
                 $image[0]['WIDTH'] = $width;
                 $image[0]['HEIGHT'] = $height;
             }
-            $attach[$i]["IMAGE"] = $image;
+            $attach[$j]["IMAGE"] = $image;
+            $j++;
         }
         return $attach;
     }

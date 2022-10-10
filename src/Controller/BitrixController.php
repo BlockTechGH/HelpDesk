@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Controller\Component\Bx24Component;
 use App\Model\Table\HelpdeskOptionsTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
@@ -108,6 +109,13 @@ class BitrixController extends AppController
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
+
+                if($this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
+                {
+                    $firstMessage = $this->Bx24->getFirstMessageInOpenChannelChat($source);
+                    $source['text'] = $firstMessage['text'];
+                }
+
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer ?? true, $currentUser);
