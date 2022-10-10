@@ -68,9 +68,7 @@ class TicketsTable extends Table
             ->notEmptyString('status_id');
 
         $validator
-            ->integer('category_id')
-            ->requirePresence('category_id', 'create')
-            ->notEmptyString('category_id');
+            ->integer('category_id');
 
         $validator
             ->scalar('member_id')
@@ -111,7 +109,7 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, int $categoryId, int $statusId, $prevActivityId)
+    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
@@ -150,7 +148,6 @@ class TicketsTable extends Table
         $insert = [
             'member_id' => $memberId,
             'status_id' => $statusId,
-            'category_id' => $categoryId,
         ];
         if($id < 1)
         {
@@ -160,12 +157,9 @@ class TicketsTable extends Table
             $ticket = $this->patchEntity($ticket, $insert);
         }
         $this->save($ticket);
-        return [
-            'id' => $ticket->id,
-            'member_id' => $ticket->member_id,
-            'status_id' => $ticket->status_id,
-            'category_id' => $ticket->category_id,
-        ];
+        $result = $ticket->toArray();
+        $result['errors'] = $ticket->getErrors();
+        return $result;
     }
 
     public function getByActivityIdAndMemberId($activityId, $memberId)

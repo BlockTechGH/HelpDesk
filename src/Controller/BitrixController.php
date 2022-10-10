@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Controller\Component\Bx24Component;
 use App\Model\Table\HelpdeskOptionsTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
@@ -18,6 +19,10 @@ class BitrixController extends AppController
     private $Statuses;
     private $BitrixTokens;
     private $Tickets;
+
+    private $placement;
+    private $ticket = null;
+    private $messages = [];
 
     public function initialize() : void
     {
@@ -70,15 +75,69 @@ class BitrixController extends AppController
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
+        $action = $this->request->getParam('action');
+        $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+        $answer = $this->request->getData('answer');
+
+        // hidden fields from app installation
+        $this->set('required', [
+            'AUTH_ID' => $this->authId,
+            'AUTH_EXPIRES' => $this->authExpires,
+            'REFRESH_ID'=> $this->refreshId,
+            'member_id' => $this->memberId,
+            'PLACEMENT_OPTIONS' => json_encode($this->placement),
+        ]);
+        $this->set('memberId', $this->memberId);
+        $this->set('domain', $this->domain);
+        $this->set('PLACEMENT_OPTIONS', $this->placement);
+        $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
+
+        if ($action == 'displaySettingsInterface') 
+        {
+            $this->options = $this->Options->getSettingsFor($this->memberId);
+            $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
+            $this->categories = [];
+
+            $this->set('options', $this->options);
+            $this->set('statuses', $this->statuses);
+            $this->set('categories', $this->categories);
+
+            if (isset($this->placement['activity_id'])) {
+                $currentUser = $this->Bx24->getCurrentUser();
+                $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                $this->set('ticket', $this->ticket);
+                $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
+                $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
+
+                if($this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
+                {
+                    $firstMessage = $this->Bx24->getFirstMessageInOpenChannelChat($source);
+                    $source['text'] = $firstMessage['text'];
+                }
+
+                if (isset($this->placement['answer'])) {
+                    $this->set('subject', $ticketAttributes['subject']);
+                    return $this->sendFeedback($answer ?? true, $currentUser);
+                } elseif((isset($this->placement['activity_id']) 
+                    && $this->placement['action'] == 'view_activity'))
+                {
+                    $this->messages = []; //$this->Bx24->getMessages($ticket);
+                    if(!!$answer) {
+                        $this->set('subject', $ticketAttributes['subject']);
+                        return $this->sendFeedback($answer, $currentUser);
+                    }
+                    $this->set('ticketAttributes', $ticketAttributes);
+                    $this->set('source', $source);
+                    return $this->displayTicketCard($currentUser);
+                }
+            }
+        }
     }
 
     public function displaySettingsInterface()
     {
         $data = $this->request->getParsedBody();
-        $options = $this->Options->getSettingsFor($this->memberId);
-        $statuses = $this->Statuses->getStatusesFor($this->memberId);
-        $categories = $this->Categories->getCategoriesFor($this->memberId);
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - options - ' . count($options) . ' found');
 
         $flashOptions = [
             'params' => [
@@ -88,8 +147,9 @@ class BitrixController extends AppController
 
         if(isset($data['saveSettings']))
         {
-            $options = $this->saveSettings($data);
+            $this->options = $this->saveSettings($data);
             $this->Flash->success(__("All options saved"), $flashOptions);
+            $this->set('options', $this->options);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
                 $data['category']['id'] ?? 0, 
@@ -106,17 +166,56 @@ class BitrixController extends AppController
                 (bool)$data['ticket_status']['active']
             );
             return new Response(['body' => json_encode($status)]);
-        }
+        }           
+    }
 
-        $this->set('domain', $this->domain);
-        $this->set('options', $options);
-        $this->set('statuses', $statuses);
-        $this->set('categories', $categories);
-        // hidden fields from app installation
-        $this->set('authId', $this->authId);
-        $this->set('authExpires', $this->authExpires);
-        $this->set('refreshId', $this->refreshId);
-        $this->set('memberId', $this->memberId);
+    public function displayTicketCard($currentUser)
+    {
+        $this->disableAutoRender();
+
+        $data = $this->request->getParsedBody();
+        
+        if (isset($data['ticket'])) {
+            $ticket = $this->Tickets->editTicket(
+                (int)$data['ticket']['id'],
+                (int)$data['ticket']['status_id'],
+                (int)$data['ticket']['category_id'],
+                $this->memberId
+            );
+            return new Response(['body' => json_encode($ticket)]);
+        } elseif (isset($data['fetch_messages'])) {
+            //$ticket = $this->Tickets->get((int)$data['ticket_id']);
+            //$this->messages = $this->Bx24->getMessages($ticket);
+            return new Response(['body' => json_encode([])]);
+        }
+ 
+        $this->set('messages', $this->messages);
+        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}"); 
+        $this->set('ticket', $this->ticket);
+        $this->set('PLACEMENT_OPTIONS', $this->placement);
+        return $this->render('display_ticket_card');
+    }
+
+    public function sendFeedback($answer, $currentUser)
+    {
+        $this->disableAutoRender();
+
+        if (is_bool($answer)) {
+            $answer = [
+                'from' => $currentUser['NAME'],
+                'message' => "",
+                "user_id" => $currentUser['ID'],
+                "attach" => [],
+            ];
+        } else {
+            $ticketId = $this->request->getData('ticket_id') ?? $_POST['ticket_id'];
+            $this->ticket = $this->Tickets->get($ticketId);
+            $this->sendMessage($answer, $currentUser);
+        }
+        $this->set('answer', $answer);
+        $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
+
+        return $this->render('send_feedback');
     }
 
     public function handleCrmActivity()
@@ -129,6 +228,10 @@ class BitrixController extends AppController
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
         $activity = $this->Bx24->getActivity($idActivity);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
+            'id' => $idActivity,
+            'object' => $activity
+        ]);
         $sourceProviderType = $activity['PROVIDER_ID'];
 
         $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
@@ -162,20 +265,20 @@ class BitrixController extends AppController
                 // ticket is activity
                 $activity = $this->Bx24->getActivity($activityId);
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
-                $category = $this->Categories->getStartCategoryForMemberTickets($this->memberId);
                 $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
                     $activity, 
-                    $category['id'], 
+                    1, 
                     $status['id'],
                     (int)$prevActivityId
                 );
                 $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
+                    'prevActivityId' => $prevActivityId,
+                    'errors' => $ticketRecord->getErrors(),
                     'ticketRecord' => $ticketRecord,
+                    'ticketActivity' => $activity
                 ]);
-            } else {
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is created');
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
@@ -198,5 +301,28 @@ class BitrixController extends AppController
         $settings = $this->Options->updateOptions($settings);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - options', ['options' => $settings]);
         return $settings;
+    }
+
+    private function sendMessage($answer, $currentUser)
+    {
+        $from = $answer['from'];
+        $messageText = $answer['message'];
+        $attachment = $this->request->getData('attachment');
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - request data', [
+            'from' => $from,
+            'message' => $messageText,
+            'attachment' => $attachment,
+        ]);
+
+        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, $attachment, $currentUser);
+        //$messages = $this->Bx24->getMessages($ticket);
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - Bx24 - sendMessage', [
+            'parameters' => [
+                'from' => $from,
+                'message' => $messageText,
+                'ticket' => $this->ticket->toArray()
+            ],
+            'result' => $messageObj
+        ]);
     }
 }

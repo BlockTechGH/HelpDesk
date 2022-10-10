@@ -21,6 +21,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Cake\Error\Debugger;
 use Cake\Controller\Controller;
+use Cake\Routing\Router;
 
 /**
  * Application Controller
@@ -98,5 +99,19 @@ class AppController extends Controller
                     'DOMAIN' => $this->domain,
                 ]);
         }
+    }
+
+    public function getUrlOf($routeName, $domain = null)
+    {
+        $opts = [
+            '_name' => $routeName,
+        ];
+        if (!!$domain) {
+            $opts['?'] = ['DOMAIN' => $this->domain];
+        }
+        $appBaseURL = Configure::read('AppConfig.appBaseUrl');
+        return (!$appBaseURL) 
+            ? Router::url($opts, true) 
+            : $appBaseURL . Router::url($opts, false);
     }
 }

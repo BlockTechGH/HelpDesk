@@ -45,10 +45,10 @@
                             <?=$options['sources_on_phone_calls'] ? 'checked' : '';?>/>
                     </div>
 
-                    <input type="hidden" name="AUTH_ID" value="<?=$authId?>" />
-                    <input type="hidden" name="AUTH_EXPIRES" value="<?=$authExpires?>" />
-                    <input type="hidden" name="REFRESH_ID" value="<?=$refreshId?>" />
-                    <input type="hidden" name="member_id" value="<?=$memberId?>" />
+                    <input type="hidden" name="AUTH_ID" value="<?=$required['AUTH_ID']?>" />
+                    <input type="hidden" name="AUTH_EXPIRES" value="<?=$required['AUTH_EXPIRES']?>" />
+                    <input type="hidden" name="REFRESH_ID" value="<?=$required['REFRESH_ID']?>" />
+                    <input type="hidden" name="member_id" value="<?=$required['member_id']?>" />
 
                     <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
@@ -151,48 +151,41 @@
     </div>
 </div>
 
-
 <script>
     window.data = {
         ajax: "<?= $this->Url->build([
             '_name' => 'crm_settings_interface', 
             '?' => ['DOMAIN' => $domain]
         ]); ?>",
-        required: <?=json_encode([
-            'AUTH_ID' => $authId,
-            'AUTH_EXPIRES' => $authExpires,
-            'REFRESH_ID' => $refreshId,
-            'member_id' => $memberId,
-        ])?>,
+        required: <?=json_encode($required)?>,
         currentStatus: {
             id: 0,
             name: '',
             active: 1,
-            member_id: "<?=$memberId;?>",
+            member_id: "<?=$required['member_id'];?>",
         },
         currentCategory: {
             id: 0,
             name: '',
             active: 1,
-            member_id: "<?=$memberId;?>",
+            member_id: "<?=$required['member_id'];?>",
         },
-        memberId: "<?=$memberId?>",
+        memberId: "<?=$required['member_id']?>",
         categories: <?=json_encode($categories);?>,
         statuses: <?=json_encode($statuses);?>,
         i18n: <?=json_encode([
             'Name' => 'Name',
-            'Status' => __('Name of new status'),
-            'Category' => __('Name of new category'),
             'Save' => __('Save'),
             'Active' => __('Active'),
             'Add' => __('Add'),
             'Edit' => __('Edit'),
             'Action' => __('Action'),
             'Yes' => __('Yes'),
-            'No' => __('No')
+            'No' => __('No'),
         ]);?>,
     };
 </script>
+
 <script>
 const categories = new Vue({
     'el': '#categories',
@@ -268,6 +261,9 @@ const statuses = new Vue({
                     this.statuses.push(stored);
                 } else {
                     this.statuses[this.currentStatus.index] = stored;
+                }
+                if (stored.errors.length > 0) {
+                    console.error("An error occured", stored.errors);
                 }
                 this.create();
             });
