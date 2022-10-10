@@ -110,7 +110,7 @@
             </div>
         </div>
 
-        <footer class="d-flex justify-content-end">
+        <footer class="d-flex justify-content-end pt-4">
             <div class="form-button">
                 <button
                     type="button"
