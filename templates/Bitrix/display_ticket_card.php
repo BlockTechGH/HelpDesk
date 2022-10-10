@@ -4,7 +4,7 @@
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
     >
         <div class="row h-100" role="tabpanel" aria-labelledby="ticket-tab">
-            <div class="col-3">
+            <div class="col-3 border border-right-0">
                 <div class="form-group p-2">
                     <p class="form-input">
                         <span class="border rounded-circle p-2">{{ ticketAttributes.customer.abr }}</span>
