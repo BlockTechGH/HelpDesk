@@ -108,7 +108,19 @@
                     </div>
                 </div>
             </div>
-        </div> 
+        </div>
+
+        <footer class="d-flex justify-content-end pt-4">
+            <div class="form-button">
+                <button
+                    type="button"
+                    @click="completeToggle"
+                    class="btn btn-secondary"
+                    >
+                    {{ ticketAttributes.active ? i18n.Close : i18n.Reopen }}
+                </button>
+            </div>
+        </footer>
     </form>
 </div>
 
@@ -137,6 +149,8 @@
             'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
             'CRM_EMAIL' => __('E-mail'),
             'VOXIMPLANT_CALL' => __('Phone call'),
+            'Close' => __('Close'),
+            'Reopen' => __('Reopen'),
         ]);?>,
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
@@ -212,6 +226,29 @@
             },
             upload: function() {
             //    this.answer.attachment = this.$refs.attachment.files[0];
+            },
+            completeToggle: function()
+            {
+                const parameters = Object.assign(
+                    {
+                        activity_id: this.ticket.action_id,
+                        set: !this.ticketAttributes.active
+                    },
+                    this.required
+                );
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    try {
+                        await result.json();
+                        this.ticketAttributes.active = !this.ticketAttributes.active;
+                    } catch (e) {
+                        content = await result.text();
+                        console.log("Error occuried: " + content);
+                    }
+                });
             }
         }
     });

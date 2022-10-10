@@ -17,6 +17,8 @@ class Bx24Component extends Component
 {
     public const INCOMMING = 1;
     public const OUTCOMMING = 2;
+    public const STATUS_AWAIT = 1;
+    public const STATUS_COMPLETED = 2;
     public const HTML = 3;
     public const COMPLETED = 'Y';
     public const NOT_COMPLETED = 'N';
@@ -233,7 +235,8 @@ class Bx24Component extends Component
                 'SUBJECT',
                 'ORIGIN_ID',
                 'PROVIDER_PARAMS',
-                'CREATED'
+                'CREATED',
+                'COMPLETED'
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
@@ -428,7 +431,8 @@ class Bx24Component extends Component
             'subject' => $ticketActivity['SUBJECT'],
             'text' => $ticketActivity['DESCRIPTION'],
             'date' => $ticketActivity['CREATED'],
-            'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS']
+            'active' => $ticketActivity['COMPLETED'] == self::NOT_COMPLETED,
+            'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS'],
         ];
     }
 
@@ -695,6 +699,23 @@ class Bx24Component extends Component
     #
     #endsection
     #
+
+    #section 7. Reopen/close button
+
+    public function setCompleteStatus($idActivity, bool $value)
+    {
+        $arParameters = [
+            'id' => $idActivity,
+            'fields' => [
+                'COMPLETED' => !$value ? static::COMPLETED : static::NOT_COMPLETED,
+                'STATUS' => !$value ? static::STATUS_COMPLETED : static::STATUS_AWAIT,
+            ]
+        ];
+        $this->obBx24App->call('crm.activity.update', $arParameters);
+        $this->bx24Logger->debug(__FUNCTION__ . "Set complition of activity #{$idActivity} to '{$arParameters['fields']['COMPLETED']}'");
+    }
+
+    #endsection
 
     private static function getActivityTypeAndName()
     {
