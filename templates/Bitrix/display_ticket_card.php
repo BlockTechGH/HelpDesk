@@ -85,8 +85,17 @@
 
                 <div class="row pt-4">
                     <div class="border m-4">
-                        <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
-                        <div class=""><?=$source['text'];?></div>
+                        <?php if(!!$source): ?>
+                            <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
+                            <div class=""><?=$source['text'];?></div>
+                        <?php else: ?>
+                            <p class="">
+                                <?=__("Activity #{0} not found", $ticket->source_id);?>
+                            </p>
+                            <div class="">
+                                <?=__('Sorry, but source activity is closed, not exists, not associated with ticket or it is a wrong ID of activity');?>
+                            </div>
+                        <?php endif;?>
                     </div>
                 </div>
             

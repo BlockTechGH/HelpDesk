@@ -55,7 +55,6 @@ class Bx24Component extends Component
 
         $this->obBx24App = new \Bitrix24\Bitrix24(false, $this->bx24Logger);
         $this->obBx24App->setOnExpiredToken(function() {
-            $this->bx24Logger->debug("Access token is expired. Refresh tokens");
             $this->refreshTokens();
             return true;
         });
@@ -239,10 +238,13 @@ class Bx24Component extends Component
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list', [
-            'filter' => $arParameters['filter'],
-            'result' => $response['result'],
-        ]);
+        if(isset($response['error']))
+        {
+            $this->bx24Logger->error(__FUNCTION__ . ' - crm.activity.list - error', [
+                'filter' => $arParameters['filter'],
+                'context' => $response
+            ]);
+        }
         return count($response['result']) ? $response['result'][0] : null;
     }
 
@@ -385,6 +387,11 @@ class Bx24Component extends Component
     public function getTicketAttributes($ticketId)
     {
         $ticketActivity = $this->getActivity($ticketId);
+        if(!$ticketActivity)
+        {
+            $this->bx24Logger->debug(__FUNCTION__ . ' - ticket/source activity not found');
+            return null;
+        }
         $responsibleContacts = $this->getUserById($ticketActivity['RESPONSIBLE_ID']);
         $customerContacts = $ticketActivity['COMMUNICATIONS'][0];
         $customerNames = $customerContacts['ENTITY_SETTINGS'];
@@ -394,6 +401,7 @@ class Bx24Component extends Component
         }
 
         return [
+            'id' => intval($ticketId),
             'responsible' => [
                 'id' => intval($responsibleContacts['ID']),
                 'abr' => $this->makeNameAbbreviature($responsibleContacts),
@@ -421,7 +429,8 @@ class Bx24Component extends Component
             'subject' => $ticketActivity['SUBJECT'],
             'text' => $ticketActivity['DESCRIPTION'],
             'date' => $ticketActivity['CREATED'],
-            'active' => $ticketActivity['COMPLETED'] == self::NOT_COMPLETED
+            'active' => $ticketActivity['COMPLETED'] == self::NOT_COMPLETED,
+            'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS'],
         ];
     }
 
@@ -441,6 +450,31 @@ class Bx24Component extends Component
             default:
                 return [];
         }
+    }
+
+    public function getFirstMessageInOpenChannelChat(array $source)
+    {
+        // GET ID CHAT
+        $arParameters = [
+            'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
+            'ENTITY_TYPE' => 'LINES'
+        ];
+        $chatId = 0;
+        $result = $this->obBx24App->call('im.chat.get', $arParameters);
+        $chatId = intval($result['result']['ID']);
+
+        // GET FIRST MESSAGE
+        $arParameters = [
+            'DIALOG_ID' => "chat{$chatId}",
+            'FIRST_ID' => 0,
+            'LIMIT' => 5, // Can be system: Conversation started, Data received, Enquiry assigned to, etc.
+        ];
+        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
+        $noSystemMessages = array_filter($response['result']['messages'], function ($message) {
+            return $message['author_id'] != 0;
+        });
+        // Messages is sorted by creation date descending
+        return array_pop($noSystemMessages); 
     }
 
     public function getOCMessages(int $chatId, int $ticketId) : array
@@ -563,46 +597,38 @@ class Bx24Component extends Component
             $attachment = [$attachment];
         }
 
-        $arParams = [
-            'CONNECTOR' => $source['PROVIDER_TYPE_ID'],
-            'LINE' => $source['ASSOCIATED_ENTITY_ID'],
-            'MESSAGES' => [
-                [
-                    'user' => [
-                        'name' => $currentUser['NAME'],
-                        'lastName' => $currentUser['LAST_NAME'],
-                        'email' => $currentUser['EMAIL'],
-                        'phone' => $currentUser['PERSONAL_MOBILE'],
-                    ],
-                    'message' => [
-                        'id' => time(),
-                        'date' => date(DATE_RFC3339),
-                        'text' => $text,
-                    ],
-                    'chat' => [
-                        'id' => $chat['ID'],
-                    ]
-                ]
-            ]
+        // Check: current user in chat
+        $arParameters = [
+            'DIALOG_ID' => "chat{$chat['ID']}",
         ];
-        $this->bx24Logger->debug(__FUNCTION__ . ' - imconnector.send.messages - params', $arParams);
-        $response = $this->obBx24App->call('imconnector.send.messages', $arParams);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - imconnector.send.messages - response', $response);
+        $response = $this->obBx24App->call('im.dialog.users.list', $arParameters);
+        $interlocutorIDs = array_column($response['result'], 'id');
+        $this->bx24Logger->debug(__FUNCTION__ . ' - users', [
+            'chat.users' => $interlocutorIDs,
+            'responsible' => $source['RESPONSIBLE_ID'],
+            'currentUser' => $currentUser['ID']
+        ]);
 
-        /*
+        if(!in_array($currentUser['ID'], $interlocutorIDs))
+        {
+            $arParameters['CHAT_ID'] = $arParameters['DIALOG_ID'];
+            $arParameters['USERS'] = [ $currentUser['ID'] ];
+            $this->bx24Logger->debug(__FUNCTION__ . ' - im.chat.user.add', [
+                'arParameters' => $arParameters
+            ]);
+            $response = $this->obBx24App->call('im.chat.user.add', $arParameters);
+        }
+        
         $arParameters = [
             'DIALOG_ID' => 'chat'.$chat['ID'],
             'MESSAGE' => $text,
         ];
-        $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
-            'arParameters' => $arParameters,
-        ]);
-        $arParameters['ATTACH'] = $this->getFileAttachArray($attachment);
+        $arParameters['ATTACH'] = $this->saveFilesAndMakeAttach($attachment, $currentUser['ID']);
         $response = $this->obBx24App->call('im.message.add', $arParameters);
         $this->bx24Logger->debug('handleCrmActivity - sendMessage - sendOCMessage - im.message.add', [
-            'response' => $response
+            'arParameters' => $arParameters,
+            'response' => $response,
         ]);
-        */
 
         return $this->makeMessageStructure($currentUser['NAME'], $text, $subject, $attachment);
     }
@@ -732,9 +758,6 @@ class Bx24Component extends Component
         $oldAccessToken = $this->obBx24App->getAccessToken();
         $oldRefreshToken = $this->obBx24App->getRefreshToken();
         $tokensRefreshResult = $this->obBx24App->getNewAccessToken();
-        $this->bx24Logger->debug('refreshTokens - getNewAccessToken - result', [
-            'tokensRefreshResult' => $tokensRefreshResult
-        ]);
         $this->obBx24App->setAccessToken($tokensRefreshResult["access_token"]);
         $this->obBx24App->setRefreshToken($tokensRefreshResult["refresh_token"]);
 
@@ -750,5 +773,52 @@ class Bx24Component extends Component
             "Access token refreshed" => $oldAccessToken != $tokensRefreshResult["access_token"],
             "Refresh token refreshed" => $oldRefreshToken != $tokensRefreshResult["refresh_token"],
         ]);
+    }
+
+    private function saveFilesAndMakeAttach(array $files, $userID)
+    {
+        $baseFolder = "{$_SERVER['DOCUMENT_ROOT']}/webroot/files/";
+        $appBaseURL = Configure::read('AppConfig.appBaseUrl');
+        $baseUrl = (!$appBaseURL) 
+            ? Router::url('/files', true) 
+            : $appBaseURL . Router::url('/files', false);
+        $attach = [];
+        $j = 0;
+        foreach($files as $i => $file)
+        {
+            if($file->getSize() == 0) {
+                continue;
+            }
+            // Save in folder
+            $origName = $file->getClientFileName();
+            $parts = explode(".", $origName);
+            $ext = array_pop($parts);
+            $fileName = mb_substr(md5($origName . date(DATE_ATOM) . $userID), -16) . '.' . $ext;
+            $subFolder = date('Ymd') . bin2hex(random_bytes(6));
+            $folder = $baseFolder . DS . $subFolder . DS;
+            if (!file_exists($folder)) {
+                mkdir($folder);
+                chmod($folder, 655);
+            }
+            $file->moveTo($folder . DS . $fileName);
+
+            // Make attach block
+            $link = $baseUrl . DS . $subFolder  . DS. $fileName;
+            $image = [
+                [
+                    'NAME' => $origName,
+                    'LINK' => $link,
+                    'PREVIEW' => $link,
+                ]
+            ];
+            if (in_array(mb_convert_case($ext, MB_CASE_LOWER), ['png', 'jpg', 'gif'])) {
+                list($width, $height) = getimagesize($folder . DS . $fileName);
+                $image[0]['WIDTH'] = $width;
+                $image[0]['HEIGHT'] = $height;
+            }
+            $attach[$j]["IMAGE"] = $image;
+            $j++;
+        }
+        return $attach;
     }
 }
