@@ -237,7 +237,7 @@ class Bx24Component extends Component
             ]
         ];
         $response = $this->obBx24App->call('crm.activity.list', $arParameters);
-        if(!!$response['error'])
+        if(isset($response['error']))
         {
             $this->bx24Logger->error(__FUNCTION__ . ' - crm.activity.list - error', [
                 'filter' => $arParameters['filter'],
@@ -738,6 +738,7 @@ class Bx24Component extends Component
         $baseUrl = (!$appBaseURL) 
             ? Router::url('/files', true) 
             : $appBaseURL . Router::url('/files', false);
+        $attach = [];
         foreach($files as $i => $file)
         {
             // Save in folder
@@ -755,17 +756,20 @@ class Bx24Component extends Component
 
             // Make attach block
             $link = $baseUrl . DS . $subFolder  . DS. $fileName;
-            $files[$i] = ["IMAGE" => [
-                'NAME' => $origName,
-                'LINK' => $link,
-                'PREVIEW' => $link,
-            ]];
+            $image = [
+                [
+                    'NAME' => $origName,
+                    'LINK' => $link,
+                    'PREVIEW' => $link,
+                ]
+            ];
             if (in_array(mb_convert_case($ext, MB_CASE_LOWER), ['png', 'jpg', 'gif'])) {
                 list($width, $height) = getimagesize($folder . DS . $fileName);
-                $files[$i]['IMAGE']['WIDTH'] = $width;
-                $files[$i]['IMAGE']['HEIGHT'] = $height;
+                $image[0]['WIDTH'] = $width;
+                $image[0]['HEIGHT'] = $height;
             }
+            $attach[$i]["IMAGE"] = $image;
         }
-        return $files;
+        return $attach;
     }
 }
