@@ -107,6 +107,9 @@ class BitrixController extends AppController
             if (isset($this->placement['activity_id'])) {
                 $currentUser = $this->Bx24->getCurrentUser();
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                if ($this->ticket) {
+                    $this->ticket->created = $this->ticket->created->format(Bx24Component::DATE_TIME_FORMAT);
+                }
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;

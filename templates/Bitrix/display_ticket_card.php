@@ -83,7 +83,7 @@
                     </div>
                 </div>
 
-                <div class="row pt-4">
+                <div class="row pt-4 width-100 rounded">
                     <div class="border m-4">
                         <?php if(!!$source): ?>
                             <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
