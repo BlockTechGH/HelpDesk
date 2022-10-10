@@ -5,7 +5,7 @@
     >
         <div class="row h-100" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
-                <div class="form-group p-2">
+                <div class="form-group p-2 mt-2">
                     <p class="form-input">
                         <span class="border rounded-circle p-2">{{ ticketAttributes.customer.abr }}</span>
                         {{ ticketAttributes.customer.title }}
@@ -83,8 +83,8 @@
                     </div>
                 </div>
 
-                <div class="row pt-4 width-100 rounded">
-                    <div class="border m-4">
+                <div class="container-fluid pt-4">
+                    <div class="border rounded p-1">
                         <?php if(!!$source): ?>
                             <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
                             <div class=""><?=$source['text'];?></div>
