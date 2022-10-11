@@ -172,6 +172,7 @@
             },
             save: function ()
             {
+                this.awaiting = true;
                 const parameters = Object.assign(
                     {
                         ticket: this.ticket,
@@ -188,7 +189,9 @@
                     body: JSON.stringify(parameters)
                 }).then(async result => {
                     const stored = await result.json();
-                    this.ticket = stored;
+                    this.ticket = stored.ticket;
+                    this.ticketAttributes.active = stored.active;
+                    this.awaiting = false;
                 });
             },
             feedback: function() {

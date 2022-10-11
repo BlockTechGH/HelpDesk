@@ -64,24 +64,28 @@ class TicketStatusesTable extends Table
         return $validator;
     }
 
-    public function getStartStatusForMemberTickets(string $memberId)
+    public function getStartStatusForMemberTickets(string $memberId, int $mark = 1)
     {
         $status = $this->find()
             ->where([
                 'member_id' => $memberId,
                 'active' => true,
-                'mark' => 1
+                'mark' => $mark
             ])
             ->orderAsc('created')
             ->first();
         if (!$status) {
-            $status = $this->find()
+            $query = $this->find()
                 ->where([
                     'member_id' => $memberId,
                     'active' => true,
-                ])
-                ->orderAsc('created')
-                ->first();
+                ]);
+            if ($mark < 2) {
+                $query->orderAsc('created');
+            } else {
+                $query->orderDesc('created');
+            }
+            $status = $query->first();
         }
         return $status;
     }

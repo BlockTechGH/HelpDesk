@@ -192,7 +192,7 @@ class BitrixController extends AppController
         $data = $this->request->getParsedBody();
         
         if (isset($data['ticket'])) {
-            $oldTicket = $this->Ticket->get($data['ticket']['id']);
+            $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
@@ -203,16 +203,14 @@ class BitrixController extends AppController
             $status = $this->Statuses->get($data['ticket']['status_id']);
             if ($status->mark != $oldMark)
             {
-                if ($oldMark == 2) {
-                    $this->Bx24->setCompleteStatus($ticket->action_id, 1);
-                } elseif ($status->mark == 2) {
-                    $this->Bx24->setCompleteStatus($ticket->action_id, 2);
-                }
+                $active = $status->mark != 2;
+                $this->Bx24->setCompleteStatus($ticket['action_id'], $active);
             }
-            return new Response(['body' => json_encode($ticket)]);
+            return new Response(['body' => json_encode([
+                'ticket' => $ticket,
+                'active' => $active
+            ])]);
         } elseif (isset($data['fetch_messages'])) {
-            //$ticket = $this->Tickets->get((int)$data['ticket_id']);
-            //$this->messages = $this->Bx24->getMessages($ticket);
             return new Response(['body' => json_encode([])]);
         }
  
