@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
+use Cake\Http\Session\DatabaseSession;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
@@ -55,19 +56,38 @@ class TicketStatusesTable extends Table
             ->maxLength('name', 255)
             ->requirePresence('name', 'create')
             ->notEmptyString('name');
+        $validator
+            ->integer('mark')
+            ->greaterThan('mark', -1)
+            ->lessThan('mark', 3);
 
         return $validator;
     }
 
-    public function getStartStatusForMemberTickets(string $memberId)
+    public function getStartStatusForMemberTickets(string $memberId, int $mark = 1)
     {
-        return $this->find()
+        $status = $this->find()
             ->where([
                 'member_id' => $memberId,
                 'active' => true,
+                'mark' => $mark
             ])
             ->orderAsc('created')
             ->first();
+        if (!$status) {
+            $query = $this->find()
+                ->where([
+                    'member_id' => $memberId,
+                    'active' => true,
+                ]);
+            if ($mark < 2) {
+                $query->orderAsc('created');
+            } else {
+                $query->orderDesc('created');
+            }
+            $status = $query->first();
+        }
+        return $status;
     }
 
     public function getStatusesFor(string $memberId)
@@ -86,12 +106,13 @@ class TicketStatusesTable extends Table
         return $list;
     }
 
-    public function editStatus($id = null, string $name, string $memberId, bool $active = true)
+    public function editStatus($id = null, string $name, string $memberId, bool $active = true, int $mark = 0)
     {
         $insert = [
             'member_id' => $memberId,
             'name' => $name,
-            'active' => (int)$active
+            'active' => (int)$active,
+            'mark' => $mark >= 0 && $mark <= 2 ? $mark : 0,
         ];
         if($id == null)
         {
@@ -107,6 +128,16 @@ class TicketStatusesTable extends Table
             'name' => $status->name,
             'active' => !!$status->active,
             'member_id' => $status->member_id,
+            'mark' => $status->mark
         ];
+    }
+
+    public function flushMarks(int $mark)
+    {
+        $this->updateAll([
+            'mark' => 0
+        ], [
+            'mark' => $mark
+        ]);
     }
 }

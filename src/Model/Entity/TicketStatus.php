@@ -12,6 +12,7 @@ use Cake\ORM\Entity;
  * @property string $name
  * @property string $member_id
  * @property bool $active
+ * @property int $mark
  */
 class TicketStatus extends Entity
 {
@@ -28,5 +29,6 @@ class TicketStatus extends Entity
         'name' => true,
         'member_id' => true,
         'active' => true,
+        'mark' => true,
     ];
 }

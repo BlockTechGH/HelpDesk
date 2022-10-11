@@ -107,6 +107,9 @@ class BitrixController extends AppController
             if (isset($this->placement['activity_id'])) {
                 $currentUser = $this->Bx24->getCurrentUser();
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                if ($this->ticket) {
+                    $this->ticket->created = $this->ticket->created->format(Bx24Component::DATE_TIME_FORMAT);
+                }
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
@@ -132,7 +135,10 @@ class BitrixController extends AppController
                     {
                         $set = $this->request->getData('set', false);
                         $this->Bx24->setCompleteStatus($activity_id, !!$set);
-                        return new Response(['body' => json_encode(['status' => 'OK'])]);
+                        $ticket = $this->Tickets->getByActivityIdAndMemberId($activity_id, $this->memberId)->toArray();
+                        $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId, !!$set ? 1 : 2);
+                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
+                        return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
@@ -166,13 +172,19 @@ class BitrixController extends AppController
             );
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['ticket_status'])) {
-            $status = $this->Statuses->editStatus(
+            $mark = (int)$data['ticket_status']['mark'];
+            if ($mark > 0) {
+                $this->Statuses->flushMarks($mark);
+            }
+            $this->Statuses->editStatus(
                 $data['ticket_status']['id'], 
                 $data['ticket_status']['name'], 
                 $this->memberId,
-                (bool)$data['ticket_status']['active']
+                (bool)$data['ticket_status']['active'],
+                $mark
             );
-            return new Response(['body' => json_encode($status)]);
+            $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
+            return new Response(['body' => json_encode($this->statuses)]);
         }           
     }
 
@@ -183,16 +195,25 @@ class BitrixController extends AppController
         $data = $this->request->getParsedBody();
         
         if (isset($data['ticket'])) {
+            $oldTicket = $this->Tickets->get($data['ticket']['id']);
+            $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
                 (int)$data['ticket']['status_id'],
                 (int)$data['ticket']['category_id'],
                 $this->memberId
             );
-            return new Response(['body' => json_encode($ticket)]);
+            $status = $this->Statuses->get($data['ticket']['status_id']);
+            if ($status->mark != $oldMark)
+            {
+                $active = $status->mark != 2;
+                $this->Bx24->setCompleteStatus($ticket['action_id'], $active);
+            }
+            return new Response(['body' => json_encode([
+                'ticket' => $ticket,
+                'active' => $active
+            ])]);
         } elseif (isset($data['fetch_messages'])) {
-            //$ticket = $this->Tickets->get((int)$data['ticket_id']);
-            //$this->messages = $this->Bx24->getMessages($ticket);
             return new Response(['body' => json_encode([])]);
         }
  

@@ -31,6 +31,7 @@ class Bx24Component extends Component
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
     public const TICKET_PREFIX = 'GS-';
+    public const DATE_TIME_FORMAT = "m/d/Y h:i a";
 
     public const OWNER_TYPE_CONTACT = 3;
     public const ACTIVITY_TYPE_EMAIL = 4;
@@ -430,7 +431,7 @@ class Bx24Component extends Component
             ],
             'subject' => $ticketActivity['SUBJECT'],
             'text' => $ticketActivity['DESCRIPTION'],
-            'date' => $ticketActivity['CREATED'],
+            'date' => date(static::DATE_TIME_FORMAT, strtotime($ticketActivity['CREATED'])),
             'active' => $ticketActivity['COMPLETED'] == self::NOT_COMPLETED,
             'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS'],
         ];
@@ -639,7 +640,7 @@ class Bx24Component extends Component
     {
         return [
             'from' => $from,
-            'date' => date(DATE_ATOM),
+            'date' => date(static::DATE_TIME_FORMAT),
             'text' => $text,
             'theme' => $theme,
             'attachment' => $attachment
@@ -677,8 +678,8 @@ class Bx24Component extends Component
             'SUBJECT' => "{$subject} {$source['SUBJECT']}",
             'DESCRIPTION' => $text,
             'RESPONSIBLE_ID' => $currentUser['ID'],
-            'START_TIME' => date(DATE_ATOM),
-            'END_TIME' => date(DATE_ATOM),
+            'START_TIME' => date(static::DATE_TIME_FORMAT),
+            'END_TIME' => date(static::DATE_TIME_FORMAT),
             'COMPLETED' => static::COMPLETED,
             'DIRECTION' => static::OUTCOMMING,
             'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS'])
@@ -796,7 +797,7 @@ class Bx24Component extends Component
             $origName = $file->getClientFileName();
             $parts = explode(".", $origName);
             $ext = array_pop($parts);
-            $fileName = mb_substr(md5($origName . date(DATE_ATOM) . $userID), -16) . '.' . $ext;
+            $fileName = mb_substr(md5($origName . date(static::DATE_TIME_FORMAT) . $userID), -16) . '.' . $ext;
             $subFolder = date('Ymd') . bin2hex(random_bytes(6));
             $folder = $baseFolder . DS . $subFolder . DS;
             if (!file_exists($folder)) {

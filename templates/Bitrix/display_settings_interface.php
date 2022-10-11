@@ -63,12 +63,16 @@
                         <thead><tr>
                             <th>{{ i18n.Name }}</th>
                             <th>{{ i18n.Active }}</th>
+                            <th>{{ i18n.StartStatus }}</th>
+                            <th>{{ i18n.FinalStatus }}</th>
                             <th>{{ i18n.Action }}</th>
                         </tr></thead>
                         <tbody>
                             <tr v-for="(status, index) in statuses" :key="index">
                                 <td>{{ status.name }}</td>
                                 <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
+                                <td>{{ status.mark == 1 ? i18n.Yes : i18n.No }}</td>
+                                <td>{{ status.mark == 2 ? i18n.Yes : i18n.No }}</td>
                                 <td>
                                     <button 
                                         type="button" 
@@ -90,6 +94,12 @@
                             id="status_active"
                             v-bind:class="{btn: true, 'btn-primary': currentStatus.active}" 
                             v-model="currentStatus.active"/>
+                        
+                        <label for="started" class="ml-1">{{ i18n.StartStatus }}</label>
+                        <input id="started" type="checkbox" :checked="currentStatus.mark==1" @change="markStatus(0, 1)" class="btn btn-primary">
+
+                        <label for="final" class="ml-1">{{ i18n.FinalStatus }}</label>
+                        <input type="checkbox" :checked="currentStatus.mark==2" @change="markStatus(0, 2)" class="btn btn-primary">
 
                         <button 
                             type="button" 
@@ -163,6 +173,7 @@
             name: '',
             active: 1,
             member_id: "<?=$required['member_id'];?>",
+            mark: 0
         },
         currentCategory: {
             id: 0,
@@ -182,6 +193,8 @@
             'Action' => __('Action'),
             'Yes' => __('Yes'),
             'No' => __('No'),
+            'StartStatus' => __('Start'),
+            'FinalStatus' => __('Final'),
         ]);?>,
     };
 </script>
@@ -255,18 +268,32 @@ const statuses = new Vue({
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(parameters)
             }).then(async result => {
-                const stored = await result.json();
-                if (this.currentStatus.id < 1)
-                {
-                    this.statuses.push(stored);
-                } else {
-                    this.statuses[this.currentStatus.index] = stored;
-                }
-                if (stored.errors.length > 0) {
-                    console.error("An error occured", stored.errors);
-                }
                 this.create();
+                const stored = await result.json();
+                console.log(this.statuses, stored);
+                for (const key in stored) {
+                    if (Object.hasOwnProperty.call(stored, key)) {
+                        const status = stored[key];
+                        if (Object.hasOwnProperty(this.statuses, key))
+                        {
+                            this.statuses[key].id = status.id;
+                            this.statuses[key].name = status.name;
+                            this.statuses[key].active = status.active;
+                            this.statuses[key].mark = status.mark;
+                        } else {
+                            this.statuses[key] = status;
+                        }
+                    }
+                }
             });
+        },
+        markStatus: function (index, mark){
+            if (status == 0) {
+                this.currentStatus.mark = this.currentStatus.mark == mark ? 0 : mark;
+            } else {
+                this.statuses[index].mark = mark == this.statuses[index].mark ? 0 : mark;
+            }
+            console.debug("Status #", index, " toogle mark", mark);
         },
         edit: function (index)
         {
@@ -275,6 +302,7 @@ const statuses = new Vue({
             this.currentStatus.name = selected.name;
             this.currentStatus.active = selected.active;
             this.currentStatus.index = index;
+            this.currentStatus.mark = selected.mark;
         },
         create: function()
         {
@@ -283,6 +311,8 @@ const statuses = new Vue({
                 name: "",
                 active: 1,
                 member_id: this.memberId,
+                mark: 0,
+                index: 0
             };
         }
     }
