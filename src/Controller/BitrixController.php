@@ -182,12 +182,21 @@ class BitrixController extends AppController
         $data = $this->request->getParsedBody();
         
         if (isset($data['ticket'])) {
+            $oldTicket = $this->Ticket->get($data['ticket']['id']);
+            $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
                 (int)$data['ticket']['status_id'],
                 (int)$data['ticket']['category_id'],
                 $this->memberId
             );
+            $status = $this->Statuses->get($data['ticket']['status_id']);
+            if ($status->mark != $oldMark)
+            {
+                if ($oldMark == 2) {
+                    
+                }
+            }
             return new Response(['body' => json_encode($ticket)]);
         } elseif (isset($data['fetch_messages'])) {
             //$ticket = $this->Tickets->get((int)$data['ticket_id']);

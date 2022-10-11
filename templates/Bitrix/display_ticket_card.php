@@ -137,7 +137,7 @@
             'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
             'CRM_EMAIL' => __('E-mail'),
             'VOXIMPLANT_CALL' => __('Phone call'),
-        ]);?>,
+        ]);?>, 
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
 </script>
