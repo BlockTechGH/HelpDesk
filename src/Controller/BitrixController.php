@@ -96,6 +96,14 @@ class BitrixController extends AppController
 
         if ($action == 'displaySettingsInterface') 
         {
+            $statisticFor = $this->request->getQuery('stat');
+            if($statisticFor)
+            {
+                if ($statisticFor === 'tickets')
+                {
+                    return $this->selectTicketStatistics();
+                }
+            }
             $this->options = $this->Options->getSettingsFor($this->memberId);
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             $this->categories = [];
@@ -352,5 +360,20 @@ class BitrixController extends AppController
             ],
             'result' => $messageObj
         ]);
+    }
+
+    private function selectTicketStatistics()
+    {
+        $tickets = $this->Tickets->getTicketsFor($this->memberId);
+        $ticketActivityIDs = array_column($tickets, 'action_id');
+        $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
+        foreach($extendInformation as $i => $attributes)
+        {
+            $tickets[$i]['responsible'] = $attributes['responsible'];
+            $tickets[$i]['client'] = $attributes['client'];
+            $tickets[$i]['name'] = $attributes['subject'];
+            $tickets[$i]['id'] = $attributes['id'];
+        }
+        return new Response(['body' => json_encode($tickets)]);
     }
 }

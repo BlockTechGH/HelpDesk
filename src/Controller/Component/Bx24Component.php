@@ -248,7 +248,7 @@ class Bx24Component extends Component
                 'context' => $response
             ]);
         }
-        return count($response['result']) ? $response['result'][0] : null;
+        return count($response['result']) && !is_array($id) ? $response['result'][0] : $response['result'];
     }
 
     public function getTicketSubject(int $ticketId)
@@ -389,7 +389,25 @@ class Bx24Component extends Component
 
     public function getTicketAttributes($ticketId)
     {
-        $ticketActivity = $this->getActivity($ticketId);
+        $result = [];
+        $activities = $this->getActivity($ticketId);
+        if (is_array($ticketId)) {
+            foreach($activities as $ticketActivity)
+            {
+                $record = $this->getOneTicketAttributes($ticketActivity);
+                if (!$record) {
+                    continue;
+                }
+                $result[] = $record;
+            }
+        } else {
+            $result = $this->getOneTicketAttributes($activities);
+        }
+        return $result;
+    }
+
+    public function getOneTicketAttributes($ticketActivity)
+    {
         if(!$ticketActivity)
         {
             $this->bx24Logger->debug(__FUNCTION__ . ' - ticket/source activity not found');
@@ -404,7 +422,7 @@ class Bx24Component extends Component
         }
 
         return [
-            'id' => intval($ticketId),
+            'id' => intval($ticketActivity['ID']),
             'responsible' => [
                 'id' => intval($responsibleContacts['ID']),
                 'abr' => $this->makeNameAbbreviature($responsibleContacts),

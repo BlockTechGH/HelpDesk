@@ -2,8 +2,15 @@
 <div id="setting_container" class="row mt-3">
     <div class="col-2">
         <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
-            <button class="nav-link active" data-toggle="tab" type="button" role="tab" 
+            <button class="nav-link active" data-toggle="tab" type="button" role="tab"
                 aria-selected="true"
+                id="tickets-tab"
+                data-target="#tickets"
+                aria-controls="tickets"
+            >
+                <?=__('Tickets');?>
+            </button>
+            <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                 id="sources-tab" 
                 data-target="#sources" 
                 aria-controls="sources"
@@ -21,7 +28,38 @@
     </div>
     <div class="col-10">
         <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="sources" role="tabpanel" aria-labelledby="sources-tab">
+            <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
+                <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
+                    <div class="form-group">
+                        <label for="fromDate"><?=__('Start of diapozone');?></label>
+                        <input type="date" id="fromDate" name="from" value="" placeholder="m/d/Y">
+                    </div>
+                    <div class="form-group">
+                        <label for="toDate"><?=__('End of diapozone');?></label>
+                        <input type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
+                    </div>
+                </form>
+                <table id="ticketsGrid" 
+                    class="table table-condensed table-hover table-striped" 
+                    data-toggle="bootgrid" 
+                    data-ajax="true" 
+                    data-url="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain, 'stat' => 'tickets']]) ?>">
+                    <thead>
+                        <th data-column-id="name"><?=__('Name');?></th>
+                        <th data-column-id="id" 
+                            data-formatter="ticketId" 
+                            data-identifier="true">
+                            <?=__('ID');?>
+                        </th>
+                        <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
+                        <th data-column-id="status_id" data-formatter="status"><?=__('Status');?></th>
+                        <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
+                        <th data-column-id="created" data-order="desc"><?=__('Created');?></th>
+                        <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
+                    </thead>
+                </table>
+            </div>
+            <div class="tab-pane fade show" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <div class="form-group">
                         <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
@@ -317,4 +355,98 @@ const statuses = new Vue({
         }
     }
 });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.js"></script>
+<script>
+    $('#ticketsGrid').bootgrid({
+        ajax: true,
+        'post': function ()
+        {
+            return window.data.required;
+        },
+        formatters: {
+            'person': function(column, row)
+            {
+                return row[column.id].name;
+            },
+            'status': function(column, row)
+            {
+                return window.data.statuses[row.status_id].name;
+            },
+            'ticketId': function(column, row)
+            {
+                return row.id;
+            },
+            "commands": function(column, row)
+            {
+                return "<button type=\"button\" class=\"btn btn-xs btn-default command-edit\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-pencil\"></span></button> " + 
+                    "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
+            }
+        },
+        url: '<?=$this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain, 'stat' => 'tickets']]);?>',
+    }).on("load.rs.jquery.bootgrid", function (e)
+    {
+        if (typeof(Storage) !== "undefined") {
+            sessionStorage.setItem("ticket_entity_filter", $('.entity-filter option:selected').val());
+            if (
+                sessionStorage.getItem("ticket_list_navigated_back") != "yes"
+                && sessionStorage.getItem("ticket_change_page_after_search") != "yes"
+                && sessionStorage.getItem("ticket_change_page_after_row_count") != "yes"
+            ) {
+                sessionStorage.setItem("ticket_current_page", grid.bootgrid("getCurrentPage"));
+                sessionStorage.setItem("ticket_search_phrase", grid.bootgrid("getSearchPhrase"));
+                sessionStorage.setItem("ticket_row_count", grid.bootgrid("getRowCount"));
+            }
+        }
+    }).on("loaded.rs.jquery.bootgrid", function()
+    {
+        if (typeof(Storage) !== "undefined") {
+            if (
+                sessionStorage.getItem("ticket_change_page_after_search") == "yes"
+                || sessionStorage.getItem("ticket_change_page_after_row_count") == "yes"
+            ) {
+                if (sessionStorage.getItem("ticket_row_count") && !(sessionStorage.getItem("ticket_change_page_after_row_count") == "yes")) {
+                    sessionStorage.setItem("tticket_change_page_after_row_count", "yes");
+                    if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
+                        $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
+                    } else {
+                        grid.bootgrid("reload");
+                    }
+
+                } else if (sessionStorage.getItem("ticket_current_page")) {
+                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                    sessionStorage.setItem("ticket_change_page_after_row_count", "");
+                }
+                sessionStorage.setItem("ticket_change_page_after_search", "");
+            } else if (sessionStorage.getItem("ticket_change_page_after_row_count") == "yes") {
+                if (sessionStorage.getItem("ticket_current_page")) {
+                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                }
+                sessionStorage.setItem("ticket_change_page_after_row_count", "");
+            } else if (sessionStorage.getItem("ticket_list_navigated_back") == "yes") {
+                $('.entity-filter option[value="' + sessionStorage.getItem("ticket_entity_filter") + '"]').prop('selected', true);
+                if (sessionStorage.getItem("ticket_search_phrase")) {
+                    grid.bootgrid("search", sessionStorage.getItem("ticket_search_phrase"));
+                    sessionStorage.setItem("ticket_change_page_after_search", "yes");
+                } else if (sessionStorage.getItem("ticket_row_count")) {
+                    if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
+                        $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
+                    } else {
+                        grid.bootgrid("reload");
+                    }
+                    sessionStorage.setItem("ticket_change_page_after_row_count", "yes");
+                } else if (sessionStorage.getItem("ticket_current_page")) {
+                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                }
+                sessionStorage.setItem("ticket_list_navigated_back", "");
+            }
+        }
+
+        grid.find(".command-edit").on("click", function(e, columns, row)
+        {
+        }).end().find(".command-delete").on("click", function(e)
+        {
+        });
+    });
 </script>

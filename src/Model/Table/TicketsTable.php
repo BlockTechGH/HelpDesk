@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
+use Cake\I18n\FrozenDate;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
@@ -135,10 +136,35 @@ class TicketsTable extends Table
         return $record ? $record['id'] : 0;
     }
 
-    public function getTicketsFor(string $memberId)
+    public function getTicketsFor(
+        string $memberId,
+        array $filter = [], // custom filter
+        array $sort = ['created' => 'desc'],
+        // Support diapazone of date
+        string $from = null,
+        string $to = null
+    )
     {
-        return $this->find()
-            ->where(['member_id' => $memberId])
+        $where = $filter;
+        $where['member_id'] = $memberId;
+        $query = $this->find();
+        foreach($sort as $field => $ord) {
+            if ($ord == 'desk') {
+                $query->orderDesc($field);
+            } else {
+                $query->orderAsc($field);
+            }
+        }
+        if ($from) {
+            $from = new FrozenDate($from);
+            $where['created >='] = $from;
+        }
+        if ($to) {
+            $to = new FrozenDate($to);
+            $where['created <='] = $to;
+        }
+        $query->where($where);
+        return $query
             ->all()
             ->toList();
     }
