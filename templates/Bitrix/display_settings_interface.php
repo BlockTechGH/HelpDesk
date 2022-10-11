@@ -29,7 +29,7 @@
     <div class="col-10">
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
-                <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
+                <form method="POST" action="<?= $ajax; ?>">
                     <div class="form-group">
                         <label for="fromDate"><?=__('Start of diapozone');?></label>
                         <input type="date" id="fromDate" name="from" value="" placeholder="m/d/Y">
@@ -38,12 +38,17 @@
                         <label for="toDate"><?=__('End of diapozone');?></label>
                         <input type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
                     </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary">
+                            <?=__('Filter by diapazone');?>
+                        </button>
+                    </div>
                 </form>
                 <table id="ticketsGrid" 
                     class="table table-condensed table-hover table-striped" 
                     data-toggle="bootgrid" 
                     data-ajax="true" 
-                    data-url="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain, 'stat' => 'tickets']]) ?>">
+                    data-url="<?= $ajax . '&' . http_build_query(['stat' => 'tickets']); ?>">
                     <thead>
                         <th data-column-id="name"><?=__('Name');?></th>
                         <th data-column-id="id" 
@@ -57,6 +62,26 @@
                         <th data-column-id="created" data-order="desc"><?=__('Created');?></th>
                         <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
                     </thead>
+                    <tbody>
+                        <?php foreach($tickets as $n => $ticket): ?>
+                        <tr>
+                            <td><?=$ticket['id'];?></td>
+                            <td><?=$ticket['name'];?></td>
+                            <td><?=$ticket['responsible'] ? $ticket['responsible']['title'] : "";?></td>
+                            <td><?=$statuses[$ticket['status_id']]['name'];?></td>
+                            <td><?=$ticket['client'] ? $ticket['client']['title'] : "";?></td>
+                            <td><?=$ticket['created']->format('m/d/Y h:i a');?></td>
+                            <td class="btn-group">
+                                <button type="button" class="btn btn-xs btn-default command-edit" data-row-id="<?=$ticket['id'];?>">
+                                    <span class="fa fa-pencil"></span>
+                                </button>
+                                <button type="button" class="btn btn-xs btn-default command-delete" data-row-id="<?=$ticket['id'];?>">
+                                    <span class="fa fa-trash-o"></span>
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
                 </table>
             </div>
             <div class="tab-pane fade show" id="sources" role="tabpanel" aria-labelledby="sources-tab">
@@ -360,7 +385,6 @@ const statuses = new Vue({
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.js"></script>
 <script>
     $('#ticketsGrid').bootgrid({
-        ajax: true,
         'post': function ()
         {
             return window.data.required;
@@ -368,7 +392,7 @@ const statuses = new Vue({
         formatters: {
             'person': function(column, row)
             {
-                return row[column.id].name;
+                return row[column.id].title;
             },
             'status': function(column, row)
             {
@@ -384,7 +408,8 @@ const statuses = new Vue({
                     "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
             }
         },
-        url: '<?=$this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain, 'stat' => 'tickets']]);?>',
+        // ajax: true,
+        // url: '<?=$ajax . '&' . http_build_query(['stat' => 'tickets']);?>',
     }).on("load.rs.jquery.bootgrid", function (e)
     {
         if (typeof(Storage) !== "undefined") {

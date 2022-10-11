@@ -96,21 +96,24 @@ class BitrixController extends AppController
 
         if ($action == 'displaySettingsInterface') 
         {
+            $tickets = $this->selectTicketStatistics();
             $statisticFor = $this->request->getQuery('stat');
             if($statisticFor)
             {
                 if ($statisticFor === 'tickets')
                 {
-                    return $this->selectTicketStatistics();
+                    return new Response(['body' => json_encode($tickets)]);
                 }
             }
             $this->options = $this->Options->getSettingsFor($this->memberId);
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             $this->categories = [];
+            
 
             $this->set('options', $this->options);
             $this->set('statuses', $this->statuses);
             $this->set('categories', $this->categories);
+            $this->set('tickets', $tickets);
 
             if (isset($this->placement['activity_id'])) {
                 $currentUser = $this->Bx24->getCurrentUser();
@@ -364,16 +367,28 @@ class BitrixController extends AppController
 
     private function selectTicketStatistics()
     {
-        $tickets = $this->Tickets->getTicketsFor($this->memberId);
+        $fromDate = $this->request->getQuery('from') ?? $this->request->getData('from');
+        $toDate = $this->request->getQuery('to') ?? $this->request->getData('to');
+
+        $tickets = $this->Tickets->getTicketsFor(
+            $this->memberId,
+            // Custom filter 
+            [], 
+            // Order of tickets
+            ['created' => 'desc'],
+            // Date diapazone 
+            $fromDate, 
+            $toDate
+        );
         $ticketActivityIDs = array_column($tickets, 'action_id');
         $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
         foreach($extendInformation as $i => $attributes)
         {
             $tickets[$i]['responsible'] = $attributes['responsible'];
-            $tickets[$i]['client'] = $attributes['client'];
+            $tickets[$i]['client'] = $attributes['customer'];
             $tickets[$i]['name'] = $attributes['subject'];
             $tickets[$i]['id'] = $attributes['id'];
         }
-        return new Response(['body' => json_encode($tickets)]);
+        return $tickets;
     }
 }
