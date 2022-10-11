@@ -79,6 +79,7 @@ class BitrixController extends AppController
         $action = $this->request->getParam('action');
         $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
         $answer = $this->request->getData('answer');
+        $activity_id = $this->request->getData('activity_id');
 
         // hidden fields from app installation
         $this->set('required', [
@@ -106,6 +107,9 @@ class BitrixController extends AppController
             if (isset($this->placement['activity_id'])) {
                 $currentUser = $this->Bx24->getCurrentUser();
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+                if ($this->ticket) {
+                    $this->ticket->created = $this->ticket->created->format(Bx24Component::DATE_TIME_FORMAT);
+                }
                 $this->set('ticket', $this->ticket);
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
@@ -126,6 +130,12 @@ class BitrixController extends AppController
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
                         return $this->sendFeedback($answer, $currentUser);
+                    }
+                    if(!!$activity_id)
+                    {
+                        $set = $this->request->getData('set', false);
+                        $this->Bx24->setCompleteStatus($activity_id, !!$set);
+                        return new Response(['body' => json_encode(['status' => 'OK'])]);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
@@ -194,7 +204,9 @@ class BitrixController extends AppController
             if ($status->mark != $oldMark)
             {
                 if ($oldMark == 2) {
-                    
+                    $this->Bx24->setCompleteStatus($ticket->action_id, 1);
+                } elseif ($status->mark == 2) {
+                    $this->Bx24->setCompleteStatus($ticket->action_id, 2);
                 }
             }
             return new Response(['body' => json_encode($ticket)]);

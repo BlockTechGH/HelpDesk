@@ -4,8 +4,8 @@
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
     >
         <div class="row h-100" role="tabpanel" aria-labelledby="ticket-tab">
-            <div class="col-3 border">
-                <div class="form-group border p-2">
+            <div class="col-3 border border-right-0">
+                <div class="form-group p-2 mt-2">
                     <p class="form-input">
                         <span class="border rounded-circle p-2">{{ ticketAttributes.customer.abr }}</span>
                         {{ ticketAttributes.customer.title }}
@@ -13,7 +13,7 @@
                     <p class="form-input">{{ ticket.source_type_id == 'CRM_EMAIL' ? ticketAttributes.customer.email : ticketAttributes.customer.phone }}</p>
                 </div>
 
-                <div class="form-group border p-2">
+                <div class="form-group p-2">
                     <label class="" for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <span class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
@@ -21,7 +21,7 @@
                     </div>
                 </div>
 
-                <div class="form-group border p-2">
+                <div class="form-group p-2">
                     <label for="ticket_status">{{ i18n.Status }}</label>
                     <select id="ticket_status" name="status" class="form-control ml-2" v-on:change="setStatus">
                         <option 
@@ -83,8 +83,8 @@
                     </div>
                 </div>
 
-                <div class="row pt-4">
-                    <div class="border m-4">
+                <div class="container-fluid pt-4">
+                    <div class="border rounded p-1">
                         <?php if(!!$source): ?>
                             <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
                             <div class=""><?=$source['text'];?></div>
@@ -108,7 +108,21 @@
                     </div>
                 </div>
             </div>
-        </div> 
+        </div>
+
+        <footer class="d-flex justify-content-end pt-4">
+            <div class="form-button">
+                <button
+                    type="button"
+                    @click="completeToggle"
+                    class="btn btn-secondary"
+                    :disabled="awaiting"
+                >
+                    {{ ticketAttributes.active ? i18n.Close : i18n.Reopen }}
+                    <span role="status" aria-hidden="true" class="spinner-border spinner-border-sm ml-2" v-if="awaiting"></span>
+                </button>
+            </div>
+        </footer>
     </form>
 </div>
 
@@ -137,7 +151,11 @@
             'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
             'CRM_EMAIL' => __('E-mail'),
             'VOXIMPLANT_CALL' => __('Phone call'),
-        ]);?>, 
+            'Close' => __('Close'),
+            'Reopen' => __('Reopen'),
+            'Wait' => __('Please wait'),
+        ]);?>,
+        awaiting: false,
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
 </script>
@@ -212,6 +230,31 @@
             },
             upload: function() {
             //    this.answer.attachment = this.$refs.attachment.files[0];
+            },
+            completeToggle: function()
+            {
+                this.awaiting = true;
+                const parameters = Object.assign(
+                    {
+                        activity_id: this.ticket.action_id,
+                        set: !this.ticketAttributes.active
+                    },
+                    this.required
+                );
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    this.awaiting = false;
+                    try {
+                        await result.json();
+                        this.ticketAttributes.active = !this.ticketAttributes.active;
+                    } catch (e) {
+                        content = await result.text();
+                        console.log("Error occuried: " + content);
+                    }
+                });
             }
         }
     });

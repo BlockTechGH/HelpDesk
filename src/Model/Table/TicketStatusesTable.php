@@ -92,6 +92,7 @@ class TicketStatusesTable extends Table
             ->where([
                 'member_id' => $memberId,
             ])
+            ->all()
             ->toList();
         $list = [];
         foreach($rawList as $status)

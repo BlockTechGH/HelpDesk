@@ -83,6 +83,7 @@ class HelpdeskOptionsTable extends Table
             ->where([
                 'member_id' => $member_id
             ])
+            ->all()
             ->toList();
         $options = [
             'sources_on_phone_calls' => false, 
