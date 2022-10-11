@@ -159,13 +159,19 @@ class BitrixController extends AppController
             );
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['ticket_status'])) {
-            $status = $this->Statuses->editStatus(
+            $mark = (int)$data['ticket_status']['mark'];
+            if ($mark > 0) {
+                $this->Statuses->flushMarks($mark);
+            }
+            $this->Statuses->editStatus(
                 $data['ticket_status']['id'], 
                 $data['ticket_status']['name'], 
                 $this->memberId,
-                (bool)$data['ticket_status']['active']
+                (bool)$data['ticket_status']['active'],
+                $mark
             );
-            return new Response(['body' => json_encode($status)]);
+            $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
+            return new Response(['body' => json_encode($this->statuses)]);
         }           
     }
 
