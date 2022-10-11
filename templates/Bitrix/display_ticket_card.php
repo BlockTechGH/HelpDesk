@@ -10,7 +10,8 @@
                         <span class="border rounded-circle p-2">{{ ticketAttributes.customer.abr }}</span>
                         {{ ticketAttributes.customer.title }}
                     </p>
-                    <p class="form-input">{{ ticket.source_type_id == 'CRM_EMAIL' ? ticketAttributes.customer.email : ticketAttributes.customer.phone }}</p>
+                    <p>{{ ticketAttributes.customer.phone }}</p>
+                    <p>{{ ticketAttributes.customer.email }}</p>
                 </div>
 
                 <div class="form-group p-2">
