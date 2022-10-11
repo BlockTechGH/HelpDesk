@@ -135,7 +135,10 @@ class BitrixController extends AppController
                     {
                         $set = $this->request->getData('set', false);
                         $this->Bx24->setCompleteStatus($activity_id, !!$set);
-                        return new Response(['body' => json_encode(['status' => 'OK'])]);
+                        $ticket = $this->Tickets->getByActivityIdAndMemberId($activity_id, $this->memberId)->toArray();
+                        $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId, !!$set ? 1 : 2);
+                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
+                        return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);

@@ -251,7 +251,8 @@
                 }).then(async result => {
                     this.awaiting = false;
                     try {
-                        await result.json();
+                        const response = await result.json();
+                        this.ticket.status_id = response.status;
                         this.ticketAttributes.active = !this.ticketAttributes.active;
                     } catch (e) {
                         content = await result.text();

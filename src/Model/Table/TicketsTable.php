@@ -143,7 +143,7 @@ class TicketsTable extends Table
             ->toList();
     }
 
-    public function editTicket(int $id, int $statusId, int $categoryId, string $memberId)
+    public function editTicket(int $id, int $statusId, $categoryId, string $memberId)
     {
         $insert = [
             'member_id' => $memberId,
