@@ -248,7 +248,17 @@ class Bx24Component extends Component
                 'context' => $response
             ]);
         }
-        return count($response['result']) && !is_array($id) ? $response['result'][0] : $response['result'];
+        $list = count($response['result']) && !is_array($id) ? $response['result'][0] : $response['result'];
+        if(is_array($id))
+        {
+            $result = [];
+            foreach($list as $activity)
+            {
+                $result[$activity['ID']] = $activity;
+            }
+            $list = $result;
+        }
+        return $list;
     }
 
     public function getTicketSubject(int $ticketId)
@@ -392,14 +402,24 @@ class Bx24Component extends Component
     {
         $result = [];
         $activities = $this->getActivity($ticketId);
+        $this->bx24Logger->debug(__FUNCTION__, [
+            'id' => $ticketId,
+            'activity' => $activities
+        ]);
         if (is_array($ticketId)) {
-            foreach($activities as $ticketActivity)
+            foreach($activities as $id => $activity)
             {
-                $record = $this->getOneTicketAttributes($ticketActivity);
-                if (!$record) {
+                if (!$activity)
+                {
+                    $result[$id] = null;
                     continue;
                 }
-                $result[] = $record;
+                $record = $this->getOneTicketAttributes($activity);
+                if (!$record) {
+                    $result[$id] = null;
+                    continue;
+                }
+                $result[$id] = $record;
             }
         } else {
             $result = $this->getOneTicketAttributes($activities);

@@ -35,15 +35,9 @@
                         <span class="ml-1"> - </span>
                         <input class="ml-1" type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
                     </div>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-secondary" id="refresh">
-                            <?=__('Refresh table');?>
-                        </button>
-                    </div>
                 </form>
                 <table id="ticketsGrid" 
-                    class="table table-condensed table-hover table-striped" 
-                    data-toggle="bootgrid" 
+                    class="table table-condensed table-hover table-striped"
                 >
                     <thead>
                         <th data-column-id="name"><?=__('Name');?></th>
@@ -53,13 +47,18 @@
                         >
                             <?=__('ID');?>
                         </th>
-                        <th data-column-id="responsible" ><?=__('Responsible person');?></th>
+                        <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
                         <th data-column-id="status_id" data-sortable="true"><?=__('Status');?></th>
-                        <th data-column-id="client" ><?=__('Client');?></th>
+                        <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                         <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
                     </thead>
                 </table>
+                <div class="btn-group mt-4">
+                    <button type="button" class="btn btn-secondary" id="refresh">
+                        <?=__('Refresh table');?>
+                    </button>
+                </div>
             </div>
             <div class="tab-pane fade show" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
@@ -367,7 +366,10 @@ $(document).ready(function () {
         var grid = $('#ticketsGrid').bootgrid({
             rowCount: [10, 25, 50],
             formatters: {
-            //    'person': (column, row) => row[column.id].title,
+                'person': (column, row) => {
+                    console.log(row.id, column.id, row[column.id]);
+                    return row[column.id]?.title;
+                },
             //    'status': (column, row) => window.data.statuses[row.status_id].name,
             //    'ticketId': (column, row) => row.id,
                 "commands": function(column, row)
@@ -377,11 +379,15 @@ $(document).ready(function () {
                 }
             },
             ajax: true,
-            url: '<?='/tickets?' . http_build_query(['stat' => 'tickets', 'DOMAIN' => $domain]);?>',
-            requestHandler: function (request)
+            url: '<?='/tickets?' . http_build_query(['DOMAIN' => $domain]);?>',
+            'post': function (request)
             {
                 var auth = BX24.getAuth();
-                request['memeberId'] = auth.member_id;
+                if (typeof(request) == "undefined")
+                {
+                    request = {};
+                }
+                request['memberId'] = auth.member_id;
                 request['entityFilter'] = $('.entity-filter option:selected').val();
                 request['from'] = $('#fromDate').val();
                 request['to'] = $('#toDate').val();
@@ -453,7 +459,7 @@ $(document).ready(function () {
             }).end().find(".command-delete").on("click", function(e)
             {
             });
-        }).bootgrid("reload");
+        });
         $("#refresh").on('click', function(){
             console.log("Table start refresh");
             grid.bootgrid("reload");
