@@ -62,7 +62,7 @@ class TicketController extends AppController
         $this->Tickets = $this->getTableLocator()->get('Tickets');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_rest.log';
-        $this->TicketControllerLogger = new Logger('BitrixController');
+        $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
     }
 
