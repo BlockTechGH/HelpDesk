@@ -96,15 +96,6 @@ class BitrixController extends AppController
 
         if ($action == 'displaySettingsInterface') 
         {
-            $tickets = $this->selectTicketStatistics();
-            $statisticFor = $this->request->getQuery('stat');
-            if($statisticFor)
-            {
-                if ($statisticFor === 'tickets')
-                {
-                    return new Response(['body' => json_encode($tickets)]);
-                }
-            }
             $this->options = $this->Options->getSettingsFor($this->memberId);
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             $this->categories = [];
@@ -113,7 +104,7 @@ class BitrixController extends AppController
             $this->set('options', $this->options);
             $this->set('statuses', $this->statuses);
             $this->set('categories', $this->categories);
-            $this->set('tickets', $tickets['rows']);
+            $this->set('tickets', []);
 
             if (isset($this->placement['activity_id'])) {
                 $currentUser = $this->Bx24->getCurrentUser();
@@ -363,53 +354,5 @@ class BitrixController extends AppController
             ],
             'result' => $messageObj
         ]);
-    }
-
-    private function selectTicketStatistics()
-    {
-        $current = $this->request->getQuery('current') ?? $this->request->getData('current') ?? 1;
-        $rowCount = $this->request->getQuery('rowCount') ?? $this->request->getData('rowCount') ?? 10;
-        $fromDate = $this->request->getQuery('from') ?? $this->request->getData('from');
-        $toDate = $this->request->getQuery('to') ?? $this->request->getData('to');
-        $searchPhrase = $this->request->getQuery('searchPhrase') ?? $this->request->getData('searchPhrase') ?? "";
-
-        $tickets = $this->Tickets->getTicketsFor(
-            $this->memberId,
-            // Custom filter 
-            [], 
-            // Order of tickets
-            ['created' => 'desc'],
-            // Pagination: [page, count]
-            [$current, $rowCount],
-            // Date diapazone 
-            $fromDate, 
-            $toDate
-        );
-        $ticketActivityIDs = array_column($tickets, 'action_id');
-        $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
-        foreach($extendInformation as $i => $attributes)
-        {
-            if(!$attributes || ($searchPhrase && !mb_strstr($attributes['subject'], $searchPhrase)))
-            {
-                unset($tickets['rows'][$i] );
-                $tickets['total'] = $tickets['total'] - 1;
-                continue;
-            }
-            $tickets['rows'][$i] = array_merge([
-                'id' => $attributes['id'],
-                'name' => $attributes['subject'],
-                'responsible' => $attributes['responsible'],
-                'client' => $attributes['customer'],
-            ], $tickets['rows'][$i]->toArray());
-            $this->BxControllerLogger->debug(__FUNCTION__ . ' - example', [
-                'row' => $tickets['rows'][$i],
-                'attributes' => $attributes,
-            ]);
-            return ['rows' => [], 'rowCount' => $rowCount, 'total' => 0, 'current' => $current];
-        }
-        $tickets['rows'] = array_slice($tickets['rows'], $rowCount);
-        $tickets['rowCount'] = count($tickets['rows']);
-        $this->BxControllerLogger->debug('displaySettingsInterface - ' . __FUNCTION__ . ' - result', $tickets);
-        return $tickets;
     }
 }

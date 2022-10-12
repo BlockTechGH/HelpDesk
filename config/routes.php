@@ -86,6 +86,14 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'crm_activity_handler']
         );
 
+        // Handler for tickets
+        $builder->connect('/tickets', 
+            [
+                'controller' => 'Ticket',
+                'action' => 'collectTickets',
+            ], ['_name' => 'fetch_tickets']
+        );
+
        /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */

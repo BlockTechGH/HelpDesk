@@ -32,10 +32,12 @@
                 <form method="POST" action="<?= $ajax; ?>">
                     <div class="input-group">
                         <input type="date" id="fromDate" name="from" value="" placeholder="m/d/Y">
-                        <span> - </span>
+                        <span class="ml-1"> - </span>
                         <input class="ml-1" type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
-                        <button class="btn btn-primary ml-2">
-                            <?=__('Filter by diapazone');?>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary" id="refresh">
+                            <?=__('Refresh table');?>
                         </button>
                     </div>
                 </form>
@@ -46,15 +48,14 @@
                     <thead>
                         <th data-column-id="name"><?=__('Name');?></th>
                         <th data-column-id="id" 
-                            data-formatter="ticketId" 
                             data-identifier="true"
                             data-sortable="true"
                         >
                             <?=__('ID');?>
                         </th>
-                        <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
-                        <th data-column-id="status_id" data-formatter="status" data-sortable="true"><?=__('Status');?></th>
-                        <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
+                        <th data-column-id="responsible" ><?=__('Responsible person');?></th>
+                        <th data-column-id="status_id" data-sortable="true"><?=__('Status');?></th>
+                        <th data-column-id="client" ><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                         <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
                     </thead>
@@ -358,98 +359,104 @@ const statuses = new Vue({
 });
 </script>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.css" integrity="sha512-CF1ovh2vRt2kC4JJ/Hl7VC7a+tu/NTO8iW+iltdfvIjvsb45t/6NkRNSrOe6HBxCTVplYLHW5GdlbtRLlCUp2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.0/jquery.bootgrid.min.js"></script>
 <script>
-const $ = jQuery;
-$(function () {
-    $('#ticketsGrid').bootgrid({
-        'post': function ()
+$(document).ready(function () {
+    BX24.init(function(){
+        var grid = $('#ticketsGrid').bootgrid({
+            rowCount: [10, 25, 50],
+            formatters: {
+            //    'person': (column, row) => row[column.id].title,
+            //    'status': (column, row) => window.data.statuses[row.status_id].name,
+            //    'ticketId': (column, row) => row.id,
+                "commands": function(column, row)
+                {
+                    return "<button type=\"button\" class=\"btn btn-xs btn-default command-edit\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-pencil\"></span></button> " + 
+                        "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
+                }
+            },
+            ajax: true,
+            url: '<?='/tickets?' . http_build_query(['stat' => 'tickets', 'DOMAIN' => $domain]);?>',
+            requestHandler: function (request)
+            {
+                var auth = BX24.getAuth();
+                request['memeberId'] = auth.member_id;
+                request['entityFilter'] = $('.entity-filter option:selected').val();
+                request['from'] = $('#fromDate').val();
+                request['to'] = $('#toDate').val();
+                request['auth'] = window.data.required;
+                return request;
+            },
+        });
+        grid.on("load.rs.jquery.bootgrid", function (e)
         {
-            return window.data.required;
-        },
-        formatters: {
-            'person': function(column, row)
-            {
-                return row[column.id].title;
-            },
-            'status': function(column, row)
-            {
-                return window.data.statuses[row.status_id].name;
-            },
-            'ticketId': function(column, row)
-            {
-                return row.id;
-            },
-            "commands": function(column, row)
-            {
-                return "<button type=\"button\" class=\"btn btn-xs btn-default command-edit\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-pencil\"></span></button> " + 
-                    "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
+            if (typeof(Storage) !== "undefined") {
+                sessionStorage.setItem("ticket_entity_filter", $('.entity-filter option:selected').val());
+                if (
+                    sessionStorage.getItem("ticket_list_navigated_back") != "yes"
+                    && sessionStorage.getItem("ticket_change_page_after_search") != "yes"
+                    && sessionStorage.getItem("ticket_change_page_after_row_count") != "yes"
+                ) {
+                    sessionStorage.setItem("ticket_current_page", grid.bootgrid("getCurrentPage"));
+                    sessionStorage.setItem("ticket_search_phrase", grid.bootgrid("getSearchPhrase"));
+                    sessionStorage.setItem("ticket_row_count", grid.bootgrid("getRowCount"));
+                }
             }
-        },
-        ajax: true,
-        url: '<?=$ajax . '&' . http_build_query(['stat' => 'tickets']);?>',
-    }).on("load.rs.jquery.bootgrid", function (e)
-    {
-        if (typeof(Storage) !== "undefined") {
-            sessionStorage.setItem("ticket_entity_filter", $('.entity-filter option:selected').val());
-            if (
-                sessionStorage.getItem("ticket_list_navigated_back") != "yes"
-                && sessionStorage.getItem("ticket_change_page_after_search") != "yes"
-                && sessionStorage.getItem("ticket_change_page_after_row_count") != "yes"
-            ) {
-                sessionStorage.setItem("ticket_current_page", grid.bootgrid("getCurrentPage"));
-                sessionStorage.setItem("ticket_search_phrase", grid.bootgrid("getSearchPhrase"));
-                sessionStorage.setItem("ticket_row_count", grid.bootgrid("getRowCount"));
-            }
-        }
-    }).on("loaded.rs.jquery.bootgrid", function()
-    {
-        if (typeof(Storage) !== "undefined") {
-            if (
-                sessionStorage.getItem("ticket_change_page_after_search") == "yes"
-                || sessionStorage.getItem("ticket_change_page_after_row_count") == "yes"
-            ) {
-                if (sessionStorage.getItem("ticket_row_count") && !(sessionStorage.getItem("ticket_change_page_after_row_count") == "yes")) {
-                    sessionStorage.setItem("tticket_change_page_after_row_count", "yes");
-                    if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
-                        $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
-                    } else {
-                        grid.bootgrid("reload");
-                    }
+        }).on("loaded.rs.jquery.bootgrid", function()
+        {
+            if (typeof(Storage) !== "undefined") {
+                if (
+                    sessionStorage.getItem("ticket_change_page_after_search") == "yes"
+                    || sessionStorage.getItem("ticket_change_page_after_row_count") == "yes"
+                ) {
+                    if (sessionStorage.getItem("ticket_row_count") && !(sessionStorage.getItem("ticket_change_page_after_row_count") == "yes")) {
+                        sessionStorage.setItem("tticket_change_page_after_row_count", "yes");
+                        if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
+                            $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
+                        } else {
+                            grid.bootgrid("reload");
+                        }
 
-                } else if (sessionStorage.getItem("ticket_current_page")) {
-                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                    } else if (sessionStorage.getItem("ticket_current_page")) {
+                        $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                        sessionStorage.setItem("ticket_change_page_after_row_count", "");
+                    }
+                    sessionStorage.setItem("ticket_change_page_after_search", "");
+                } else if (sessionStorage.getItem("ticket_change_page_after_row_count") == "yes") {
+                    if (sessionStorage.getItem("ticket_current_page")) {
+                        $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                    }
                     sessionStorage.setItem("ticket_change_page_after_row_count", "");
-                }
-                sessionStorage.setItem("ticket_change_page_after_search", "");
-            } else if (sessionStorage.getItem("ticket_change_page_after_row_count") == "yes") {
-                if (sessionStorage.getItem("ticket_current_page")) {
-                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
-                }
-                sessionStorage.setItem("ticket_change_page_after_row_count", "");
-            } else if (sessionStorage.getItem("ticket_list_navigated_back") == "yes") {
-                $('.entity-filter option[value="' + sessionStorage.getItem("ticket_entity_filter") + '"]').prop('selected', true);
-                if (sessionStorage.getItem("ticket_search_phrase")) {
-                    grid.bootgrid("search", sessionStorage.getItem("ticket_search_phrase"));
-                    sessionStorage.setItem("ticket_change_page_after_search", "yes");
-                } else if (sessionStorage.getItem("ticket_row_count")) {
-                    if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
-                        $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
-                    } else {
-                        grid.bootgrid("reload");
+                } else if (sessionStorage.getItem("ticket_list_navigated_back") == "yes") {
+                    $('.entity-filter option[value="' + sessionStorage.getItem("ticket_entity_filter") + '"]').prop('selected', true);
+                    if (sessionStorage.getItem("ticket_search_phrase")) {
+                        grid.bootgrid("search", sessionStorage.getItem("ticket_search_phrase"));
+                        sessionStorage.setItem("ticket_change_page_after_search", "yes");
+                    } else if (sessionStorage.getItem("ticket_row_count")) {
+                        if (sessionStorage.getItem("ticket_row_count") != grid.bootgrid("getRowCount")) {
+                            $("a[data-action='" + sessionStorage.getItem("ticket_row_count") + "'].dropdown-item-button").click();
+                        } else {
+                            grid.bootgrid("reload");
+                        }
+                        sessionStorage.setItem("ticket_change_page_after_row_count", "yes");
+                    } else if (sessionStorage.getItem("ticket_current_page")) {
+                        $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
                     }
-                    sessionStorage.setItem("ticket_change_page_after_row_count", "yes");
-                } else if (sessionStorage.getItem("ticket_current_page")) {
-                    $("a[data-page='" + sessionStorage.getItem("ticket_current_page") + "']").click();
+                    sessionStorage.setItem("ticket_list_navigated_back", "");
                 }
-                sessionStorage.setItem("ticket_list_navigated_back", "");
             }
-        }
 
-        grid.find(".command-edit").on("click", function(e, columns, row)
-        {
-        }).end().find(".command-delete").on("click", function(e)
-        {
+            grid.find(".command-edit").on("click", function(e, columns, row)
+            {
+
+            }).end().find(".command-delete").on("click", function(e)
+            {
+            });
+        }).bootgrid("reload");
+        $("#refresh").on('click', function(){
+            console.log("Table start refresh");
+            grid.bootgrid("reload");
         });
     });
 });
