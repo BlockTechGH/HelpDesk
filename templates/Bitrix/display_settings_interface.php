@@ -30,16 +30,11 @@
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
                 <form method="POST" action="<?= $ajax; ?>">
-                    <div class="form-group">
-                        <label for="fromDate"><?=__('Start of diapozone');?></label>
+                    <div class="input-group">
                         <input type="date" id="fromDate" name="from" value="" placeholder="m/d/Y">
-                    </div>
-                    <div class="form-group">
-                        <label for="toDate"><?=__('End of diapozone');?></label>
-                        <input type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-primary">
+                        <span> - </span>
+                        <input class="ml-1" type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
+                        <button class="btn btn-primary ml-2">
                             <?=__('Filter by diapazone');?>
                         </button>
                     </div>
@@ -47,41 +42,22 @@
                 <table id="ticketsGrid" 
                     class="table table-condensed table-hover table-striped" 
                     data-toggle="bootgrid" 
-                    data-ajax="true" 
-                    data-url="<?= $ajax . '&' . http_build_query(['stat' => 'tickets']); ?>">
+                >
                     <thead>
                         <th data-column-id="name"><?=__('Name');?></th>
                         <th data-column-id="id" 
                             data-formatter="ticketId" 
-                            data-identifier="true">
+                            data-identifier="true"
+                            data-sortable="true"
+                        >
                             <?=__('ID');?>
                         </th>
                         <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
-                        <th data-column-id="status_id" data-formatter="status"><?=__('Status');?></th>
+                        <th data-column-id="status_id" data-formatter="status" data-sortable="true"><?=__('Status');?></th>
                         <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
-                        <th data-column-id="created" data-order="desc"><?=__('Created');?></th>
+                        <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                         <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
                     </thead>
-                    <tbody>
-                        <?php foreach($tickets as $n => $ticket): ?>
-                        <tr>
-                            <td><?=$ticket['id'];?></td>
-                            <td><?=$ticket['name'];?></td>
-                            <td><?=$ticket['responsible'] ? $ticket['responsible']['title'] : "";?></td>
-                            <td><?=$statuses[$ticket['status_id']]['name'];?></td>
-                            <td><?=$ticket['client'] ? $ticket['client']['title'] : "";?></td>
-                            <td><?=$ticket['created']->format('m/d/Y h:i a');?></td>
-                            <td class="btn-group">
-                                <button type="button" class="btn btn-xs btn-default command-edit" data-row-id="<?=$ticket['id'];?>">
-                                    <span class="fa fa-pencil"></span>
-                                </button>
-                                <button type="button" class="btn btn-xs btn-default command-delete" data-row-id="<?=$ticket['id'];?>">
-                                    <span class="fa fa-trash-o"></span>
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
                 </table>
             </div>
             <div class="tab-pane fade show" id="sources" role="tabpanel" aria-labelledby="sources-tab">
@@ -382,8 +358,10 @@ const statuses = new Vue({
 });
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.0/jquery.bootgrid.min.js"></script>
 <script>
+const $ = jQuery;
+$(function () {
     $('#ticketsGrid').bootgrid({
         'post': function ()
         {
@@ -408,8 +386,8 @@ const statuses = new Vue({
                     "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
             }
         },
-        // ajax: true,
-        // url: '<?=$ajax . '&' . http_build_query(['stat' => 'tickets']);?>',
+        ajax: true,
+        url: '<?=$ajax . '&' . http_build_query(['stat' => 'tickets']);?>',
     }).on("load.rs.jquery.bootgrid", function (e)
     {
         if (typeof(Storage) !== "undefined") {
@@ -474,4 +452,5 @@ const statuses = new Vue({
         {
         });
     });
+});
 </script>

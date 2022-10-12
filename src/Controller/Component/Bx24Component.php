@@ -368,7 +368,8 @@ class Bx24Component extends Component
     public function getUserById($uid)
     {
         $arParameters = [ 'ID' => $uid ];
-        return $this->obBx24App->call('user.get', $arParameters)['result'][0];
+        $result = $this->obBx24App->call('user.get', $arParameters)['result'];
+        return count($result) > 0 ? $result[0] : null;
     }
 
     public function getContactsFor($clientId)
@@ -410,15 +411,28 @@ class Bx24Component extends Component
     {
         if(!$ticketActivity)
         {
-            $this->bx24Logger->debug(__FUNCTION__ . ' - ticket/source activity not found');
+            $this->bx24Logger->error(__FUNCTION__ . ' - ticket/source activity not found');
             return null;
         }
         $responsibleContacts = $this->getUserById($ticketActivity['RESPONSIBLE_ID']);
+        if (!$responsibleContacts) {
+            $this->bx24Logger->error(__FUNCTION__ . ' - user.get - error occuried: user is not found by ID', [
+                'activity.id' => $ticketActivity['ID'],
+                'activity.subject' => $ticketActivity['SUBJECT'],
+                'activity.responsible.id' => $ticketActivity['RESPONSIBLE_ID'],
+            ]);
+            return null;
+        }
         $customerContacts = $ticketActivity['COMMUNICATIONS'][0];
         $customerNames = $customerContacts['ENTITY_SETTINGS'];
         $additionContact = null;
-        if (isset($ticketActivity['COMMUNICATIONS'][1])) {
+        if(isset($ticketActivity['COMMUNICATIONS'][1]))
+        {
             $additionContact = $ticketActivity['COMMUNICATIONS'][1];
+            if(!$customerNames)
+            {
+                $customerNames = $additionContact['ENTITY_SETTINGS'];
+            }
         }
 
         return [
@@ -433,7 +447,7 @@ class Bx24Component extends Component
             'customer' => [
                 'id' => (int)$customerContacts['ENTITY_ID'],
                 'abr' => $this->makeNameAbbreviature($customerNames),
-                'title' => $this->makeFullName($customerNames),
+                'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
                 'email' => $customerContacts['TYPE'] == 'EMAIL' 
                     ? $customerContacts['VALUE'] 
                     : ($additionContact && $additionContact['TYPE'] == 'EMAIL'

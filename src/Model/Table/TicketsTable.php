@@ -140,6 +140,7 @@ class TicketsTable extends Table
         string $memberId,
         array $filter = [], // custom filter
         array $sort = ['created' => 'desc'],
+        array $pagination = [1, 10],
         // Support diapazone of date
         string $from = null,
         string $to = null
@@ -164,9 +165,21 @@ class TicketsTable extends Table
             $where['created <='] = $to;
         }
         $query->where($where);
-        return $query
-            ->all()
-            ->toList();
+        $full = $query->all();
+        if (isset($pagination[1]))
+        {
+            $items = $query->offset(($pagination[0]-1)*$pagination[1])->limit($pagination[1]*2);
+        } else {
+            $items = $full;
+        }
+        
+            
+        return [
+            'rows' => $items->toArray(),
+            'total' => $full->count(),
+            'current' => $pagination[0],
+            'rowCount' => $pagination[1]
+        ];
     }
 
     public function editTicket(int $id, int $statusId, $categoryId, string $memberId)
