@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Controller\Component\Bx24Component;
+use Cake\Cache\Cache;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
@@ -66,6 +67,14 @@ class TicketController extends AppController
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_rest.log';
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
+        // FOR DEV/TEST
+        Cache::setConfig('short', [
+            'className' => 'File',
+            'duration' => '+ 1 hour',
+            'path' => CACHE,
+            'prefix' => 'tickets_'
+        ]);
     }
 
     public function collectTickets()
@@ -81,24 +90,39 @@ class TicketController extends AppController
             $toDate = $this->request->getQuery('to') ?? $this->request->getData('to');
             $searchPhrase = $this->request->getQuery('search') ?? $this->request->getData('search') ?? "";
 
-            $tickets = $this->Tickets->getTicketsFor(
-                $this->memberId,
-                // Custom filter 
-                [], 
-                // Order of tickets
-                ['created' => 'desc'],
-                // Pagination: [page, count]
-                [$current, $rowCount],
-                // Date diapazone 
-                $fromDate, 
-                $toDate
-            );
+            $tickets = Cache::read("{$this->memberId}_tickets_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", 'short');
+            if ($tickets == null) {
+                $tickets = $this->Tickets->getTicketsFor(
+                    $this->memberId,
+                    // Custom filter 
+                    [], 
+                    // Order of tickets
+                    ['created' => 'desc'],
+                    // Pagination: [page, count]
+                    [$current, $rowCount],
+                    // Date diapazone 
+                    $fromDate, 
+                    $toDate
+                );
+                Cache::write("{$this->memberId}_tickets_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", $tickets, 'short');
+            }
+            
+            $total = intval($tickets['total']);
             $ticketActivityIDs = array_column($tickets['rows'], 'action_id');
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ticket activities', ['id' => $ticketActivityIDs]);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ticket activities', [
+                'id' => $ticketActivityIDs,
+                'total' => $total,
+                'rows' => count($tickets['rows']),
+            ]);
             $ticketIds = range(0, count($ticketActivityIDs)-1);
             $ticketMap = array_combine($ticketActivityIDs, $ticketIds);
 
-            $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
+            $extendInformation = Cache::read("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", 'short');
+            if (!$extendInformation) {
+                $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
+                Cache::write("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", $extendInformation, 'short');
+            }
+            $total = count($extendInformation);
             $result = [
                 'total' => $tickets['total'],
                 'rowCount' => $rowCount,
@@ -112,7 +136,7 @@ class TicketController extends AppController
                     $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activity not found', [
                         'id' => $id
                     ]);
-                    $result['total'] = $result['total'] - 1;
+                    $total--;
                     continue;
                 }
                 $ticketNo = $ticketMap[$id];
@@ -126,13 +150,25 @@ class TicketController extends AppController
                     'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
-            $result['rows'] = array_slice($result['rows'], $rowCount);
-            $tickets['rowCount'] = count($tickets['rows']);
+            $result['rows'] = array_slice($result['rows'], ($current - 1)*$rowCount, $rowCount);
+            $result['rowCount'] = count($result['rows']);
+            $result['total'] = $total;
             $this->TicketControllerLogger->debug('displaySettingsInterface - ' . __FUNCTION__ , [
                 'parameters' => $this->request->getParsedBody(),
-                'result.count' => count($result['rows'])
+                'result.page.size' => count($result['rows']),
+                'result.total' => $result['total'],
             ]);
             return new Response(['body' => json_encode($result)]);
+        }
+    }
+
+    public function clearCache()
+    {
+        $this->disableAutoRender();
+        $this->viewBuilder()->disableAutoLayout();
+        if($this->request->is('ajax'))
+        {
+            Cache::clear('short');
         }
     }
 }

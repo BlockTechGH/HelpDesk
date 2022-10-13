@@ -48,10 +48,9 @@
                             <?=__('ID');?>
                         </th>
                         <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
-                        <th data-column-id="status_id" data-sortable="true"><?=__('Status');?></th>
+                        <th data-column-id="status_id" data-sortable="true" data-formatter="status"><?=__('Status');?></th>
                         <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
-                        <th data-column-id="commands" data-formatter="commands" data-sortable="false">Commands</th>
                     </thead>
                 </table>
                 <div class="btn-group mt-4">
@@ -370,16 +369,11 @@ $(document).ready(function () {
                     console.log(row.id, column.id, row[column.id]);
                     return row[column.id]?.title;
                 },
-            //    'status': (column, row) => window.data.statuses[row.status_id].name,
+                'status': (column, row) => window.data.statuses[row.status_id].name,
             //    'ticketId': (column, row) => row.id,
-                "commands": function(column, row)
-                {
-                    return "<button type=\"button\" class=\"btn btn-xs btn-default command-edit\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-pencil\"></span></button> " + 
-                        "<button type=\"button\" class=\"btn btn-xs btn-default command-delete\" data-row-id=\"" + row.id + "\"><span class=\"fa fa-trash-o\"></span></button>";
-                }
             },
             ajax: true,
-            url: '<?='/tickets?' . http_build_query(['DOMAIN' => $domain]);?>',
+            url: '<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>',
             'post': function (request)
             {
                 var auth = BX24.getAuth();
@@ -460,7 +454,14 @@ $(document).ready(function () {
             {
             });
         });
-        $("#refresh").on('click', function(){
+        $("#refresh").on('click', async function(){
+            console.log("Clear cache started");
+            await fetch('<?= $this->Url->build(['_name' => 'clear_cache', '?' => ['DOMAIN' => $domain]]);?>', {
+                'method': 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(parameters)
+            }).then(() => console.log('Cache is cleared'));
+
             console.log("Table start refresh");
             grid.bootgrid("reload");
         });

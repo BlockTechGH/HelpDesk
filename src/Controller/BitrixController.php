@@ -116,7 +116,7 @@ class BitrixController extends AppController
                 $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
                 $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
 
-                if($this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
+                if($this->ticket && $this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
                 {
                     $firstMessage = $this->Bx24->getFirstMessageInOpenChannelChat($source);
                     $source['text'] = $firstMessage['text'];

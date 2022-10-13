@@ -166,13 +166,7 @@ class TicketsTable extends Table
         }
         $query->where($where);
         $full = $query->all();
-        if (isset($pagination[1]))
-        {
-            $items = $query->offset(($pagination[0]-1)*$pagination[1])->limit($pagination[1]*2);
-        } else {
-            $items = $full;
-        }
-        
+        $items = $full;        
             
         return [
             'rows' => $items->toArray(),

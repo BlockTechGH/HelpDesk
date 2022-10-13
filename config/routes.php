@@ -94,6 +94,11 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'fetch_tickets']
         );
 
+        $builder->connect('/clear/cache', [
+            'controller' => 'Tickets',
+            'action' => 'clearCache',
+        ], ['_name' => 'clear_cache']);
+
        /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */
