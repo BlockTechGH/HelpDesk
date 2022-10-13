@@ -105,6 +105,8 @@ class TicketController extends AppController
                     $toDate
                 );
                 Cache::write("{$this->memberId}_tickets_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", $tickets, 'short');
+                // Invalidate cache of Bitrix data
+                Cache::delete("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}");
             }
             
             $total = intval($tickets['total']);
@@ -131,7 +133,11 @@ class TicketController extends AppController
             ];
             foreach($extendInformation as $id => $attributes)
             {
-                if(!$attributes || ($searchPhrase && !mb_strstr($attributes['subject'], $searchPhrase)))
+                if(
+                    !$attributes 
+                    || !isset($ticketMap[$id]) 
+                    || ($searchPhrase && !mb_strstr($attributes['subject'], $searchPhrase))
+                )
                 {
                     $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activity not found', [
                         'id' => $id
@@ -140,6 +146,7 @@ class TicketController extends AppController
                     continue;
                 }
                 $ticketNo = $ticketMap[$id];
+                unset($ticketMap[$id]); // One activity for one ticket
                 $ticket = $tickets['rows'][$ticketNo];
                 $result['rows'][] = [
                     'id' => $attributes['id'],
@@ -166,9 +173,11 @@ class TicketController extends AppController
     {
         $this->disableAutoRender();
         $this->viewBuilder()->disableAutoLayout();
-        if($this->request->is('ajax'))
+        if($this->request->is('ajax') || $this->request->is('post'))
         {
-            Cache::clear('short');
+            return new Response(['body' => json_encode([
+                'cleared' => Cache::clear('short'),
+            ])]);
         }
     }
 }

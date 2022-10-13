@@ -95,7 +95,7 @@ return static function (RouteBuilder $routes) {
         );
 
         $builder->connect('/clear/cache', [
-            'controller' => 'Tickets',
+            'controller' => 'Ticket',
             'action' => 'clearCache',
         ], ['_name' => 'clear_cache']);
 

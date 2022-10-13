@@ -456,6 +456,14 @@ $(document).ready(function () {
         });
         $("#refresh").on('click', async function(){
             console.log("Clear cache started");
+            var auth = BX24.getAuth();
+            const parameters = {
+                memberId: auth.member_id,
+                'auth': window.data.required,
+                entityFilter: $('.entity-filter option:selected').val(),
+                'from': $('#fromDate').val(),
+                'to': $('#toDate').val(),
+            };
             await fetch('<?= $this->Url->build(['_name' => 'clear_cache', '?' => ['DOMAIN' => $domain]]);?>', {
                 'method': 'POST',
                 headers: {'Content-Type': 'application/json'},
