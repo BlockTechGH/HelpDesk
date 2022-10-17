@@ -46,6 +46,8 @@ class TicketStatusesTable extends Table
         $this->setTable('ticket_statuses');
         $this->setDisplayField('name');
         $this->setPrimaryKey('id');
+
+        $this->addBehavior('Timestamp');
     }
 
     /**
@@ -134,12 +136,12 @@ class TicketStatusesTable extends Table
             foreach($status->getErrors() as $prop => $error)
             {
                 $bugs = array_map(function ($bug) use ($prop) { return "{$prop} - {$bug};"; }, array_values($error));
-                $errorLines = array_merge($errorLines, $bugs); 
+                $errorLines = array_merge($errorLines, $bugs);
             }
             $errorMessage = implode("\n", $errorLines);
             throw new Exception($errorMessage);
         }
-        
+
         return [
             'id' => $status->id,
             'name' => $status->name,

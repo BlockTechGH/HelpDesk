@@ -46,6 +46,7 @@ class HelpdeskOptionsTable extends Table
         $this->setTable('helpdesk_options');
         $this->setDisplayField('id');
         $this->setPrimaryKey('id');
+        $this->addBehavior('Timestamp');
     }
 
     /**
@@ -86,8 +87,8 @@ class HelpdeskOptionsTable extends Table
             ->all()
             ->toList();
         $options = [
-            'sources_on_phone_calls' => false, 
-            'sources_on_email' => false, 
+            'sources_on_phone_calls' => false,
+            'sources_on_email' => false,
             'sources_on_open_channel' => false
         ];
         foreach ($optionsList as $option)

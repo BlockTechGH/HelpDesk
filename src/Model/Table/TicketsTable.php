@@ -59,6 +59,7 @@ class TicketsTable extends Table
             'foreignKey' => 'category_id',
             'joinType' => 'INNER',
         ]);
+        $this->addBehavior('Timestamp');
     }
 
     /**
@@ -75,6 +76,7 @@ class TicketsTable extends Table
             ->notEmptyString('status_id');
 
         $validator
+            ->allowEmptyString('category_id')
             ->integer('category_id');
 
         $validator
@@ -120,7 +122,7 @@ class TicketsTable extends Table
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
-            'category_id' => $categoryId,
+            'category_id' => null,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
             'source_type_id' => $activity['PROVIDER_TYPE_ID'],
