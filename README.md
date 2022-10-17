@@ -2,7 +2,7 @@
 
 ## 1. Клонируем окружение и устанавливаем его
 
-[Подробнее в соответсвующей ветке](https://main.git.e2e4gu.ru/E2E4/helpdesk_in_b24/src/branch/environment)
+[Подробнее в соответствующей ветке](https://main.git.e2e4gu.ru/E2E4/helpdesk_in_b24/src/branch/environment)
 
 ## 2. Клонируем приложение
 
@@ -82,6 +82,6 @@ return [
 
 ## 7. Для доступа к phpmyadmin
 
-[http://helpdesk.local:9875](http://helpdesk.local:9875)
+[http://helpdesk.local:9876](http://helpdesk.local:9876)
 
 
