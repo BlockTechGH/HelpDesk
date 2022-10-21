@@ -5,6 +5,7 @@ namespace App\Controller;
 
 use App\Controller\Component\Bx24Component;
 use App\Model\Table\HelpdeskOptionsTable;
+use App\Model\Table\TicketStatusesTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
@@ -111,10 +112,44 @@ class BitrixController extends AppController
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
                 if ($this->ticket) {
                     $this->ticket->created = $this->ticket->created->format(Bx24Component::DATE_TIME_FORMAT);
+                } else {
+                    // Delete some records from 'tickets' table.
+                    return $this->redirect([
+                        '_name' => 'home'
+                    ]);
                 }
-                $this->set('ticket', $this->ticket);
-                $ticketAttributes = $this->Bx24->getTicketAttributes($this->ticket ? $this->ticket->action_id : $this->placement['activity_id']);
-                $source = $ticketAttributes && $this->ticket ? $this->Bx24->getTicketAttributes($this->ticket->source_id) : null;
+                
+                $ticketAttributes = null;
+                $source = null;
+                $activityId = $this->ticket ? $this->ticket->action_id : $this->placement['activity_id'];
+                $sourceId = $this->ticket ? $this->ticket->source_id : null;
+                $activitiesId = [$activityId];
+                if ($sourceId) {
+                    $activitiesId[] = $sourceId;
+                }
+
+                $activities = $this->Bx24->getActivities($activitiesId);
+                $ticketActivity = $activities[$activityId];
+                $sourceActivity = $sourceId ? $activities[$sourceId] : null;
+                if($ticketActivity)
+                {
+                    $ticketAttributes = $this->Bx24->getOneTicketAttributes($ticketActivity);
+                    if($ticketAttributes)
+                    {
+                        $uid = $ticketAttributes['responsible'];
+                        $ticketAttributes['responsible'] = $this->Bx24->getUsersAttributes([$uid])[$uid];
+                    }
+                }
+
+                if($sourceActivity)
+                {
+                    $source = $ticketAttributes && $this->ticket ? $this->Bx24->getOneTicketAttributes($sourceActivity) : null;
+                    if($source)
+                    {
+                        $uid = $source['responsible'];
+                        $source['responsible'] = $this->Bx24->getUsersAttributes([$uid])[$uid];
+                    }
+                }
 
                 if($this->ticket && $this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
                 {
@@ -122,6 +157,7 @@ class BitrixController extends AppController
                     $source['text'] = $firstMessage['text'];
                 }
 
+                $this->set('ticket', $this->ticket);
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer ?? true, $currentUser);
@@ -138,7 +174,10 @@ class BitrixController extends AppController
                         $set = $this->request->getData('set', false);
                         $this->Bx24->setCompleteStatus($activity_id, !!$set);
                         $ticket = $this->Tickets->getByActivityIdAndMemberId($activity_id, $this->memberId)->toArray();
-                        $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId, !!$set ? 1 : 2);
+                        $status = $this->Statuses->getFirstStatusForMemberTickets(
+                            $this->memberId, 
+                            !!$set ? TicketStatusesTable::MARK_STARTABLE : TicketStatusesTable::MARK_FINAL
+                        );
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
@@ -257,7 +296,7 @@ class BitrixController extends AppController
         $data = $this->request->getData('data');
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
-        $activity = $this->Bx24->getActivity($idActivity);
+        $activity = $this->Bx24->getActivities([$idActivity])[$idActivity];
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
             'id' => $idActivity,
             'object' => $activity
@@ -293,9 +332,9 @@ class BitrixController extends AppController
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
-                $activity = $this->Bx24->getActivity($activityId);
+                $activity = $this->Bx24->getActivities([$activityId])[$activityId];
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
-                $status = $this->Statuses->getStartStatusForMemberTickets($this->memberId);
+                $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
                     $activity, 

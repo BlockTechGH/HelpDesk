@@ -28,6 +28,10 @@ use Cake\Validation\Validator;
  */
 class TicketStatusesTable extends Table
 {
+    public const MARK_INTERMEDIATE = 0;
+    public const MARK_STARTABLE = 1;
+    public const MARK_FINAL = 2;
+
     /**
      * Initialize method
      *
@@ -64,7 +68,7 @@ class TicketStatusesTable extends Table
         return $validator;
     }
 
-    public function getStartStatusForMemberTickets(string $memberId, int $mark = 1)
+    public function getFirstStatusForMemberTickets(string $memberId, int $mark = 1)
     {
         $status = $this->find()
             ->where([
@@ -80,7 +84,7 @@ class TicketStatusesTable extends Table
                     'member_id' => $memberId,
                     'active' => true,
                 ]);
-            if ($mark < 2) {
+            if ($mark < static::MARK_FINAL) {
                 $query->orderAsc('created');
             } else {
                 $query->orderDesc('created');
@@ -112,7 +116,7 @@ class TicketStatusesTable extends Table
             'member_id' => $memberId,
             'name' => $name,
             'active' => (int)$active,
-            'mark' => $mark >= 0 && $mark <= 2 ? $mark : 0,
+            'mark' => $mark >= static::MARK_INTERMEDIATE && $mark <= static::MARK_FINAL ? $mark : static::MARK_INTERMEDIATE,
         ];
         if($id == null)
         {
@@ -135,7 +139,7 @@ class TicketStatusesTable extends Table
     public function flushMarks(int $mark)
     {
         $this->updateAll([
-            'mark' => 0
+            'mark' => static::MARK_INTERMEDIATE
         ], [
             'mark' => $mark
         ]);

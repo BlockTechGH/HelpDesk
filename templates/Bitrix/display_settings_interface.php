@@ -1,7 +1,25 @@
+<?php $this->start('css');?>
+    <?=$this->Html->css('home');?>
+    <link rel="stylesheet" href="https://unpkg.com/@pluginjs/collapse/dist/collapse.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet">    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.css" integrity="sha512-WBBdLBZSQGm9JN1Yut45Y9ijfFANbcOX3G+/A5+oO8W2ZWASp3NkPrG8mgr8QvGviyLoAz8y09l7SJ1dt0as7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<?php $this->end();?>
+
+<?php $this->start('script');?>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment-with-locales.min.js" integrity="sha512-42PE0rd+wZ2hNXftlM78BSehIGzezNeQuzihiBCvUEB3CVxHvsShF86wBWwQORNxNINlBPuq7rG4WWhNiTVHFg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://unpkg.com/@pluginjs/collapse/dist/collapse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.0/jquery.bootgrid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.fa.min.js" integrity="sha512-9n0UG6HszJFRxzkSCxUItSZeu48ecVvY95pRVu0GDhRspSavKvKcm04U96VYeNLPSb2lCDOZ5wXCDbowg1gHhg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" integrity="sha256-+8RZJua0aEWg+QVVKg4LEzEEm/8RFez5Tb4JBNiV5xA=" crossorigin="anonymous"></script>
+<?php $this->end();?>
+
 <?= $this->Html->script('fit_window'); ?>
-<div id="setting_container" class="row mt-3">
-    <div class="col-2">
-        <div class="nav flex-column nav-pills" id="myTab" role="tablist" aria-orientation="vertical">
+<div id="setting_container" class="row mb-3">
+    <div class="col-12">
+    <div class="mb-5"><ul class="nav nav-pills" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
             <button class="nav-link active" data-toggle="tab" type="button" role="tab"
                 aria-selected="true"
                 id="tickets-tab"
@@ -10,56 +28,88 @@
             >
                 <?=__('Tickets');?>
             </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                aria-selected="true"
+                id="summary-tab"
+                data-target="#summary"
+                aria-controls="summary"
+            >
+                <?=__('Summary');?>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                 id="sources-tab" 
                 data-target="#sources" 
                 aria-controls="sources"
+                aria-selected="false"
             >
                 <?=__('Sources');?>
             </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                 id="statuses-tab" 
                 data-target="#statuses" 
                 aria-controls="statuses"
+                aria-selected="false"
             >
                 <?=__('Statuses');?>
             </button>
-        </div>
+        </li>
+    </ul>
     </div>
-    <div class="col-10">
-        <div class="tab-content" id="myTabContent">
+    <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
-                <form method="POST" action="<?= $ajax; ?>">
-                    <div class="input-group">
-                        <input type="date" id="fromDate" name="from" value="" placeholder="m/d/Y">
-                        <span class="ml-1"> - </span>
-                        <input class="ml-1" type="date" id="toDate" name="to" value="" placeholder="m/d/Y">
+                <form id="filter-form" method="POST" action="<?= $ajax; ?>">
+                    <div class="column input-group">
+                        <div class="datepicker-limit">
+                            <select id="period" @change="selectFilterEntity($event)" class="form-control">
+                                <option v-for="(option, index) in modes" :value="index">{{ i18n[option.title] }}</option>
+                            </select>
+                        </div>
+                        <div class='ml-3 datepicker-limit form-input date' id='fromDatePicker'>
+                            <input type='text' class="form-control" id="fromDate" value="<?=date('10/2022')?>" />
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
+                            </span>
+                        </div>
+                        <span :class="{'m-2': true, 'fade': true, 'show': picker.diapazone}">&mdash;</span>
+                        <div :class='{"datepicker-limit": true, "date": true, "form-input": true, "fade": true, "show": picker.diapazone}' id='toDatePicker'>
+                            <input type='text' class="form-control" id="toDate" :disabled="!picker.diapazone" />
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
+                            </span>
+                        </div>
                     </div>
                 </form>
                 <table id="ticketsGrid" 
                     class="table table-condensed table-hover table-striped"
                 >
                     <thead>
-                        <th data-column-id="name"><?=__('Name');?></th>
                         <th data-column-id="id" 
                             data-identifier="true"
                             data-sortable="true"
                         >
                             <?=__('ID');?>
                         </th>
+                        <th data-column-id="name"><?=__('Name');?></th>
                         <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
                         <th data-column-id="status_id" data-sortable="true" data-formatter="status"><?=__('Status');?></th>
                         <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                     </thead>
                 </table>
-                <div class="btn-group mt-4">
-                    <button type="button" class="btn btn-secondary" id="refresh">
-                        <?=__('Refresh table');?>
-                    </button>
-                </div>
             </div>
-            <div class="tab-pane fade show" id="sources" role="tabpanel" aria-labelledby="sources-tab">
+            <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
+                </div> 
+            </div>
+            <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <div class="form-group">
                         <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
@@ -91,7 +141,7 @@
                     <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
             </div>
-            <div class="tab-pane fade show" 
+            <div class="tab-pane fade" 
                 id="statuses" 
                 role="tabpanel" 
                 aria-labelledby="statuses-tab"
@@ -148,11 +198,7 @@
                     </div>
                 </form>
             </div>
-            <div 
-                class="tab-pane fade show" 
-                id="categories" 
-                role="tabpanel" 
-                aria-labelledby="categories-tab"
+            <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab"
                 v-show="false">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <table class="table table-hover">
@@ -233,6 +279,44 @@
             'No' => __('No'),
             'StartStatus' => __('Start'),
             'FinalStatus' => __('Final'),
+        ]);?>,
+    };
+    window.tickets = {
+        picker: {
+            title: 'month',
+            format: "MM/YYYY",
+            mode: "months",
+            diapazone: false,
+        },
+        modes: [
+            {
+                title: 'month',
+                mode: "months",
+                format: "MM/YYYY",
+                diapazone: false,
+            },
+            {
+                title: 'date',
+                mode: "days",
+                format: "MM/DD/YYYY",
+                diapazone: false,
+            },
+            {
+                title: 'between',
+                mode: "days",
+                format: "MM/DD/YYYY",
+                diapazone: true,
+            }
+        ],
+        i18n: <?= json_encode([
+            'year' => __("Year"),
+            'month' => __('Month'),
+            'date' => __('Day'),
+            'between' => __('Between'),
+            'total' => __('Total'),
+            'open' => __('Open'),
+            'closed' => __('Closed'),
+            'escalated' => __('Escalated')
         ]);?>,
     };
 </script>
@@ -357,20 +441,166 @@ const statuses = new Vue({
 });
 </script>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.css" integrity="sha512-CF1ovh2vRt2kC4JJ/Hl7VC7a+tu/NTO8iW+iltdfvIjvsb45t/6NkRNSrOe6HBxCTVplYLHW5GdlbtRLlCUp2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.0/jquery.bootgrid.min.js"></script>
 <script>
 $(document).ready(function () {
     BX24.init(function(){
+        // Chart
+        const chartData = {
+            labels: ['open', 'assigned', 'process', 'closed', 'escalated'],
+            datasets: [
+                {
+                    data: [1, 1, 1, 1, 1],
+                    backgroundColor: [
+                        "#FF6384",
+                        "#63FF84",
+                        "#6384FF",
+                        "#84FF63",
+                        "#8463FF",
+                        "#F59420",
+                    ]
+                }
+            ]
+        };
+        const chart = new Chart($("#summaryChart"),{
+            'type': 'pie',
+            'data': chartData,
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 20
+                            },
+                            // Documentation: https://github.com/chartjs/Chart.js/blob/master/src/controllers/controller.doughnut.js#L42-L69
+                            // Solution like as: https://stackoverflow.com/questions/39454586/pie-chart-legend-chart-js
+                            generateLabels: (chart) => {
+                                const { data } = chart;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const meta = chart.getDatasetMeta(0);
+                                        const style = meta.controller.getStyle(i);
+                                        const value = chart.config.data.datasets[0].data[i];
+
+                                        return {
+                                            text: `${label}: ${value}`,
+                                            fillStyle: style.backgroundColor,
+                                            strokeStyle: style.borderColor,
+                                            lineWidth: style.borderWidth,
+                                            hidden: !chart.getDataVisibility(i),
+                                            index: i,
+                                        };
+                                    });
+                                }
+                                return [];
+                            },
+                        },
+                    },
+                    title: {
+                        display: true,
+                        text: '<?=__('Tickets per status summary');?>',
+                        font: {
+                            size: 20
+                        }
+                    },
+                },
+            }
+        });
+        $(document).ajaxComplete(function(event, xhr, settings) {
+            if (settings.url.includes('<?=$this->Url->build(['_name' => 'fetch_tickets'])?>')) {
+                const rowsAndStatics = JSON.parse(xhr.responseText);
+                const dataset = {
+                    data: [],
+                    backgroundColor: chartData.datasets[0].backgroundColor,
+                };
+                
+                chart.data.labels = [];
+                for (const label in rowsAndStatics.summary) {
+                    if (Object.hasOwnProperty.call(rowsAndStatics.summary, label)) {
+                        const value = rowsAndStatics.summary[label];
+                        chart.data.labels.push(label);
+                        dataset.data.push(value);
+                    }
+                }
+                chart.data.datasets = [dataset];
+                chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + rowsAndStatics.total;
+                chart.update();
+                drawSegmentValues();
+            }
+        });
+        // Solution from: https://stackoverflow.com/questions/33363373/how-to-display-pie-chart-data-values-of-each-slice-in-chart-js
+        function drawSegmentValues() {
+            const segments = chart.data;
+            const meta = chart._cachedMeta;
+            for(var i=0; i<segments.length; i++) {
+                // Default properties for text (size is scaled)
+                ctx.fillStyle="white";
+                var textSize = canvas.width/10;
+                ctx.font= textSize+"px Verdana";
+
+                // Get needed variables
+                var value = segments[i].value;
+                var startAngle = segments[i].startAngle;
+                var endAngle = segments[i].endAngle;
+                var middleAngle = startAngle + ((endAngle - startAngle)/2);
+
+                // Compute text location
+                var posX = (radius/2) * Math.cos(middleAngle) + midX;
+                var posY = (radius/2) * Math.sin(middleAngle) + midY;
+
+                // Text offside to middle of text
+                var w_offset = ctx.measureText(value).width/2;
+                var h_offset = textSize/4;
+
+                ctx.fillText(value, posX - w_offset, posY + h_offset);
+            }
+        };
+
+        // Filter
+        const filter = new Vue({
+            el: "#filter-form",
+            data: window.tickets,
+            methods: {
+                selectFilterEntity: function(event) {
+                    this.picker = this.modes[event.target.value];
+                    $from = $("#fromDate").data('DateTimePicker');
+                    $from.viewMode(this.picker.mode);
+                    $from.format(this.picker.format);
+                    $to = $("#toDate").data('DateTimePicker');
+                    $to.viewMode(this.picker.mode);
+                    $to.format(this.picker.format);
+                },
+            }
+        });
+        $("#fromDate").datetimepicker({
+            format: 'MM/YYYY',
+            viewMode: 'years',
+        }).on('dp.change', function(e) {
+            $('#toDate').data("DateTimePicker").minDate(e.date);
+            $('#ticketsGrid').bootgrid('reload');
+        });
+        $("#toDate").datetimepicker({
+            format: 'MM/YYYY',
+            viewMode: 'years',
+            useCurrent: false,
+        }).on('dp.change', function(e) {
+            $('#fromDate').data("DateTimePicker").maxDate(e.date);
+            $('#ticketsGrid').bootgrid('reload');
+        });
+
+        // Grid
         var grid = $('#ticketsGrid').bootgrid({
             rowCount: [10, 25, 50],
             formatters: {
-                'person': (column, row) => {
-                    console.log(row.id, column.id, row[column.id]);
-                    return row[column.id]?.title;
-                },
+                'person': (column, row) => row[column.id]?.title,
                 'status': (column, row) => window.data.statuses[row.status_id].name,
-            //    'ticketId': (column, row) => row.id,
+            },
+            templates: {
+                header: "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\"><div class=\"actionBar\"><p class=\"{{css.search}}\"></p><p class=\"{{css.actions}}\"></p></div></div></div>",
+            },
+            css: {
+                paginationButton: "btn border",
+                selected: "active text-primary"
             },
             ajax: true,
             url: '<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>',
@@ -382,7 +612,7 @@ $(document).ready(function () {
                     request = {};
                 }
                 request['memberId'] = auth.member_id;
-                request['entityFilter'] = $('.entity-filter option:selected').val();
+                request['period'] = window.tickets.modes[$('#period option:selected').val()].title;
                 request['from'] = $('#fromDate').val();
                 request['to'] = $('#toDate').val();
                 request['auth'] = window.data.required;
@@ -403,7 +633,7 @@ $(document).ready(function () {
                     sessionStorage.setItem("ticket_row_count", grid.bootgrid("getRowCount"));
                 }
             }
-        }).on("loaded.rs.jquery.bootgrid", function()
+        }).on("loaded.rs.jquery.bootgrid", function(e)
         {
             if (typeof(Storage) !== "undefined") {
                 if (
@@ -446,33 +676,8 @@ $(document).ready(function () {
                     sessionStorage.setItem("ticket_list_navigated_back", "");
                 }
             }
-
-            grid.find(".command-edit").on("click", function(e, columns, row)
-            {
-
-            }).end().find(".command-delete").on("click", function(e)
-            {
-            });
         });
-        $("#refresh").on('click', async function(){
-            console.log("Clear cache started");
-            var auth = BX24.getAuth();
-            const parameters = {
-                memberId: auth.member_id,
-                'auth': window.data.required,
-                entityFilter: $('.entity-filter option:selected').val(),
-                'from': $('#fromDate').val(),
-                'to': $('#toDate').val(),
-            };
-            await fetch('<?= $this->Url->build(['_name' => 'clear_cache', '?' => ['DOMAIN' => $domain]]);?>', {
-                'method': 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(parameters)
-            }).then(() => console.log('Cache is cleared'));
-
-            console.log("Table start refresh");
-            grid.bootgrid("reload");
-        });
+        $('.fa-search').addClass('btn');
     });
 });
 </script>

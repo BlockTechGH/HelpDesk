@@ -101,17 +101,13 @@ class AppController extends Controller
         }
     }
 
-    public function getUrlOf($routeName, $domain = null, $another = [])
+    public function getUrlOf($routeName, $domain = null)
     {
         $opts = [
             '_name' => $routeName,
         ];
         if (!!$domain) {
             $opts['?'] = ['DOMAIN' => $this->domain];
-        }
-        foreach ($another as $prop => $value)
-        {
-            $opts['?'][$prop] = $value;
         }
         $appBaseURL = Configure::read('AppConfig.appBaseUrl');
         return (!$appBaseURL) 

@@ -61,5 +61,7 @@ class InstallationsController extends AppController
         // 2.2 Bind on OnCrmActivityAdd, OnCrmActivityUpdate, OnCrmActivityDelete - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/events_business/index.php
         // 2.3 Add application activity type - https://dev.1c-bitrix.ru/rest_help/crm/rest_activity/crm_activity_type_add.php
         $this->Bx24->installApplicationData($arInstalledData);
+		$errorInstallation = [];
+		$this->set('errorInstallation', $errorInstallation);
     }
 }

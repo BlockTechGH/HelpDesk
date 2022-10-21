@@ -27,10 +27,6 @@ ul {
     margin: 0 0 30px 0;
     padding-left: 25px;
 }
-a {
-    color: #0071BC;
-    text-decoration: underline;
-}
 hr {
     border-bottom: 1px solid #e7e7e7;
     border-top: 0;
@@ -72,4 +68,20 @@ hr {
 }
 #url-rewriting-warning {
     display: none;
+}
+.datepicker-limit {
+    width: 16em;
+}
+li .btn {
+    color: #0071BC;
+}
+li.active .btn {
+    text-decoration: underline;
+    color: white;
+    background-color: #0071BC;
+}
+li.disabled .btn {
+    color: #999;
+    background-color: white;
+    cursor: not-allowed;
 }

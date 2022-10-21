@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Controller\Component\Bx24Component;
-use Cake\Cache\Cache;
+use App\Model\Table\TicketStatusesTable;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
@@ -14,8 +14,8 @@ use Monolog\Logger;
 
 class TicketController extends AppController
 {
-    private $BitrixTokens;
     private $Tickets;
+    private $TicketStatuses;
 
     private $TicketControllerLogger;
 
@@ -23,30 +23,15 @@ class TicketController extends AppController
     {
         $auth = $this->request->getData('auth');
         $this->memberId = $auth && isset($auth['member_id']) ? $auth['member_id'] : $this->request->getQuery('member_id');
-        $this->domain = $auth && isset($auth['DOMAIN']) ? $auth['DOMAIN'] : $this->request->getQuery('DOMAIN');
+        $this->domain = $this->request->getQuery('DOMAIN') ?? "";
 
         if($auth)
         {
-            $this->isAccessFromBitrix = true;
             $this->memberId = $auth['member_id'] ?? "";
-            $this->authId = $auth['access_token'] ?? "";
-            $this->refreshId = $auth['refresh_token'] ?? "";
-            $this->authExpires = $auth['expires_in'] ?? "";
-            $this->domain = isset($auth['domain']) ? $auth['domain'] : $this->domain;
-        } else {
-            $this->authId = $this->request->getData('AUTH_ID') ?? '';
-            $this->refreshId = $this->request->getData('REFRESH_ID') ?? '';
-            $this->authExpires = (int)($this->request->getData('AUTH_EXPIRES')) ?? '';
-        }
-        if($this->memberId && !($this->refreshId && $this->authId && $this->authExpires))
-        {
-            $this->BitrixTokens = $this->getTableLocator()->get('BitrixTokens');
-            $tokenRecord = $this->BitrixTokens->getTokenObjectByMemberId($this->memberId)->toArray();
-            $this->authId = $tokenRecord['auth_id'];
-            $this->refreshId = $tokenRecord['refresh_id'];
-            $this->authExpires = (int)$tokenRecord['auth_expires'];
-            $this->domain = $tokenRecord['domain'];
-        }
+            $this->authId = $auth['AUTH_ID'] ?? "";
+            $this->refreshId = $auth['REFRESH_ID'] ?? "";
+            $this->authExpires = $auth['AUTH_EXPIRES'] ?? "";
+        } 
         $this->isAccessFromBitrix = $this->authId && $this->memberId && $this->domain;
     }
 
@@ -63,18 +48,11 @@ class TicketController extends AppController
 
         $this->loadComponent('Bx24');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
+        $this->TicketStatuses = $this->getTableLocator()->get('TicketStatuses');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_rest.log';
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
-
-        // FOR DEV/TEST
-        Cache::setConfig('short', [
-            'className' => 'File',
-            'duration' => '+ 1 hour',
-            'path' => CACHE,
-            'prefix' => 'tickets_'
-        ]);
     }
 
     public function collectTickets()
@@ -84,30 +62,26 @@ class TicketController extends AppController
             $this->disableAutoRender();
             $this->viewBuilder()->disableAutoLayout();
 
-            $current = (int)($this->request->getQuery('current') ?? $this->request->getData('current') ?? 1);
-            $rowCount = (int)($this->request->getQuery('rowCount') ?? $this->request->getData('rowCount') ?? 10);
-            $fromDate = $this->request->getQuery('from') ?? $this->request->getData('from');
-            $toDate = $this->request->getQuery('to') ?? $this->request->getData('to');
-            $searchPhrase = $this->request->getQuery('search') ?? $this->request->getData('search') ?? "";
+            $current = (int)($this->request->getData('current') ?? 1);
+            $rowCount = (int)($this->request->getData('rowCount') ?? 10);
+            $fromDate = $this->request->getData('from');
+            $toDate = $this->request->getData('to');
+            $searchPhrase = $this->request->getData('searchPhrase') ?? "";
+            $period = $this->request->getData('period') ?? "month";
 
-            $tickets = Cache::read("{$this->memberId}_tickets_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", 'short');
-            if ($tickets == null) {
-                $tickets = $this->Tickets->getTicketsFor(
-                    $this->memberId,
-                    // Custom filter 
-                    [], 
-                    // Order of tickets
-                    ['created' => 'desc'],
-                    // Pagination: [page, count]
-                    [$current, $rowCount],
-                    // Date diapazone 
-                    $fromDate, 
-                    $toDate
-                );
-                Cache::write("{$this->memberId}_tickets_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", $tickets, 'short');
-                // Invalidate cache of Bitrix data
-                Cache::delete("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}");
-            }
+            $tickets = $this->Tickets->getTicketsFor(
+                $this->memberId,
+                // Custom filter 
+                [], 
+                // Order of tickets
+                ['created' => 'desc'],
+                // Pagination: [page, count]
+                [$current, $rowCount],
+                // Date diapazone 
+                $period,
+                $fromDate, 
+                $toDate
+            );
             
             $total = intval($tickets['total']);
             $ticketActivityIDs = array_column($tickets['rows'], 'action_id');
@@ -116,14 +90,10 @@ class TicketController extends AppController
                 'total' => $total,
                 'rows' => count($tickets['rows']),
             ]);
-            $ticketIds = range(0, count($ticketActivityIDs)-1);
+            $ticketIds = count($ticketActivityIDs) > 0 ? range(0, count($ticketActivityIDs)-1) : [];
             $ticketMap = array_combine($ticketActivityIDs, $ticketIds);
 
-            $extendInformation = Cache::read("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", 'short');
-            if (!$extendInformation) {
-                $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
-                Cache::write("{$this->memberId}_activities_{$current}_{$rowCount}_{$fromDate}_{$toDate}_{$searchPhrase}", $extendInformation, 'short');
-            }
+            $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
             $total = count($extendInformation);
             $result = [
                 'total' => $tickets['total'],
@@ -131,6 +101,7 @@ class TicketController extends AppController
                 'current' => $current,
                 'rows' => []
             ];
+            $idsOfActivityWhatIsNotFound = [];
             foreach($extendInformation as $id => $attributes)
             {
                 if(
@@ -139,9 +110,7 @@ class TicketController extends AppController
                     || ($searchPhrase && !mb_strstr($attributes['subject'], $searchPhrase))
                 )
                 {
-                    $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activity not found', [
-                        'id' => $id
-                    ]);
+                    $idsOfActivityWhatIsNotFound[] = $id;
                     $total--;
                     continue;
                 }
@@ -149,7 +118,7 @@ class TicketController extends AppController
                 unset($ticketMap[$id]); // One activity for one ticket
                 $ticket = $tickets['rows'][$ticketNo];
                 $result['rows'][] = [
-                    'id' => $attributes['id'],
+                    'id' => $ticket['id'],
                     'name' => $attributes['subject'],
                     'responsible' => $attributes['responsible'] ?? [],
                     'status_id' => $ticket->status_id,
@@ -157,6 +126,20 @@ class TicketController extends AppController
                     'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [
+                'id' => $idsOfActivityWhatIsNotFound
+            ]);
+
+            $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+            $summary = [];
+            $indicators = $this->Tickets->calcIndicatorsForTickets($result['rows']);
+            foreach($indicators as $index => $value)
+            {
+                $summary[$statuses[$index]->name] = $value;
+            }
+
+            $result = array_merge($result, ['summary' => $summary, 'totat' => count($result['rows'])]);
+
             $result['rows'] = array_slice($result['rows'], ($current - 1)*$rowCount, $rowCount);
             $result['rowCount'] = count($result['rows']);
             $result['total'] = $total;
@@ -166,18 +149,6 @@ class TicketController extends AppController
                 'result.total' => $result['total'],
             ]);
             return new Response(['body' => json_encode($result)]);
-        }
-    }
-
-    public function clearCache()
-    {
-        $this->disableAutoRender();
-        $this->viewBuilder()->disableAutoLayout();
-        if($this->request->is('ajax') || $this->request->is('post'))
-        {
-            return new Response(['body' => json_encode([
-                'cleared' => Cache::clear('short'),
-            ])]);
         }
     }
 }
