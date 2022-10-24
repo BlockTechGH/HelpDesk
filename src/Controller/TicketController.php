@@ -57,13 +57,13 @@ class TicketController extends AppController
 
     public function collectTickets()
     {
-        if($this->request->is('ajax'))
+        if($this->request->is('ajax') || !$this->request->getData('rowCount'))
         {
             $this->disableAutoRender();
             $this->viewBuilder()->disableAutoLayout();
 
             $current = (int)($this->request->getData('current') ?? 1);
-            $rowCount = (int)($this->request->getData('rowCount') ?? 10);
+            $rowCount = (int)($this->request->getData('rowCount'));
             $fromDate = $this->request->getData('from');
             $toDate = $this->request->getData('to');
             $searchPhrase = $this->request->getData('searchPhrase') ?? "";
@@ -140,7 +140,9 @@ class TicketController extends AppController
 
             $result = array_merge($result, ['summary' => $summary, 'totat' => count($result['rows'])]);
 
-            $result['rows'] = array_slice($result['rows'], ($current - 1)*$rowCount, $rowCount);
+            if ($rowCount > 0) {
+                $result['rows'] = array_slice($result['rows'], ($current - 1)*$rowCount, $rowCount);
+            }
             $result['rowCount'] = count($result['rows']);
             $result['total'] = $total;
             $this->TicketControllerLogger->debug('displaySettingsInterface - ' . __FUNCTION__ , [

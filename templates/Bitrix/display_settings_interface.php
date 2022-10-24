@@ -63,28 +63,14 @@
     </div>
     <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
-                <form id="filter-form" method="POST" action="<?= $ajax; ?>">
-                    <div class="column input-group">
-                        <div class="datepicker-limit">
-                            <select id="period" @change="selectFilterEntity($event)" class="form-control">
-                                <option v-for="(option, index) in modes" :value="index">{{ i18n[option.title] }}</option>
-                            </select>
-                        </div>
-                        <div class='ml-3 datepicker-limit form-input date' id='fromDatePicker'>
-                            <input type='text' class="form-control" id="fromDate" value="<?=date('10/2022')?>" />
-                            <span class="input-group-addon">
-                                <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
-                            </span>
-                        </div>
-                        <span :class="{'m-2': true, 'fade': true, 'show': picker.diapazone}">&mdash;</span>
-                        <div :class='{"datepicker-limit": true, "date": true, "form-input": true, "fade": true, "show": picker.diapazone}' id='toDatePicker'>
-                            <input type='text' class="form-control" id="toDate" :disabled="!picker.diapazone" />
-                            <span class="input-group-addon">
-                                <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
-                            </span>
-                        </div>
-                    </div>
-                </form>
+                <?= $this->element('filter', [
+                    'rootId' => 'filter-form',
+                    'ajax' => $ajax,
+                    'filterId' => 'period',
+                    'fromDatePickerId' => 'fromDate',
+                    'toDatePickerId' =>   'toDate',
+                    'onDateChange' => null,
+                ]);?>
                 <table id="ticketsGrid" 
                     class="table table-condensed table-hover table-striped"
                 >
@@ -104,6 +90,16 @@
                 </table>
             </div>
             <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+                <div class="row">
+                    <?= $this->element('filter', [
+                        'rootId' => 'filter-summary',
+                        'ajax' => $ajax,
+                        'filterId' => 'between',
+                        'fromDatePickerId' => 'startDate',
+                        'toDatePickerId' =>   'finalDate',
+                        'onDateChange' => 'fetchData',
+                    ]);?>
+                </div>
                 <div class="row">
                     <div class="col-4"></div>
                     <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
@@ -319,6 +315,11 @@
             'escalated' => __('Escalated')
         ]);?>,
     };
+    window.summary = Object.assign(
+        {
+            required: window.data.required
+        }, window.tickets
+    );
 </script>
 
 <script>
@@ -506,28 +507,6 @@ $(document).ready(function () {
                 },
             }
         });
-        $(document).ajaxComplete(function(event, xhr, settings) {
-            if (settings.url.includes('<?=$this->Url->build(['_name' => 'fetch_tickets'])?>')) {
-                const rowsAndStatics = JSON.parse(xhr.responseText);
-                const dataset = {
-                    data: [],
-                    backgroundColor: chartData.datasets[0].backgroundColor,
-                };
-                
-                chart.data.labels = [];
-                for (const label in rowsAndStatics.summary) {
-                    if (Object.hasOwnProperty.call(rowsAndStatics.summary, label)) {
-                        const value = rowsAndStatics.summary[label];
-                        chart.data.labels.push(label);
-                        dataset.data.push(value);
-                    }
-                }
-                chart.data.datasets = [dataset];
-                chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + rowsAndStatics.total;
-                chart.update();
-                drawSegmentValues();
-            }
-        });
         // Solution from: https://stackoverflow.com/questions/33363373/how-to-display-pie-chart-data-values-of-each-slice-in-chart-js
         function drawSegmentValues() {
             const segments = chart.data;
@@ -556,36 +535,111 @@ $(document).ready(function () {
             }
         };
 
-        // Filter
+        // Filters
+        //   -- On Tickets tab
         const filter = new Vue({
             el: "#filter-form",
             data: window.tickets,
             methods: {
-                selectFilterEntity: function(event) {
+                selectFilterEntity(event) {
                     this.picker = this.modes[event.target.value];
-                    $from = $("#fromDate").data('DateTimePicker');
-                    $from.viewMode(this.picker.mode);
-                    $from.format(this.picker.format);
-                    $to = $("#toDate").data('DateTimePicker');
-                    $to.viewMode(this.picker.mode);
-                    $to.format(this.picker.format);
+                    ['#fromDate', '#toDate'].forEach(_id => {
+                        let $picker = $(_id).data('DateTimePicker');
+                        $picker.viewMode(this.picker.mode);
+                        $picker.format(this.picker.format);
+                        if (!this.picker.diapazone) {
+                            $picker.maxDate(false);
+                            $picker.minDate(false);
+                        }
+                    });
                 },
             }
         });
         $("#fromDate").datetimepicker({
             format: 'MM/YYYY',
-            viewMode: 'years',
+            viewMode: 'months',
         }).on('dp.change', function(e) {
             $('#toDate').data("DateTimePicker").minDate(e.date);
             $('#ticketsGrid').bootgrid('reload');
         });
         $("#toDate").datetimepicker({
             format: 'MM/YYYY',
-            viewMode: 'years',
+            viewMode: 'months',
             useCurrent: false,
         }).on('dp.change', function(e) {
             $('#fromDate').data("DateTimePicker").maxDate(e.date);
             $('#ticketsGrid').bootgrid('reload');
+        });
+        //   -- On Summary tab
+        const period = new Vue({
+            el: "#filter-summary",
+            data: window.summary,
+            methods: {
+                async fetchData() {
+                    var auth = BX24.getAuth();
+                    const parameters = {
+                        memberId: auth.member_id,
+                        period: this.modes[$('#between option:selected').val()].title,
+                        from: $('#startDate').val(),
+                        to: $('#finalDate').val(),
+                        auth: this.required
+                    };
+                    const tickets = await fetch(
+                        "<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>", {
+                            method: "POST",
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(parameters)
+                        }
+                    ).then(response => response.json());
+                    console.log('Fetch response', tickets);
+                    const dataset = {
+                        data: [],
+                        backgroundColor: chartData.datasets[0].backgroundColor,
+                    };
+                
+                    chart.data.labels = [];
+                    for (const label in tickets.summary) {
+                        if (Object.hasOwnProperty.call(tickets.summary, label)) {
+                            const value = tickets.summary[label];
+                            chart.data.labels.push(label);
+                            dataset.data.push(value);
+                        }
+                    }
+                    chart.data.datasets = [dataset];
+                    chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + tickets.total;
+                    chart.update();
+                    drawSegmentValues();
+                },
+                selectFilterEntity(event) {
+                    this.picker = this.modes[event.target.value];
+                    ['#startDate', '#finalDate'].forEach(_id => {
+                        let $picker = $(_id).data('DateTimePicker');
+                        $picker.viewMode(this.picker.mode);
+                        $picker.format(this.picker.format);
+                        if (!this.picker.diapazone) {
+                            $picker.maxDate(false);
+                            $picker.minDate(false);
+                        }
+                    });
+                    this.fetchData();
+                },
+            }
+        });
+        period.fetchData();
+        $("#startDate").datetimepicker({
+            format: 'MM/YYYY',
+            viewMode: 'months',
+        }).on('dp.change', function(e) {
+            $('#finalDate').data("DateTimePicker").minDate(e.date);
+            period.fetchData();
+        });
+        $("#finalDate").datetimepicker({
+            format: 'MM/YYYY',
+            viewMode: 'months',
+            useCurrent: false,
+        }).on('dp.change', function(e) {
+            $('#startDate').data("DateTimePicker").maxDate(e.date);
+            period.fetchData();
         });
 
         // Grid
