@@ -91,7 +91,7 @@
                             <div class=""><?=$source['text'];?></div>
                         <?php else: ?>
                             <p class="">
-                                <?=__("Activity #{0} not found", $ticket->source_id);?>
+                                <?=__("Source is not found");?>
                             </p>
                             <div class="">
                                 <?=__('Sorry, but source activity is closed, not exists, not associated with ticket or it is a wrong ID of activity');?>

@@ -213,11 +213,11 @@ class Bx24Component extends Component
     #section Task 5. Handling incoming event - adding an activity
     #
 
-    public function getActivity($id)
+    public function getActivities($ids)
     {
         $arParameters = [
             'filter' => [
-                'ID' => $id,
+                'ID' => $ids,
             ],
             'select' => [
                 'ASSOCIATED_ENTITY_ID',
@@ -248,7 +248,17 @@ class Bx24Component extends Component
                 'context' => $response
             ]);
         }
-        return count($response['result']) ? $response['result'][0] : null;
+        $list = count($response['result']) && !is_array($ids) ? $response['result'][0] : $response['result'];
+        if(is_array($ids))
+        {
+            $result = [];
+            foreach($list as $activity)
+            {
+                $result[$activity['ID']] = $activity;
+            }
+            $list = $result;
+        }
+        return $list;
     }
 
     public function getTicketSubject(int $ticketId)
@@ -331,7 +341,7 @@ class Bx24Component extends Component
 
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
     {
-        $source = $this->getActivity($ticket->source_id);
+        $source = $this->getActivities($ticket->source_id);
         if (!$source) {
             throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not found");
         }
@@ -365,10 +375,11 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
-    public function getUserById($uid)
+    public function getUserById(array $uids)
     {
-        $arParameters = [ 'ID' => $uid ];
-        return $this->obBx24App->call('user.get', $arParameters)['result'][0];
+        $arParameters = ['FILTER' => [ 'ID' => $uids ], "ADMIN_MODE" => 'True'];
+        $result = $this->obBx24App->call('user.get', $arParameters)['result'];
+        return count($result) > 0 ? (count($uids) > 0 ? $result : $result[0]) : null;
     }
 
     public function getContactsFor($clientId)
@@ -387,35 +398,81 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
-    public function getTicketAttributes($ticketId)
+    public function getTicketAttributes($ticketIds)
     {
-        $ticketActivity = $this->getActivity($ticketId);
+        $result = [];
+        $activities = $this->getActivities($ticketIds);
+        $this->bx24Logger->debug(__FUNCTION__, [
+            'id' => $ticketIds,
+            'activity' => $activities
+        ]);
+        
+        $uids = array_values(array_unique(array_column($activities, 'RESPONSIBLE_ID')));
+        $responsibles = $this->getUsersAttributes($uids);
+        
+        $unfound =  [
+            'id' => 0,
+            'abr' => "",
+            'title' => "User not found",
+            'email' => "",
+            'phone' => "",
+        ];
+        foreach($activities as $id => $activity)
+        {
+            if (!$activity)
+            {
+                $result[$id] = null;
+                continue;
+            }
+            $record = $this->getOneTicketAttributes($activity);
+            if (!$record) {
+                $result[$id] = null;
+                continue;
+            }
+            if (isset($responsibles[$record['responsible']]))
+            {
+                $record['responsible'] = $responsibles[$record['responsible']];
+            } else {
+                $record['responsible'] = array_merge(
+                    [],
+                    $unfound,
+                    [
+                        'id' => $record['responsible'],
+                        'title' => "User with ID #{$record['responsible']} not found in Bitrix24"
+                    ]
+                );
+            }
+            $result[$id] = $record;
+        }
+        return $result;
+    }
+
+    public function getOneTicketAttributes($ticketActivity)
+    {
         if(!$ticketActivity)
         {
-            $this->bx24Logger->debug(__FUNCTION__ . ' - ticket/source activity not found');
+            $this->bx24Logger->error(__FUNCTION__ . ' - ticket/source activity not found');
             return null;
         }
-        $responsibleContacts = $this->getUserById($ticketActivity['RESPONSIBLE_ID']);
         $customerContacts = $ticketActivity['COMMUNICATIONS'][0];
         $customerNames = $customerContacts['ENTITY_SETTINGS'];
         $additionContact = null;
-        if (isset($ticketActivity['COMMUNICATIONS'][1])) {
+        if(isset($ticketActivity['COMMUNICATIONS'][1]))
+        {
             $additionContact = $ticketActivity['COMMUNICATIONS'][1];
+            if(!$customerNames)
+            {
+                $customerNames = $additionContact['ENTITY_SETTINGS'];
+            }
         }
 
         return [
-            'id' => intval($ticketId),
-            'responsible' => [
-                'id' => intval($responsibleContacts['ID']),
-                'abr' => $this->makeNameAbbreviature($responsibleContacts),
-                'title' => $this->makeFullName($responsibleContacts),
-                'email' => $responsibleContacts['EMAIL'],
-                'phone' => $responsibleContacts['UF_PHONE_INNER'] ?? $responsibleContacts['PERSONAL_PHONE'] ?? $responsibleContacts['PERSONAL_MOBILE']
-            ],
+            'id' => intval($ticketActivity['ID']),
+            'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
             'customer' => [
                 'id' => (int)$customerContacts['ENTITY_ID'],
                 'abr' => $this->makeNameAbbreviature($customerNames),
-                'title' => $this->makeFullName($customerNames),
+                'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
                 'email' => $customerContacts['TYPE'] == 'EMAIL' 
                     ? $customerContacts['VALUE'] 
                     : ($additionContact && $additionContact['TYPE'] == 'EMAIL'
@@ -434,7 +491,27 @@ class Bx24Component extends Component
             'date' => date(static::DATE_TIME_FORMAT, strtotime($ticketActivity['CREATED'])),
             'active' => $ticketActivity['COMPLETED'] == self::NOT_COMPLETED,
             'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS'],
+            'PRIOVIDER_ID' => $ticketActivity['PROVIDER_ID']
         ];
+    }
+
+    public function getUsersAttributes(array $uids)
+    {
+        $result = [];
+        $resords = $this->getUserById($uids);
+        foreach($resords as $record)
+        {
+            $uid = (int)$record["ID"];
+            $result[$uid] = [
+                'id' => $uid,
+                'abr' => $this->makeNameAbbreviature($record),
+                'title' => $this->makeFullName($record),
+                'email' => $record['EMAIL'],
+                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE']
+            ];
+        }
+
+        return $result;
     }
 
     public function getMessages(Ticket $ticket) : array

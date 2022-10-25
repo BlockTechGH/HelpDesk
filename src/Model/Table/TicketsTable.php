@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
+use Cake\Core\Configure;
+use Cake\I18n\FrozenDate;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use DateTime;
 
 /**
  * Tickets Model
@@ -30,6 +33,10 @@ use Cake\Validation\Validator;
  */
 class TicketsTable extends Table
 {
+    public const PERIOD_MONTH = "month";
+    public const PERIOD_DAY = "date";
+    public const PERIOD_BETWEEN = "";
+
     /**
      * Initialize method
      *
@@ -135,12 +142,83 @@ class TicketsTable extends Table
         return $record ? $record['id'] : 0;
     }
 
-    public function getTicketsFor(string $memberId)
+    public function getTicketsFor(
+        string $memberId,
+        array $filter = [], // custom filter
+        array $sort = ['created' => 'desc'],
+        array $pagination = [1, 10],
+        // Support diapazone of date
+        string $period = "month",
+        string $from = null,
+        string $to = null
+    )
     {
-        return $this->find()
-            ->where(['member_id' => $memberId])
-            ->all()
-            ->toList();
+        $where = $filter;
+        $where['member_id'] = $memberId;
+        $query = $this->find();
+        foreach($sort as $field => $ord) {
+            if ($ord == 'desk') {
+                $query->orderDesc($field);
+            } else {
+                $query->orderAsc($field);
+            }
+        }
+        if ($from) {
+            if ($period == static::PERIOD_MONTH)
+            {
+                $parts = explode('/', $from);
+                if(count($parts) == 2)
+                {
+                    $from = implode("/", [$parts[0], "01", $parts[1]]);
+                }                
+            }
+            $from = new FrozenDate($from);
+            $where['created >='] = $from;
+        }
+        if ($to) {
+            $parts = explode('/', $to);
+            if(count($parts) == 2)
+            {
+                $to = implode("/", [$parts[0], "01", $parts[1]]);
+            }  
+            $to = new FrozenDate("{$to}");
+            $to = $to->modify('+ 1 day');
+            $where['created <='] = $to;
+        }
+        if($period == static::PERIOD_DAY && $from)
+        {
+            $where['created <='] = $from->modify('+1 day');
+        }
+        if ($period == static::PERIOD_MONTH && $from)
+        {
+            $where['created >='] = $from->firstOfMonth();
+            $where['created <='] = $from->modify('+ 1 month');
+        }
+        $query->where($where);
+        $full = $query->all();
+        $items = $full;        
+            
+        return [
+            'rows' => $items->toArray(),
+            'total' => $full->count(),
+            'current' => $pagination[0],
+            'rowCount' => $pagination[1]
+        ];
+    }
+
+    public function calcIndicatorsForTickets(array $fullRowsList)
+    {
+        $summary = [];
+        foreach($fullRowsList as $item)
+        {
+            if(!isset($summary[$item['status_id']]))
+            {
+                $summary[$item['status_id']] = 0;
+            }
+            $summary[$item['status_id']]++;
+        }
+
+        return $summary;
     }
 
     public function editTicket(int $id, int $statusId, $categoryId, string $memberId)
