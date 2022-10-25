@@ -1,5 +1,5 @@
 <form id="<?=$rootId;?>" method="POST" action="<?= $ajax; ?>">
-    <div class="column input-group">
+    <div class="column input-group ml-3">
         <div class="datepicker-limit">
             <select id="<?=$filterId;?>" class="form-control" 
                 @change="selectFilterEntity($event)"
