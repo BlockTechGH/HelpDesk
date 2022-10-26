@@ -236,6 +236,15 @@ class TicketController extends AppController
         $this->TicketControllerLogger->debug('getSummary - ' . __FUNCTION__ . '- arguments', [
             'rows' => $rows,
         ]);
+        if (count($rows) == 0)
+        {
+            return [
+                'perAgent' => [],
+                'perTeam' => [],
+                'teams' => [],
+                'expose' => []
+            ];
+        }
         $summary = [];
 
         $agents = [];
