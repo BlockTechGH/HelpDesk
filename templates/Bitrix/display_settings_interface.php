@@ -103,7 +103,45 @@
                 <div class="row">
                     <div class="col-4"></div>
                     <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
-                </div> 
+                </div>
+                <div class="row">
+                    <div class="ml-2 col-12">
+                        <h2 class="m-3"><?=__('Tickets per Agent/Team');?></h2>
+                        <table id="department" class="table table-hover table-bordered table-condensed">
+                            <thead>
+                                <th>{{department.i18n.Agent}}</th>
+                                <th v-for="status in statuses">{{ status.name }}</th>
+                                <th>{{ department.i18n.Total }}</th>
+                            </thead>
+                            <tbody v-for="(names, team) in department.teams">
+                                <tr class="table-info clickable">
+                                    <td class="form-input">
+                                        <span>{{ team }}</label>
+                                        <i v-if="department.expose.team[team]" 
+                                            class="fa fa-minus-square-o small-icon"
+                                            aria-hidden="true"
+                                            @click="accordion(team)"></i>
+                                        <i v-else 
+                                            class="fa fa-pluss-square-o small-icon"
+                                            aria-hidden="true"
+                                            @click="accordion(team)"></i>
+                                    </td>
+                                    <td v-for="status in statuses">
+                                        {{ department.perTeam[team][status.name] }}
+                                    </td>
+                                    <td>{{ department.perTeam[team].total }}</td>
+                                </tr>
+                                <tr v-for="agentName in names" class="fade show" v-if="department.expose.team[team]">
+                                    <td>{{ agentName }}</td>
+                                    <td v-for="status in statuses">
+                                        {{ department.perAgent[agentName][status.name] ?? 0 }}
+                                    </td>
+                                    <td>{{ department.perAgent[agentName].total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
@@ -317,7 +355,22 @@
     };
     window.summary = Object.assign(
         {
-            required: window.data.required
+            required: window.data.required,
+            department: {
+                agents: [],
+                teams: [],
+                i18n: <?=json_encode([
+                    'Total' => __('Total'),
+                    'Department' => __('Department'),
+                    'Agent' => __('Agent'),
+                ]);?>,
+                expose: {
+                    team: {},
+                    sla: {},
+                },
+            },
+            statuses: window.data.statuses,
+            sla: []
         }, window.tickets
     );
 </script>
@@ -584,29 +637,34 @@ $(document).ready(function () {
                         to: $('#finalDate').val(),
                         auth: this.required
                     };
-                    const tickets = await fetch(
-                        "<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>", {
+                    const statistics = await fetch(
+                        "<?=$this->Url->build(['_name' => 'get_summary', '?' => ['DOMAIN' => $domain]]);?>", {
                             method: "POST",
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify(parameters)
                         }
                     ).then(response => response.json());
-                    console.log('Fetch response', tickets);
+
+                    // Put data for the table
+                    this.department = Object.assign(this.department, statistics);
+                    console.log('Teams data', this.department);
+
+                    // make dota for chart
                     const dataset = {
                         data: [],
                         backgroundColor: chartData.datasets[0].backgroundColor,
                     };
                 
                     chart.data.labels = [];
-                    for (const label in tickets.summary) {
-                        if (Object.hasOwnProperty.call(tickets.summary, label)) {
-                            const value = tickets.summary[label];
+                    for (const label in statistics.summary) {
+                        if (Object.hasOwnProperty.call(statistics.summary, label)) {
+                            const value = statistics.summary[label];
                             chart.data.labels.push(label);
                             dataset.data.push(value);
                         }
                     }
                     chart.data.datasets = [dataset];
-                    chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + tickets.total;
+                    chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + statistics.total;
                     chart.update();
                     drawSegmentValues();
                 },
@@ -732,6 +790,18 @@ $(document).ready(function () {
             }
         });
         $('.fa-search').addClass('btn');
+
+        // Table of department statistics
+        new Vue({
+            el: "#department",
+            data: window.summary,
+            methods: {
+                accordion(team) {
+                    console.log("Toggle collapse team", team);
+                    this.department.expose.team[team] = !this.department.expose.team[team];
+                }
+            }
+        });
     });
 });
 </script>

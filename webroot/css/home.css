@@ -85,3 +85,6 @@ li.disabled .btn {
     background-color: white;
     cursor: not-allowed;
 }
+.small-icon {
+    float: right;
+}
