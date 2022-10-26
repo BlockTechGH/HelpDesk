@@ -120,11 +120,13 @@
                                         <i v-if="department.expose.team[team]" 
                                             class="fa fa-minus-square-o small-icon"
                                             aria-hidden="true"
-                                            @click="accordion(team)"></i>
+                                            @click="accordion(team)"
+                                            style="float: right;"></i>
                                         <i v-else 
                                             class="fa fa-plus-square-o small-icon"
                                             aria-hidden="true"
-                                            @click="accordion(team)"></i>
+                                            @click="accordion(team)"
+                                            style="float: right;"></i>
                                     </td>
                                     <td v-for="status in statuses">
                                         {{ department.perTeam[team][status.name] }}
