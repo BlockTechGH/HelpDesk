@@ -364,7 +364,7 @@
                 i18n: <?=json_encode([
                     'Total' => __('Total'),
                     'Department' => __('Department'),
-                    'Agent' => __('Agent'),
+                    'Agent' => __('Team/Agent'),
                 ]);?>,
                 expose: {
                     team: {},
