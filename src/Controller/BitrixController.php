@@ -218,14 +218,19 @@ class BitrixController extends AppController
             if ($mark > 0) {
                 $this->Statuses->flushMarks($mark);
             }
-            $this->Statuses->editStatus(
-                $data['ticket_status']['id'], 
-                $data['ticket_status']['name'], 
-                $this->memberId,
-                (bool)$data['ticket_status']['active'],
-                $mark,
-                $color
-            );
+            try {
+                $this->Statuses->editStatus(
+                    $data['ticket_status']['id'], 
+                    $data['ticket_status']['name'], 
+                    $this->memberId,
+                    (bool)$data['ticket_status']['active'],
+                    $mark,
+                    $color
+                );
+            } catch(\Exception $event)
+            {
+                $this->BxControllerLogger->error(__FUNCTION__ . ' - TicketStatuses - editStatus - error:\n ' . $event->getMessage());
+            }
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             return new Response(['body' => json_encode($this->statuses)]);
         }           
