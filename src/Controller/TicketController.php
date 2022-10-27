@@ -207,6 +207,7 @@ class TicketController extends AppController
                     'id' => $ticket['id'],
                     'name' => $attributes['subject'],
                     'responsible' => $attributes['responsible'] ?? [],
+                    'customer' => $attributes['customer'] ?? [],
                     'status_id' => $ticket->status_id,
                     'client' => $attributes['customer'] ?? [],
                     'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
@@ -281,28 +282,26 @@ class TicketController extends AppController
         }
         $departmentInformation = $this->Bx24->getDepartmentsByIds(array_keys($departments));
 
-        // Get client companies: crm.contact.company.items.get + mapping idCustomer => companyName
-        $companiesNamesMap = $this->Bx24->getCompanyNamesFor($customers);
-
         // Cals statistics
         foreach($rows as $row)
         {
             $uid = $row['responsible']['id'];
-            if (!isset($perUser[$uid][$row['status_id']])) {
-                $perUser[$uid][$row['status_id']] = 0;
+            $idStatus = $row['status_id'];
+            if (!isset($perUser[$uid][$idStatus])) {
+                $perUser[$uid][$idStatus] = 0;
             }
             if (!isset($perUser[$uid]['total'])) {
                 $perUser[$uid]['total'] = 0;
             }
-            $perUser[$uid][$row['status_id']]++;
+            $perUser[$uid][$idStatus]++;
             $perUser[$uid]['total']++;
 
-            $uid = $row['customer']['id'];
-            if(!isset($perClient[$companiesNamesMap[$uid]][$uid]))
+            $client = $row['customer']['title'];
+            if(!isset($perClient[$client]))
             {
-                $perClient[$companiesNamesMap[$uid]][$uid] = 0;
+                $perClient[$client]['total'] = 0;
             }
-            $perClient[$companiesNamesMap[$uid]][$uid]++;
+            $perClient[$client]['total']++;
         }
 
         // Make departments statistic
@@ -348,7 +347,7 @@ class TicketController extends AppController
         {
             $departments[$department['NAME']] = array_map(
                 function ($uid) use ($agents) { 
-                    return $agents[$uid]['title']; 
+                    return $agents[$uid]['title'];
                 }, 
                 $departments[$department['ID']]
             );
@@ -359,6 +358,7 @@ class TicketController extends AppController
         $summary['perAgent'] = $this->leftNumericKeys($perUser);
         $summary['perTeam'] = $this->leftNumericKeys($perTeam);
         $summary['teams'] = $this->leftNumericKeys($departments);
+        $summary['perCustomer'] = $perClient;
         $summary['expose'] = array_reduce(array_keys($summary['teams']), function(array $carry, $teamName) {
             $carry['team'][$teamName] = true;
             $carry['sla'][$teamName] = true;
