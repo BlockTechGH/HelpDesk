@@ -250,6 +250,8 @@ class TicketController extends AppController
         $agents = [];
         $perUser = [];
         $departments = [];
+        $perClient = [];
+        $customers = [];
 
         // Select user IDs
         foreach($rows as $row)
@@ -257,6 +259,7 @@ class TicketController extends AppController
             $user = $row['responsible']; 
             $uid = $user['id'];
             $agents[$uid] = $user;
+            $customers[] = $row['customer']['id'];
         }
         
         // user.get
@@ -278,6 +281,9 @@ class TicketController extends AppController
         }
         $departmentInformation = $this->Bx24->getDepartmentsByIds(array_keys($departments));
 
+        // Get client companies: crm.contact.company.items.get + mapping idCustomer => companyName
+        $companiesNamesMap = $this->Bx24->getCompanyNamesFor($customers);
+
         // Cals statistics
         foreach($rows as $row)
         {
@@ -290,6 +296,13 @@ class TicketController extends AppController
             }
             $perUser[$uid][$row['status_id']]++;
             $perUser[$uid]['total']++;
+
+            $uid = $row['customer']['id'];
+            if(!isset($perClient[$companiesNamesMap[$uid]][$uid]))
+            {
+                $perClient[$companiesNamesMap[$uid]][$uid] = 0;
+            }
+            $perClient[$companiesNamesMap[$uid]][$uid]++;
         }
 
         // Make departments statistic

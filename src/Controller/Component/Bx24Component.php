@@ -519,7 +519,8 @@ class Bx24Component extends Component
                 'abr' => $this->makeNameAbbreviature($record),
                 'title' => $this->makeFullName($record),
                 'email' => $record['EMAIL'],
-                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE']
+                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
+                'company' => $record['WORK_COMPANY']
             ];
         }
 
