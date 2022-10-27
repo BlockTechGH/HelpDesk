@@ -214,6 +214,7 @@ class BitrixController extends AppController
             return new Response(['body' => json_encode($category)]);
         } elseif(isset($data['ticket_status'])) {
             $mark = (int)$data['ticket_status']['mark'];
+            $color = $data['ticket_status']['color'];
             if ($mark > 0) {
                 $this->Statuses->flushMarks($mark);
             }
@@ -222,7 +223,8 @@ class BitrixController extends AppController
                 $data['ticket_status']['name'], 
                 $this->memberId,
                 (bool)$data['ticket_status']['active'],
-                $mark
+                $mark,
+                $color
             );
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             return new Response(['body' => json_encode($this->statuses)]);

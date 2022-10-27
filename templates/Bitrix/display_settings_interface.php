@@ -189,6 +189,7 @@
                             <th>{{ i18n.Active }}</th>
                             <th>{{ i18n.StartStatus }}</th>
                             <th>{{ i18n.FinalStatus }}</th>
+                            <th>{{ i18n.Color }}</th>
                             <th>{{ i18n.Action }}</th>
                         </tr></thead>
                         <tbody>
@@ -197,6 +198,7 @@
                                 <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 1 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 2 ? i18n.Yes : i18n.No }}</td>
+                                <td :style="'color: ' + status.color">{{ status.color }}</td>
                                 <td>
                                     <button 
                                         type="button" 
@@ -224,6 +226,9 @@
 
                         <label for="final" class="ml-1">{{ i18n.FinalStatus }}</label>
                         <input type="checkbox" :checked="currentStatus.mark==2" @change="markStatus(0, 2)" class="btn btn-primary">
+
+                        <label for="color" class="ml-1">{{ i18n.Color }}</label>
+                        <input type="color" id="color" v-model="currentStatus.color">
 
                         <button 
                             type="button" 
@@ -293,7 +298,8 @@
             name: '',
             active: 1,
             member_id: "<?=$required['member_id'];?>",
-            mark: 0
+            mark: 0,
+            color: '#ffffff',
         },
         currentCategory: {
             id: 0,
@@ -458,6 +464,7 @@ const statuses = new Vue({
                             this.statuses[key].name = status.name;
                             this.statuses[key].active = status.active;
                             this.statuses[key].mark = status.mark;
+                            this.statuses[key].color = status.color;
                         } else {
                             this.statuses[key] = status;
                         }
@@ -481,6 +488,7 @@ const statuses = new Vue({
             this.currentStatus.active = selected.active;
             this.currentStatus.index = index;
             this.currentStatus.mark = selected.mark;
+            this.currentStatus.color = selected.color;
         },
         create: function()
         {
@@ -506,14 +514,7 @@ $(document).ready(function () {
             datasets: [
                 {
                     data: [1, 1, 1, 1, 1],
-                    backgroundColor: [
-                        "#FF6384",
-                        "#63FF84",
-                        "#6384FF",
-                        "#84FF63",
-                        "#8463FF",
-                        "#F59420",
-                    ]
+                    backgroundColor: <?=json_encode(array_map(function ($code) { return "#$code"; }, array_column($statuses, 'color')));?>,
                 }
             ]
         };

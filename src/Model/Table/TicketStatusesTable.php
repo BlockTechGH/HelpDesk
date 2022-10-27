@@ -105,18 +105,20 @@ class TicketStatusesTable extends Table
         $list = [];
         foreach($rawList as $status)
         {
+            $status->color = "#{$status->color}";
             $list[$status->id] = $status;
         }
         return $list;
     }
 
-    public function editStatus($id = null, string $name, string $memberId, bool $active = true, int $mark = 0)
+    public function editStatus($id = null, string $name, string $memberId, bool $active = true, int $mark = 0, string $color)
     {
         $insert = [
             'member_id' => $memberId,
             'name' => $name,
             'active' => (int)$active,
             'mark' => $mark >= static::MARK_INTERMEDIATE && $mark <= static::MARK_FINAL ? $mark : static::MARK_INTERMEDIATE,
+            'color' => mb_ereg_replace('#', '', $color),
         ];
         if($id == null)
         {
