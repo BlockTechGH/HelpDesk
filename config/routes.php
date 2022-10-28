@@ -106,8 +106,8 @@ return static function (RouteBuilder $routes) {
         $builder->connect('/ticket',
             [
                 'controller' => 'Ticket',
-                'action' => 'displayTicketInterface'
-            ], ['_name' => 'ticket_interface']
+                'action' => 'displayCrmInterface'
+            ], ['_name' => 'crm_interface']
         );
 
        /*
