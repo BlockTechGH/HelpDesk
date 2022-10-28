@@ -382,6 +382,18 @@ class Bx24Component extends Component
         return count($result) > 0 ? (count($uids) > 0 ? $result : $result[0]) : null;
     }
 
+    public function getDepartmentsByIds(array $ids)
+    {
+        $result = [];
+        $arParameters = ['ID' => $ids];
+        $response = $this->obBx24App->call('department.get', $arParameters)['result'];
+        if(!$response)
+        {
+            return $result;
+        }
+        return $response;
+    }
+
     public function getContactsFor($clientId)
     {
         $arParameters = [

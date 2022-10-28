@@ -85,3 +85,11 @@ li.disabled .btn {
     background-color: white;
     cursor: not-allowed;
 }
+.small-icon {
+    float: right;
+}
+.icon.input-group-addon {
+    border-top: #ced4da solid 1px;
+    border-left: #ced4da solid 1px;
+    border-bottom: #ced4da solid 1px;
+}

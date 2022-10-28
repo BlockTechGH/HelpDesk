@@ -3,7 +3,7 @@
     <link rel="stylesheet" href="https://unpkg.com/@pluginjs/collapse/dist/collapse.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet">    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.css" integrity="sha512-WBBdLBZSQGm9JN1Yut45Y9ijfFANbcOX3G+/A5+oO8W2ZWASp3NkPrG8mgr8QvGviyLoAz8y09l7SJ1dt0as7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <?php $this->end();?>
 
 <?php $this->start('script');?>
@@ -103,7 +103,47 @@
                 <div class="row">
                     <div class="col-4"></div>
                     <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
-                </div> 
+                </div>
+                <div class="row">
+                    <div class="ml-2 col-12">
+                        <h2 class="m-3"><?=__('Tickets per Agent/Team');?></h2>
+                        <table id="department" class="table table-hover table-bordered table-condensed">
+                            <thead>
+                                <th>{{department.i18n.Agent}}</th>
+                                <th v-for="status in statuses">{{ status.name }}</th>
+                                <th>{{ department.i18n.Total }}</th>
+                            </thead>
+                            <tbody v-for="(names, team) in department.teams">
+                                <tr class="table-info clickable">
+                                    <td class="form-input">
+                                        <span>{{ team }}</label>
+                                        <i v-if="department.expose.team[team]" 
+                                            class="fa fa-minus-square-o small-icon"
+                                            aria-hidden="true"
+                                            @click="accordion(team)"
+                                            style="float: right;"></i>
+                                        <i v-else 
+                                            class="fa fa-plus-square-o small-icon"
+                                            aria-hidden="true"
+                                            @click="accordion(team)"
+                                            style="float: right;"></i>
+                                    </td>
+                                    <td v-for="status in statuses">
+                                        {{ department.perTeam[team][status.name] }}
+                                    </td>
+                                    <td>{{ department.perTeam[team].total }}</td>
+                                </tr>
+                                <tr v-for="agentName in names" class="fade show" v-if="department.expose.team[team]">
+                                    <td>{{ agentName }}</td>
+                                    <td v-for="status in statuses">
+                                        {{ department.perAgent[agentName][status.name] ?? 0 }}
+                                    </td>
+                                    <td>{{ department.perAgent[agentName].total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
@@ -149,6 +189,7 @@
                             <th>{{ i18n.Active }}</th>
                             <th>{{ i18n.StartStatus }}</th>
                             <th>{{ i18n.FinalStatus }}</th>
+                            <th>{{ i18n.Color }}</th>
                             <th>{{ i18n.Action }}</th>
                         </tr></thead>
                         <tbody>
@@ -157,6 +198,7 @@
                                 <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 1 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 2 ? i18n.Yes : i18n.No }}</td>
+                                <td :style="'color: ' + status.color">{{ status.color }}</td>
                                 <td>
                                     <button 
                                         type="button" 
@@ -184,6 +226,9 @@
 
                         <label for="final" class="ml-1">{{ i18n.FinalStatus }}</label>
                         <input type="checkbox" :checked="currentStatus.mark==2" @change="markStatus(0, 2)" class="btn btn-primary">
+
+                        <label for="color" class="ml-1">{{ i18n.Color }}</label>
+                        <input type="color" id="color" v-model="currentStatus.color">
 
                         <button 
                             type="button" 
@@ -253,7 +298,8 @@
             name: '',
             active: 1,
             member_id: "<?=$required['member_id'];?>",
-            mark: 0
+            mark: 0,
+            color: '#ffffff',
         },
         currentCategory: {
             id: 0,
@@ -317,7 +363,22 @@
     };
     window.summary = Object.assign(
         {
-            required: window.data.required
+            required: window.data.required,
+            department: {
+                agents: [],
+                teams: [],
+                i18n: <?=json_encode([
+                    'Total' => __('Total'),
+                    'Department' => __('Department'),
+                    'Agent' => __('Team/Agent'),
+                ]);?>,
+                expose: {
+                    team: {},
+                    sla: {},
+                },
+            },
+            statuses: window.data.statuses,
+            sla: []
         }, window.tickets
     );
 </script>
@@ -403,6 +464,7 @@ const statuses = new Vue({
                             this.statuses[key].name = status.name;
                             this.statuses[key].active = status.active;
                             this.statuses[key].mark = status.mark;
+                            this.statuses[key].color = status.color;
                         } else {
                             this.statuses[key] = status;
                         }
@@ -426,6 +488,7 @@ const statuses = new Vue({
             this.currentStatus.active = selected.active;
             this.currentStatus.index = index;
             this.currentStatus.mark = selected.mark;
+            this.currentStatus.color = selected.color;
         },
         create: function()
         {
@@ -451,14 +514,7 @@ $(document).ready(function () {
             datasets: [
                 {
                     data: [1, 1, 1, 1, 1],
-                    backgroundColor: [
-                        "#FF6384",
-                        "#63FF84",
-                        "#6384FF",
-                        "#84FF63",
-                        "#8463FF",
-                        "#F59420",
-                    ]
+                    backgroundColor: <?=json_encode(array_map(function ($code) { return "#$code"; }, array_column($statuses, 'color')));?>,
                 }
             ]
         };
@@ -584,29 +640,34 @@ $(document).ready(function () {
                         to: $('#finalDate').val(),
                         auth: this.required
                     };
-                    const tickets = await fetch(
-                        "<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>", {
+                    const statistics = await fetch(
+                        "<?=$this->Url->build(['_name' => 'get_summary', '?' => ['DOMAIN' => $domain]]);?>", {
                             method: "POST",
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify(parameters)
                         }
                     ).then(response => response.json());
-                    console.log('Fetch response', tickets);
+
+                    // Put data for the table
+                    this.department = Object.assign(this.department, statistics);
+                    console.log('Teams data', this.department);
+
+                    // make dota for chart
                     const dataset = {
                         data: [],
                         backgroundColor: chartData.datasets[0].backgroundColor,
                     };
                 
                     chart.data.labels = [];
-                    for (const label in tickets.summary) {
-                        if (Object.hasOwnProperty.call(tickets.summary, label)) {
-                            const value = tickets.summary[label];
+                    for (const label in statistics.summary) {
+                        if (Object.hasOwnProperty.call(statistics.summary, label)) {
+                            const value = statistics.summary[label];
                             chart.data.labels.push(label);
                             dataset.data.push(value);
                         }
                     }
                     chart.data.datasets = [dataset];
-                    chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + tickets.total;
+                    chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + statistics.total;
                     chart.update();
                     drawSegmentValues();
                 },
@@ -732,6 +793,18 @@ $(document).ready(function () {
             }
         });
         $('.fa-search').addClass('btn');
+
+        // Table of department statistics
+        new Vue({
+            el: "#department",
+            data: window.summary,
+            methods: {
+                accordion(team) {
+                    console.log("Toggle collapse team", team);
+                    this.department.expose.team[team] = !this.department.expose.team[team];
+                }
+            }
+        });
     });
 });
 </script>

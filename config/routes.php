@@ -94,6 +94,14 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'fetch_tickets']
         );
 
+        // Handler for summary for tickets
+        $builder->connect('/tickets/summary',
+            [
+                'controller' => 'Ticket',
+                'action' => 'getSummary',
+            ], ['_name' => 'get_summary']
+        );
+
        /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */

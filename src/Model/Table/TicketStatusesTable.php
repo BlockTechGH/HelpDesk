@@ -8,6 +8,7 @@ use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Exception;
 
 /**
  * TicketStatuses Model
@@ -105,18 +106,20 @@ class TicketStatusesTable extends Table
         $list = [];
         foreach($rawList as $status)
         {
+            $status->color = "#{$status->color}";
             $list[$status->id] = $status;
         }
         return $list;
     }
 
-    public function editStatus($id = null, string $name, string $memberId, bool $active = true, int $mark = 0)
+    public function editStatus($id = null, string $name, string $memberId, bool $active = true, int $mark = 0, string $color)
     {
         $insert = [
             'member_id' => $memberId,
             'name' => $name,
             'active' => (int)$active,
             'mark' => $mark >= static::MARK_INTERMEDIATE && $mark <= static::MARK_FINAL ? $mark : static::MARK_INTERMEDIATE,
+            'color' => mb_ereg_replace('#', '', $color),
         ];
         if($id == null)
         {
@@ -125,14 +128,25 @@ class TicketStatusesTable extends Table
             $status = $this->get($id);
             $status = $this->patchEntity($status, $insert);
         }
-        $this->save($status);
+        if(!$this->save($status) || $status->hasErrors())
+        {
+            $errorLines = [];
+            foreach($status->getErrors() as $prop => $error)
+            {
+                $bugs = array_map(function ($bug) use ($prop) { return "{$prop} - {$bug};"; }, array_values($error));
+                $errorLines = array_merge($errorLines, $bugs); 
+            }
+            $errorMessage = implode("\n", $errorLines);
+            throw new Exception($errorMessage);
+        }
         
         return [
             'id' => $status->id,
             'name' => $status->name,
             'active' => !!$status->active,
             'member_id' => $status->member_id,
-            'mark' => $status->mark
+            'mark' => $status->mark,
+            'color' => $status->color,
         ];
     }
 

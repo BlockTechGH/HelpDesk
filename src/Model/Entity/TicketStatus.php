@@ -30,5 +30,6 @@ class TicketStatus extends Entity
         'member_id' => true,
         'active' => true,
         'mark' => true,
+        'color' => true,
     ];
 }
