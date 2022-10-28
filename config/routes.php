@@ -102,6 +102,14 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'get_summary']
         );
 
+        // Handler for ticket creation interface
+        $builder->connect('/ticket',
+            [
+                'controller' => 'Ticket',
+                'action' => 'displayTicketInterface'
+            ], ['_name' => 'ticket_interface']
+        );
+
        /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */

@@ -100,6 +100,14 @@ class Bx24Component extends Component
             }
         });
 
+        $this->obBx24App->addBatchCall('placement.get', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['placementList'] = $result['result'];
+            }
+        });
+
         $this->obBx24App->addBatchCall('event.get', [], function($result) use (&$arData)
         {
             if($result['result'])
@@ -141,6 +149,54 @@ class Bx24Component extends Component
             $this->obBx24App->addBatchCall('crm.activity.type.add', $arActivityTypeParams, function ($result) use ($arActivityTypeParams) {
                 $this->bx24Logger->debug('installApplicationData - crm.activity.type.add', [
                     'arParams' => $arActivityTypeParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+        // add placements in crm card
+        $arNeedPlacements = [
+            'CRM_CONTACT_DETAIL_ACTIVITY',
+            'CRM_COMPANY_DETAIL_ACTIVITY'
+        ];
+    
+        $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
+        foreach($placementList ?? [] as $placement)
+        {
+            // unbind old placements firts
+            if(in_array($placement['placement'], $arNeedPlacements))
+            {
+                $arUnbindParams = [
+                    'PLACEMENT' => $placement['placement'],
+                    'HANDLER' => $placement['handler']
+                ];
+    
+                $this->obBx24App->addBatchCall('placement.unbind', $arUnbindParams, function($result) use ($arUnbindParams)
+                {
+                    $this->bx24Logger->debug('installApplicationData - placement.unbind', [
+                        'arParams' => $arUnbindParams,
+                        'result' => $result
+                    ]);
+                });
+            }
+        }
+    
+        foreach($arNeedPlacements as $placement)
+        {
+            $arBindParams = [
+                'PLACEMENT' => $placement,
+                'HANDLER' => $this->getRouteUrl('ticket_interface'),
+                'LANG_ALL' => [
+                    'en' => [
+                        'TITLE' => __('Helpdesk')
+                    ]
+                ]
+            ];
+    
+            $this->obBx24App->addBatchCall('placement.bind', $arBindParams, function($result) use ($arBindParams)
+            {
+                $this->bx24Logger->debug('installApplicationData - placement.bind', [
+                    'arParams' => $arBindParams,
                     'result' => $result
                 ]);
             });
@@ -538,17 +594,22 @@ class Bx24Component extends Component
         foreach($resords as $record)
         {
             $uid = (int)$record["ID"];
-            $result[$uid] = [
-                'id' => $uid,
-                'abr' => $this->makeNameAbbreviature($record),
-                'title' => $this->makeFullName($record),
-                'email' => $record['EMAIL'],
-                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
-                'company' => $record['WORK_COMPANY']
-            ];
+            $result[$uid] = $this->makeUserAttributes($record ?? []);
         }
 
         return $result;
+    }
+
+    public function makeUserAttributes(array $record) : array
+    {
+        return [
+            'id' => (int)$record["ID"],
+            'abr' => $this->makeNameAbbreviature($record),
+            'title' => $this->makeFullName($record),
+            'email' => $record['EMAIL'],
+            'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
+            'company' => $record['WORK_COMPANY']
+        ];
     }
 
     public function getMessages(Ticket $ticket) : array
@@ -828,6 +889,21 @@ class Bx24Component extends Component
         ];
         $this->obBx24App->call('crm.activity.update', $arParameters);
         $this->bx24Logger->debug(__FUNCTION__ . "Set complition of activity #{$idActivity} to '{$arParameters['fields']['COMPLETED']}'");
+    }
+
+    #endsection
+
+    #section Manual ticket's creation
+    
+    public function prepareNewActivitySource($entityId, $subject)
+    {
+        $communications = $this->getContactsFor($entityId);
+        return [
+            'COMMUNICATIONS' => $communications,
+            'ASSOCIATED_ENTIRY_ID' => $entityId,
+            'OWNER_ID' => $entityId,
+            'ID' => null
+        ];
     }
 
     #endsection
