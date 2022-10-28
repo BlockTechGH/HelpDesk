@@ -181,11 +181,12 @@ class Bx24Component extends Component
             }
         }
     
+        $handler = $this->getRouteUrl('crm_interface');
         foreach($arNeedPlacements as $placement)
         {
             $arBindParams = [
                 'PLACEMENT' => $placement,
-                'HANDLER' => $this->getRouteUrl('ticket_interface'),
+                'HANDLER' => $handler,
                 'LANG_ALL' => [
                     'en' => [
                         'TITLE' => __('Helpdesk')
@@ -602,12 +603,23 @@ class Bx24Component extends Component
 
     public function makeUserAttributes(array $record) : array
     {
+        if(count($record) == 0)
+        {
+            return [
+                'id' => 0,
+                'abr' => 'A N Onim',
+                'title' => 'Client undefined',
+                'email' => '',
+                'phone' => '',
+                'company' => '',
+            ];
+        }
         return [
             'id' => (int)$record["ID"],
             'abr' => $this->makeNameAbbreviature($record),
             'title' => $this->makeFullName($record),
             'email' => $record['EMAIL'],
-            'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
+            'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'] ?? $record['PHONE'],
             'company' => $record['WORK_COMPANY']
         ];
     }
@@ -904,6 +916,100 @@ class Bx24Component extends Component
             'OWNER_ID' => $entityId,
             'ID' => null
         ];
+    }
+
+    public function getContact(int $contactID)
+    {
+        $contact = $this->getBitrixEntity("crm.contact.get", $contactID, __FUNCTION__);
+        return $contact;
+    }
+
+    public function getCompany(int $companyID)
+    {
+        $parameters = ['filter' => ['ID' => [$companyID]], 'select' => ['*', 'UF_*', 'CONTACTS']];
+        $result = $this->obBx24App->call('crm.company.list', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.company.list', [
+            'arrParameters' => $parameters,
+            'arrResult' => $result
+        ]);
+        $company = $result['result'][0];
+        return $company;
+    }
+
+    public function getEntityTitle($entity) : string
+    {
+        return !empty($entity['NAME']) && !empty($entity['LAST_NAME'])
+                ? "{$entity['NAME']} {$entity['LAST_NAME']}"
+                : (
+                    !empty($entity['TITLE'])
+                    ? $entity['TITLE']
+                    : ($entity['NAME'] ?? "")
+                );
+    }
+
+    public function getPersonalContacts($profile, $type = 'PHONE')
+    {
+        $contacts = [];
+        if($profile["HAS_{$type}"] === 'N')
+        {
+            return $contacts;
+        }
+        foreach($profile[$type] as $contact)
+        {
+            $contacts[] = $contact['VALUE'];
+        }
+        return $contacts;
+    }
+
+    public function getCompanyContacts($company, $type = 'PHONE'): array
+    {
+        $this->bx24Logger->debug("getCompanyPhones - entity", ['company' => $company]);
+
+        $clercPhoneNumbers = [];;
+        $companyId = intval($company['ID']);
+        $contacts = $this->getBitrixEntity('crm.company.contact.items.get', $companyId, __FUNCTION__);
+        if(count($contacts) == 0)
+        {
+            return $clercPhoneNumbers;
+        }
+        return $this->addContactsIntoList($contacts, $type, $clercPhoneNumbers, __FUNCTION__);
+    }
+
+    private function addContactsIntoList(array $contacts, string $type, &$phonesList, string $function)
+    {
+        $contactIDs = array_column($contacts, 'CONTACT_ID');
+        $entities = $this->fetchBitrixEntities('crm.contact.list', $contactIDs, $function . ' - ' . __FUNCTION__);
+        foreach($entities as $profile)
+        {
+            $contacts = $this->getPersonalContacts($profile, $type);
+            $phonesList = array_merge($phonesList, $contacts);
+        }
+        return $phonesList;
+    }
+    
+    private function fetchBitrixEntities(string $listMethod, $id, string $function)
+    {
+        $parameters = [
+            'filter' => [ "ID" => $id ],
+            'select' => [ '*', 'PHONE', 'CONTACTS', 'UF_*' ]
+        ];
+        $entity = $this->obBx24App->call($listMethod, $parameters);
+        $this->bx24Logger->debug("{$function} - {$listMethod}", [
+            'parameters' => $parameters,
+            'response' => $entity
+        ]);
+        return $entity['result'];
+    }
+
+    private function getBitrixEntity(string $method, $id, string $function)
+    {
+        $parameters = [ "ID" => $id ];
+        $entity = $this->obBx24App->call($method, $parameters);
+        $this->bx24Logger->debug("{$function} - {$method}", [
+            'parameters' => $parameters,
+            'response' => $entity
+        ]);
+        return $entity["result"];
     }
 
     #endsection
