@@ -15,7 +15,7 @@
                 </div>
 
                 <div class="form-group p-2">
-                    <label class="" for="assigned_to">{{ i18n.Assigned }}</label>
+                    <label for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <span class="border rounded-circle p-2">{{ responsible.abr }}</span>
                         {{ responsible.title }}
@@ -37,24 +37,28 @@
             </div>
             <div class="col-9 border">
                 <div class="row">
-                    <div class="input-group">
+                    <div class="input-group pl-2">
                         <h3 class="m-1">
-                            <label for="title">{{ i18n.Ticket }}</label>
-                            <input id="title" v-model="subject">
+                            <label for="title">{{ i18n.Name }}</label>
+                            <input id="title" v-model="subject" class="form-control">
                         </h3>
                     </div>
                 </div>
 
                 <div class="container-fluid pt-4">
-                    <textarea v-model="description"></textarea>
+                    <label for="description">{{ i18n.Description }}</label>
+                    <textarea id="description" v-model="description" class="form-control"></textarea>
                 </div>
             </div>
         </div>
 
         <footer class="d-flex justify-content-end pt-4">
             <div class="form-button">
-                <button type="button" @click="save">
+                <button type="button" @click="save" class="btn btn-primary">
                     {{ i18n.Save }}
+                </button>
+                <button type="button" @click="cancel" class="btn btn-secondary">
+                    {{i18n.Cancel}}
                 </button>
             </div>
         </footer>
@@ -82,7 +86,7 @@
 
         subject: "",
         description: "",
-        statusId: <?=$statuses[0]['id'];?>,
+        statusId: <?=$statusId?>,
     };
 </script>
 
@@ -122,6 +126,10 @@
                     this.awaiting = false;
                 });
             },
+            cancel: function()
+            {
+                BX24.closeApplication();
+            }
         }
     });
 </script>
