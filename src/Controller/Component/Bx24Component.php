@@ -36,6 +36,7 @@ class Bx24Component extends Component
     public const OWNER_TYPE_CONTACT = 3;
     public const ACTIVITY_TYPE_EMAIL = 4;
 
+    public const BITRIX_REST_API_RESULT_LIMIT_COUNT = 50;
 
     private $controller = null;
     private $BitrixTokens = null;
@@ -217,7 +218,7 @@ class Bx24Component extends Component
     {
         $arParameters = [
             'filter' => [
-                'ID' => $ids,
+                'ID' => [],
             ],
             'select' => [
                 'ASSOCIATED_ENTITY_ID',
@@ -240,25 +241,41 @@ class Bx24Component extends Component
                 'COMPLETED'
             ]
         ];
-        $response = $this->obBx24App->call('crm.activity.list', $arParameters);
-        if(isset($response['error']))
+        if(!is_array($ids))
         {
-            $this->bx24Logger->error(__FUNCTION__ . ' - crm.activity.list - error', [
-                'filter' => $arParameters['filter'],
-                'context' => $response
-            ]);
+            $ids = [$ids];
         }
-        $list = count($response['result']) && !is_array($ids) ? $response['result'][0] : $response['result'];
-        if(is_array($ids))
+        $activities = [];
+        $list = [];
+
+        // Accumulate activities in variable 
+        $chunks = array_chunk($ids, static::BITRIX_REST_API_RESULT_LIMIT_COUNT);
+        foreach($chunks as $i => $idsChunk)
         {
-            $result = [];
-            foreach($list as $activity)
+            $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.list - chunk #' . strval($i + 1) . ' in process');
+            $arParameters['filter']['ID'] = $idsChunk;
+            $response = $this->obBx24App->call('crm.activity.list', $arParameters);
+            if(isset($response['error']))
             {
-                $result[$activity['ID']] = $activity;
+                $this->bx24Logger->error(__FUNCTION__ . ' - crm.activity.list - error', [
+                    'chunk' => $i+1,
+                    'filter' => $arParameters['filter'],
+                    'context' => $response
+                ]);
             }
-            $list = $result;
+            if(count($response['result']) == 0)
+            {
+                continue;
+            }
+            $list = array_merge($list, $response['result']);
         }
-        return $list;
+        
+        
+        foreach($list as $activity)
+        {
+            $activities[$activity['ID']] = $activity;
+        }
+        return count($activities) > 1 ? $activities : (count($list) ? $list[0] : null);
     }
 
     public function getTicketSubject(int $ticketId)
@@ -377,8 +394,15 @@ class Bx24Component extends Component
 
     public function getUserById(array $uids)
     {
-        $arParameters = ['FILTER' => [ 'ID' => $uids ], "ADMIN_MODE" => 'True'];
-        $result = $this->obBx24App->call('user.get', $arParameters)['result'];
+        $result = [];
+        $chunks = array_chunk($uids, static::BITRIX_REST_API_RESULT_LIMIT_COUNT);
+        foreach($chunks as $userIds)
+        {
+            $arParameters = ['FILTER' => [ 'ID' => $uids ], "ADMIN_MODE" => 'True'];
+            $fetched = $this->obBx24App->call('user.get', $arParameters)['result'];
+            $result = array_merge($result, $fetched);
+        }
+        
         return count($result) > 0 ? (count($uids) > 0 ? $result : $result[0]) : null;
     }
 
@@ -519,7 +543,8 @@ class Bx24Component extends Component
                 'abr' => $this->makeNameAbbreviature($record),
                 'title' => $this->makeFullName($record),
                 'email' => $record['EMAIL'],
-                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE']
+                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
+                'company' => $record['WORK_COMPANY']
             ];
         }
 

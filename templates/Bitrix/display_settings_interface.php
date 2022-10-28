@@ -144,6 +144,23 @@
                         </table>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="ml-2 col-12">
+                        <h2 class="m-3"><?=__('Tickets per customer');?></h2>
+                        <table id="customer" class="table table-hover table-bordered table-condensed">
+                            <thead>
+                                <th>{{ department.i18n.Customer }}</th>
+                                <th>{{ department.i18n.Total }}</th>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(amount, customer) in perCustomer">
+                                    <td>{{ customer }}</td>
+                                    <td>{{ amount.total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
@@ -321,6 +338,8 @@
             'No' => __('No'),
             'StartStatus' => __('Start'),
             'FinalStatus' => __('Final'),
+            'Total' => __('Total'),
+            'Customer' => __('Customer'),
         ]);?>,
     };
     window.tickets = {
@@ -371,6 +390,7 @@
                     'Total' => __('Total'),
                     'Department' => __('Department'),
                     'Agent' => __('Team/Agent'),
+                    'Customer' => __('Customer'),
                 ]);?>,
                 expose: {
                     team: {},
@@ -378,6 +398,7 @@
                 },
             },
             statuses: window.data.statuses,
+            perCustomer: [],
             sla: []
         }, window.tickets
     );
@@ -514,7 +535,7 @@ $(document).ready(function () {
             datasets: [
                 {
                     data: [1, 1, 1, 1, 1],
-                    backgroundColor: <?=json_encode(array_map(function ($code) { return "#$code"; }, array_column($statuses, 'color')));?>,
+                    backgroundColor: <?=json_encode(array_column($statuses, 'color'));?>,
                 }
             ]
         };
@@ -650,6 +671,7 @@ $(document).ready(function () {
 
                     // Put data for the table
                     this.department = Object.assign(this.department, statistics);
+                    this.perCustomer = statistics.perCustomer;
                     console.log('Teams data', this.department);
 
                     // make dota for chart
@@ -804,6 +826,12 @@ $(document).ready(function () {
                     this.department.expose.team[team] = !this.department.expose.team[team];
                 }
             }
+        });
+
+        // Table of customner statistics
+        new Vue({
+            el: '#customer',
+            data: window.summary,
         });
     });
 });
