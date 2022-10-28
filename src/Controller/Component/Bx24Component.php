@@ -394,8 +394,15 @@ class Bx24Component extends Component
 
     public function getUserById(array $uids)
     {
-        $arParameters = ['FILTER' => [ 'ID' => $uids ], "ADMIN_MODE" => 'True'];
-        $result = $this->obBx24App->call('user.get', $arParameters)['result'];
+        $result = [];
+        $chunks = array_chunk($uids, static::BITRIX_REST_API_RESULT_LIMIT_COUNT);
+        foreach($chunks as $userIds)
+        {
+            $arParameters = ['FILTER' => [ 'ID' => $uids ], "ADMIN_MODE" => 'True'];
+            $fetched = $this->obBx24App->call('user.get', $arParameters)['result'];
+            $result = array_merge($result, $fetched);
+        }
+        
         return count($result) > 0 ? (count($uids) > 0 ? $result : $result[0]) : null;
     }
 
