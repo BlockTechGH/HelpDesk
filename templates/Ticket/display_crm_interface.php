@@ -37,7 +37,7 @@
             </div>
             <div class="col-9 border">
                 <div class="row">
-                    <div class="input-group pl-2">
+                    <div class="input-group pl-4">
                         <h3 class="m-1">
                             <label for="title">{{ i18n.Name }}</label>
                             <input id="title" v-model="subject" class="form-control">
