@@ -56,6 +56,7 @@
             <div class="form-button">
                 <button type="button" @click="save" class="btn btn-primary">
                     {{ i18n.Save }}
+                    <span role="status" aria-hidden="true" class="spinner-border spinner-border-sm ml-2" v-if="awaiting"></span>
                 </button>
                 <button type="button" @click="cancel" class="btn btn-secondary">
                     {{i18n.Cancel}}
@@ -108,13 +109,10 @@
                         subject: this.subject,
                         description: this.description,
                         responsible: this.responsible.id,
+                        status: this.statusId,
                     }, 
                     this.required
                 );
-                if (this.ticket.id > 0)
-                {
-                    parameters.do = "edit"; 
-                }
                 fetch(this.ajax, {
                     method: "POST",
                     headers: {'Content-Type': 'application/json'},
@@ -122,7 +120,9 @@
                 }).then(async result => {
                     const stored = await result.json();
                     this.ticket = stored.ticket;
-                    this.ticketAttributes.active = stored.active;
+                    this.awaiting = false;
+                }).catch(err => {
+                    console.error(err);
                     this.awaiting = false;
                 });
             },

@@ -363,6 +363,7 @@ class Bx24Component extends Component
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
             ]
         ];
+        $this->bx24Logger->debug('createActivity', $parameters);
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $parameters,
@@ -849,6 +850,7 @@ class Bx24Component extends Component
 
     private function createActivityWith(array $arParameters)
     {
+        $this->bx24Logger->debug('createActivityWith - crm.activity.add - fileds', $arParameters);
         $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
         $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
             'arParameters' => $arParameters,
@@ -907,14 +909,23 @@ class Bx24Component extends Component
 
     #section Manual ticket's creation
     
-    public function prepareNewActivitySource($entityId, $subject)
-    {
-        $communications = $this->getContactsFor($entityId);
+    public function prepareNewActivitySource(
+        $entityId, 
+        string $subject, 
+        string $description, 
+        int $responsibleId,
+        array $communications
+    ) {
+        $type = $this->getActivityTypeAndName();
         return [
             'COMMUNICATIONS' => $communications,
-            'ASSOCIATED_ENTIRY_ID' => $entityId,
+            'ASSOCIATED_ENTITY_ID' => $entityId,
             'OWNER_ID' => $entityId,
-            'ID' => null
+            'OWNER_TYPE_ID' => $type['TYPE_ID'],
+            'SUBJECT' => $subject,
+            'DESCRIPTION' => $description,
+            'RESPONSIBLE_ID' => $responsibleId,
+            'ID' => null,
         ];
     }
 
@@ -954,9 +965,16 @@ class Bx24Component extends Component
         {
             return $contacts;
         }
+        $this->bx24Logger->debug("getPersonalContacts - {$type}", [
+            $type => $profile[$type],
+        ]);
         foreach($profile[$type] as $contact)
         {
-            $contacts[] = $contact['VALUE'];
+            $contacts[] = [
+                'ENTITY_ID' => $profile['ID'],
+                'ENTITY_TYPE_ID' => 3,
+                'VALUE' => $contact['VALUE']
+            ];
         }
         return $contacts;
     }
@@ -1014,7 +1032,7 @@ class Bx24Component extends Component
 
     #endsection
 
-    private static function getActivityTypeAndName()
+    public static function getActivityTypeAndName()
     {
         $postfix = Configure::read('AppConfig.itemsPostfix');
         return [
