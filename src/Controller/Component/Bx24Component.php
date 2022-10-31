@@ -416,9 +416,12 @@ class Bx24Component extends Component
 
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
     {
-        $source = $this->getActivities($ticket->source_id);
+        $source = $this->getActivities([$ticket->source_id]);
         if (!$source) {
-            throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not found");
+            $source = $this->getActivities([$ticket->activity_id]);
+        }
+        if (!$source) {
+            throw new Exception("Activity-{$ticket->source_type_id} is not found");
         }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
             'id' => $ticket->source_id,
@@ -428,6 +431,7 @@ class Bx24Component extends Component
         $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
         $arParameters = static::prepareNewActivityParameters($source, $currentUser, $subject, $messageText);
+        $appProps = $this->getActivityTypeAndName();
         switch($ticket->source_type_id)
         {
             case static::PROVIDER_CRM_EMAIL:
@@ -437,6 +441,8 @@ class Bx24Component extends Component
                 break;
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
+            case $appProps['TYPE_ID']:
+                return $this->sendEmail($arParameters, $currentUser, $attachment);
         }
         return null;
     }
@@ -567,9 +573,9 @@ class Bx24Component extends Component
                 'id' => (int)$customerContacts['ENTITY_ID'],
                 'abr' => $this->makeNameAbbreviature($customerNames),
                 'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
-                'email' => $customerContacts['TYPE'] == 'EMAIL' 
+                'email' => $customerContacts['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@')
                     ? $customerContacts['VALUE'] 
-                    : ($additionContact && $additionContact['TYPE'] == 'EMAIL'
+                    : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@'))
                         ? $additionContact['VALUE'] 
                         : ''
                     ),
@@ -871,7 +877,13 @@ class Bx24Component extends Component
             'END_TIME' => date(static::DATE_TIME_FORMAT),
             'COMPLETED' => static::COMPLETED,
             'DIRECTION' => static::OUTCOMMING,
-            'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS'])
+            'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS']) ?? array_map(function ($item) use ($source) {
+                return [
+                    'ENTITY_ID' => $source,
+                    'ENTITY_TYPE_ID' => 3,
+                    'VALUE' => $item['EMAIL'] ?? $item['NAME']
+                ];
+            }, $currentUser['contacts']),
         ];
     }
 

@@ -188,6 +188,7 @@ class BitrixController extends AppController
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
