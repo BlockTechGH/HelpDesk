@@ -94,7 +94,7 @@ class TicketController extends AppController
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer object', $entity);
         $customer = $this->Bx24->makeUserAttributes($entity);
         
-        if(!empty($customer['pheno']) && !empty($customer['phone']['VALUE']))
+        if(!empty($customer['phone']) && !empty($customer['phone']['VALUE']))
         {
             $customer['phone'] = $customer['phone']['VALUE'];
         }
