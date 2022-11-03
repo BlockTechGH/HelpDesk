@@ -124,13 +124,20 @@ class BitrixController extends AppController
                 $activityId = $this->ticket ? $this->ticket->action_id : $this->placement['activity_id'];
                 $sourceId = $this->ticket ? $this->ticket->source_id : null;
                 $activitiesId = [$activityId];
+                $ticketClass = $this->Bx24->getActivityTypeAndName();
+                $this->set('ticketActivityType', $ticketClass['TYPE_ID']);
                 if ($sourceId) {
                     $activitiesId[] = $sourceId;
                 }
 
                 $activities = $this->Bx24->getActivities($activitiesId);
-                $ticketActivity = $activities[$activityId];
-                $sourceActivity = $sourceId ? $activities[$sourceId] : null;
+                $this->BxControllerLogger->debug('activities', [
+                    'source' => $sourceId,
+                    'ticket' => $activityId,
+                    'found' => $activities,
+                ]);
+                $ticketActivity = count($activitiesId) > 1 ? $activities[$activityId] : $activities;
+                $sourceActivity = $sourceId ? $activities[$sourceId] : $ticketActivity;
                 if($ticketActivity)
                 {
                     $ticketAttributes = $this->Bx24->getOneTicketAttributes($ticketActivity);
@@ -181,6 +188,7 @@ class BitrixController extends AppController
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
@@ -303,7 +311,7 @@ class BitrixController extends AppController
         $data = $this->request->getData('data');
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
-        $activity = $this->Bx24->getActivities([$idActivity])[$idActivity];
+        $activity = $this->Bx24->getActivities([$idActivity]);
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
             'id' => $idActivity,
             'object' => $activity

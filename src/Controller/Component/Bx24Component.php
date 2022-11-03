@@ -100,6 +100,14 @@ class Bx24Component extends Component
             }
         });
 
+        $this->obBx24App->addBatchCall('placement.get', [], function($result) use (&$arData)
+        {
+            if($result['result'])
+            {
+                $arData['placementList'] = $result['result'];
+            }
+        });
+
         $this->obBx24App->addBatchCall('event.get', [], function($result) use (&$arData)
         {
             if($result['result'])
@@ -141,6 +149,55 @@ class Bx24Component extends Component
             $this->obBx24App->addBatchCall('crm.activity.type.add', $arActivityTypeParams, function ($result) use ($arActivityTypeParams) {
                 $this->bx24Logger->debug('installApplicationData - crm.activity.type.add', [
                     'arParams' => $arActivityTypeParams,
+                    'result' => $result
+                ]);
+            });
+        }
+
+        // add placements in crm card
+        $arNeedPlacements = [
+            'CRM_CONTACT_DETAIL_ACTIVITY',
+            'CRM_COMPANY_DETAIL_ACTIVITY'
+        ];
+    
+        $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
+        foreach($placementList ?? [] as $placement)
+        {
+            // unbind old placements firts
+            if(in_array($placement['placement'], $arNeedPlacements))
+            {
+                $arUnbindParams = [
+                    'PLACEMENT' => $placement['placement'],
+                    'HANDLER' => $placement['handler']
+                ];
+    
+                $this->obBx24App->addBatchCall('placement.unbind', $arUnbindParams, function($result) use ($arUnbindParams)
+                {
+                    $this->bx24Logger->debug('installApplicationData - placement.unbind', [
+                        'arParams' => $arUnbindParams,
+                        'result' => $result
+                    ]);
+                });
+            }
+        }
+    
+        $handler = $this->getRouteUrl('crm_interface');
+        foreach($arNeedPlacements as $placement)
+        {
+            $arBindParams = [
+                'PLACEMENT' => $placement,
+                'HANDLER' => $handler,
+                'LANG_ALL' => [
+                    'en' => [
+                        'TITLE' => __('Helpdesk')
+                    ]
+                ]
+            ];
+    
+            $this->obBx24App->addBatchCall('placement.bind', $arBindParams, function($result) use ($arBindParams)
+            {
+                $this->bx24Logger->debug('installApplicationData - placement.bind', [
+                    'arParams' => $arBindParams,
                     'result' => $result
                 ]);
             });
@@ -306,6 +363,7 @@ class Bx24Component extends Component
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
             ]
         ];
+        $this->bx24Logger->debug('createActivity', $parameters);
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $parameters,
@@ -358,9 +416,12 @@ class Bx24Component extends Component
 
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
     {
-        $source = $this->getActivities($ticket->source_id);
+        $source = $this->getActivities([$ticket->source_id]);
         if (!$source) {
-            throw new Exception("Activity-{$ticket->source_type_id} #{$ticket->source_id} is not found");
+            $source = $this->getActivities([$ticket->activity_id]);
+        }
+        if (!$source) {
+            throw new Exception("Activity-{$ticket->source_type_id} is not found");
         }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
             'id' => $ticket->source_id,
@@ -370,6 +431,7 @@ class Bx24Component extends Component
         $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
         $arParameters = static::prepareNewActivityParameters($source, $currentUser, $subject, $messageText);
+        $appProps = $this->getActivityTypeAndName();
         switch($ticket->source_type_id)
         {
             case static::PROVIDER_CRM_EMAIL:
@@ -379,6 +441,8 @@ class Bx24Component extends Component
                 break;
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
+            case $appProps['TYPE_ID']:
+                return $this->sendEmail($arParameters, $currentUser, $attachment);
         }
         return null;
     }
@@ -509,9 +573,9 @@ class Bx24Component extends Component
                 'id' => (int)$customerContacts['ENTITY_ID'],
                 'abr' => $this->makeNameAbbreviature($customerNames),
                 'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
-                'email' => $customerContacts['TYPE'] == 'EMAIL' 
+                'email' => $customerContacts['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@')
                     ? $customerContacts['VALUE'] 
-                    : ($additionContact && $additionContact['TYPE'] == 'EMAIL'
+                    : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@'))
                         ? $additionContact['VALUE'] 
                         : ''
                     ),
@@ -538,17 +602,33 @@ class Bx24Component extends Component
         foreach($resords as $record)
         {
             $uid = (int)$record["ID"];
-            $result[$uid] = [
-                'id' => $uid,
-                'abr' => $this->makeNameAbbreviature($record),
-                'title' => $this->makeFullName($record),
-                'email' => $record['EMAIL'],
-                'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'],
-                'company' => $record['WORK_COMPANY']
-            ];
+            $result[$uid] = $this->makeUserAttributes($record ?? []);
         }
 
         return $result;
+    }
+
+    public function makeUserAttributes(array $record) : array
+    {
+        if(count($record) == 0)
+        {
+            return [
+                'id' => 0,
+                'abr' => 'A N Onim',
+                'title' => 'Client undefined',
+                'email' => '',
+                'phone' => '',
+                'company' => '',
+            ];
+        }
+        return [
+            'id' => (int)$record["ID"],
+            'abr' => $this->makeNameAbbreviature($record),
+            'title' => $this->makeFullName($record),
+            'email' => $record['EMAIL'],
+            'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'] ?? $record['PHONE'],
+            'company' => $record['WORK_COMPANY']
+        ];
     }
 
     public function getMessages(Ticket $ticket) : array
@@ -776,6 +856,7 @@ class Bx24Component extends Component
 
     private function createActivityWith(array $arParameters)
     {
+        $this->bx24Logger->debug('createActivityWith - crm.activity.add - fileds', $arParameters);
         $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
         $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
             'arParameters' => $arParameters,
@@ -796,7 +877,13 @@ class Bx24Component extends Component
             'END_TIME' => date(static::DATE_TIME_FORMAT),
             'COMPLETED' => static::COMPLETED,
             'DIRECTION' => static::OUTCOMMING,
-            'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS'])
+            'COMMUNICATIONS' => static::copyContacts($source['COMMUNICATIONS']) ?? array_map(function ($item) use ($source) {
+                return [
+                    'ENTITY_ID' => $source,
+                    'ENTITY_TYPE_ID' => 3,
+                    'VALUE' => $item['EMAIL'] ?? $item['NAME']
+                ];
+            }, $currentUser['contacts']),
         ];
     }
 
@@ -832,7 +919,132 @@ class Bx24Component extends Component
 
     #endsection
 
-    private static function getActivityTypeAndName()
+    #section Manual ticket's creation
+    
+    public function prepareNewActivitySource(
+        $entityId, 
+        string $subject, 
+        string $description, 
+        int $responsibleId,
+        array $communications
+    ) {
+        $type = $this->getActivityTypeAndName();
+        return [
+            'COMMUNICATIONS' => $communications,
+            'ASSOCIATED_ENTITY_ID' => $entityId,
+            'OWNER_ID' => $entityId,
+            'OWNER_TYPE_ID' => $type['TYPE_ID'],
+            'SUBJECT' => $subject,
+            'DESCRIPTION' => $description,
+            'RESPONSIBLE_ID' => $responsibleId,
+            'ID' => null,
+        ];
+    }
+
+    public function getContact(int $contactID)
+    {
+        $contact = $this->getBitrixEntity("crm.contact.get", $contactID, __FUNCTION__);
+        return $contact;
+    }
+
+    public function getCompany(int $companyID)
+    {
+        $parameters = ['filter' => ['ID' => [$companyID]], 'select' => ['*', 'UF_*', 'CONTACTS']];
+        $result = $this->obBx24App->call('crm.company.list', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.company.list', [
+            'arrParameters' => $parameters,
+            'arrResult' => $result
+        ]);
+        $company = $result['result'][0];
+        return $company;
+    }
+
+    public function getEntityTitle($entity) : string
+    {
+        return !empty($entity['NAME']) && !empty($entity['LAST_NAME'])
+                ? "{$entity['NAME']} {$entity['LAST_NAME']}"
+                : (
+                    !empty($entity['TITLE'])
+                    ? $entity['TITLE']
+                    : ($entity['NAME'] ?? "")
+                );
+    }
+
+    public function getPersonalContacts($profile, $type = 'PHONE')
+    {
+        $contacts = [];
+        if($profile["HAS_{$type}"] === 'N')
+        {
+            return $contacts;
+        }
+        $this->bx24Logger->debug("getPersonalContacts - {$type}", [
+            $type => $profile[$type],
+        ]);
+        foreach($profile[$type] as $contact)
+        {
+            $contacts[] = [
+                'ENTITY_ID' => $profile['ID'],
+                'ENTITY_TYPE_ID' => 3,
+                'VALUE' => $contact['VALUE']
+            ];
+        }
+        return $contacts;
+    }
+
+    public function getCompanyContacts($company, $type = 'PHONE'): array
+    {
+        $this->bx24Logger->debug("getCompanyPhones - entity", ['company' => $company]);
+
+        $clercPhoneNumbers = [];;
+        $companyId = intval($company['ID']);
+        $contacts = $this->getBitrixEntity('crm.company.contact.items.get', $companyId, __FUNCTION__);
+        if(count($contacts) == 0)
+        {
+            return $clercPhoneNumbers;
+        }
+        return $this->addContactsIntoList($contacts, $type, $clercPhoneNumbers, __FUNCTION__);
+    }
+
+    private function addContactsIntoList(array $contacts, string $type, &$phonesList, string $function)
+    {
+        $contactIDs = array_column($contacts, 'CONTACT_ID');
+        $entities = $this->fetchBitrixEntities('crm.contact.list', $contactIDs, $function . ' - ' . __FUNCTION__);
+        foreach($entities as $profile)
+        {
+            $contacts = $this->getPersonalContacts($profile, $type);
+            $phonesList = array_merge($phonesList, $contacts);
+        }
+        return $phonesList;
+    }
+    
+    private function fetchBitrixEntities(string $listMethod, $id, string $function)
+    {
+        $parameters = [
+            'filter' => [ "ID" => $id ],
+            'select' => [ '*', 'PHONE', 'CONTACTS', 'UF_*' ]
+        ];
+        $entity = $this->obBx24App->call($listMethod, $parameters);
+        $this->bx24Logger->debug("{$function} - {$listMethod}", [
+            'parameters' => $parameters,
+            'response' => $entity
+        ]);
+        return $entity['result'];
+    }
+
+    private function getBitrixEntity(string $method, $id, string $function)
+    {
+        $parameters = [ "ID" => $id ];
+        $entity = $this->obBx24App->call($method, $parameters);
+        $this->bx24Logger->debug("{$function} - {$method}", [
+            'parameters' => $parameters,
+            'response' => $entity
+        ]);
+        return $entity["result"];
+    }
+
+    #endsection
+
+    public static function getActivityTypeAndName()
     {
         $postfix = Configure::read('AppConfig.itemsPostfix');
         return [

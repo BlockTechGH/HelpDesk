@@ -5,7 +5,7 @@ $this->end();
 ?>
 
 <?= $this->Html->script('fit_window'); ?>
-<div id="feedback_form" class="row mt-3">
+<div id="feedback_form" class="row m-3">
     <form 
         method="POST" 
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"

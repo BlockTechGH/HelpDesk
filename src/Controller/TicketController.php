@@ -19,6 +19,8 @@ class TicketController extends AppController
 
     private $TicketControllerLogger;
 
+    private $placement;
+
     public function initialize(): void
     {
         $auth = $this->request->getData('auth');
@@ -31,7 +33,12 @@ class TicketController extends AppController
             $this->authId = $auth['AUTH_ID'] ?? "";
             $this->refreshId = $auth['REFRESH_ID'] ?? "";
             $this->authExpires = $auth['AUTH_EXPIRES'] ?? "";
-        } 
+        } else {
+            $this->memberId = $this->request->getData('member_id') ?? '';
+            $this->authId = $this->request->getData('AUTH_ID') ?? '';
+            $this->authExpires = $this->request->getData('AUTH_EXPIRES') ?? '';
+            $this->refreshId = $this->request->getData('REFRESH_ID');
+        }
         $this->isAccessFromBitrix = $this->authId && $this->memberId && $this->domain;
     }
 
@@ -53,6 +60,108 @@ class TicketController extends AppController
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_rest.log';
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
+        $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+    }
+
+
+    public function displayCrmInterface()
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
+
+        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $currentUser = $this->Bx24->getCurrentUser();
+        $data = $this->request->getData();
+        $entityId = $this->placement['ID'];
+        $entityType = $data['PLACEMENT'];
+        
+        $isContact = ($entityType == '	CRM_CONTACT_DETAIL_ACTIVITY');
+        $entity = $isContact 
+            ? $this->Bx24->getCompany((int)$entityId) 
+            : $this->Bx24->getContact((int)$entityId);
+        $entity['TITLE'] = $this->Bx24->getEntityTitle($entity);
+        $contacts = [];
+        foreach(['PHONE', 'EMAIL'] as $contactType)
+        {
+            $all = !$isContact 
+                ? $this->Bx24->getPersonalContacts($entity, $contactType) 
+                : $this->Bx24->getCompanyContacts($entity, $contactType);
+            $contacts = array_merge($contacts, $all);
+            $entity[$contactType] = count($all) ? $all[0] : "";
+        }
+        $entity['WORK_COMPANY'] = $isContact ? "" : $entity['NAME'];
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer object', $entity);
+        $customer = $this->Bx24->makeUserAttributes($entity);
+        
+        if(!empty($customer['phone']) && !empty($customer['phone']['VALUE']))
+        {
+            $customer['phone'] = $customer['phone']['VALUE'];
+        }
+        if(!empty($customer['email']) && !empty($customer['email']['VALUE']))
+        {
+            $customer['email'] = $customer['email']['VALUE'];
+        }
+
+        if($this->request->is('ajax') || isset($data['subject']))
+        {
+            $this->viewBuilder()->disableAutoLayout();
+            $this->disableAutoRender();
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
+
+            $subject = $data['subject'];
+            $text = $data['description'];
+            $statusId = intval($data['status']);
+            $status = $statuses[$statusId];
+            $ticketId = $this->Tickets->getLatestID() + 1;
+            $postfix = $this->Bx24->getTicketSubject($ticketId);
+
+            // Create ticket activity
+            $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$currentUser['ID'], $contacts);
+            $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
+            $activityId = $this->Bx24->createTicketBy($source, $postfix);
+            $result = [
+                'status' => __('Ticket was not created'),
+            ];
+            if ($activityId) {
+                $activity = $this->Bx24->getActivities([$activityId]);
+                //$activity['PROVIDER_TYPE_ID'] = "USER_ACTIVITY";
+
+                // Write into DB
+                $ticketRecord = $this->Tickets->create(
+                    $this->memberId, 
+                    $activity, 
+                    1, 
+                    $status['id'],
+                    0
+                );
+                $result = [
+                    'status' => __('Ticket was created successful'), 
+                    'ticket' => $activityId,
+                ];
+            }
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - finish', $result);
+            return new Response([
+                'body' => json_encode($result),
+            ]);
+        }
+
+        $this->set('customer', $customer);
+        $this->set('responsible', $this->Bx24->makeUserAttributes($currentUser));
+        $this->set('statuses', $statuses);
+        $this->set('statusId', $this->TicketStatuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE)['id']);
+        $this->set('ajax', $this->getUrlOf('crm_interface', $this->domain));
+        $this->set('required', [
+            'AUTH_ID' => $this->authId,
+            'AUTH_EXPIRES' => $this->authExpires,
+            'REFRESH_ID'=> $this->refreshId,
+            'member_id' => $this->memberId,
+            'PLACEMENT_OPTIONS' => json_encode($this->placement),
+            'PLACEMENT' => $entityId,
+        ]);
+
+        $this->render('display_crm_interface');
     }
 
     public function collectTickets()

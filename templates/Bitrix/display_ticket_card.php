@@ -37,7 +37,7 @@
             </div>
             <div class="col-9 border">
                 <div class="row">
-                    <div class="input-group">
+                    <div class="input-group ml-4">
                         <h3 class="m-1">
                             <svg xmlns="http://www.w3.org/2000/svg" 
                                 width="16" height="16" 
@@ -65,8 +65,16 @@
                                 v-else-if="ticket.source_type_id == 'CRM_SMS' || ticket.source_type_id == 'VOXIMPLANT_CALL'"
                             >
                                 <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
-                            </svg>         
-                            <span v-else>{{ i18n[ticket.source_type_id] ?? ticket.source_type_id }}</span>
+                            </svg>
+                            <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                width="16" height="16" fill="currentColor" 
+                                class="bi bi-pencil-square" 
+                                viewBox="0 0 16 16"
+                                v-else-if="ticket.source_type_id == ticketActivityType">
+                                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                            </svg>   
                             {{ i18n.Ticket }}<br/>
                             <sup>{{ ticket.created }}</sup>
                         </h3>
@@ -74,7 +82,16 @@
                             <button
                                 type="button"
                                 v-on:click="feedback"
-                                class="btn btn-primary rounded-circle m-3"
+                                class="btn 
+                                    <?=($ticket['source_type_id'] == $ticketActivityType) 
+                                        && (!$ticketAttributes['customer']['email'])
+                                        ? 'btn-secondary' 
+                                        : 'btn-primary';?> 
+                                    rounded-circle m-3"
+                                <?=($ticket['source_type_id'] == $ticketActivityType) 
+                                    && (!$ticketAttributes['customer']['email']) 
+                                    ? 'disabled' 
+                                    : ''?>
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-reply" viewBox="0 0 16 16">
                                     <path d="M6.598 5.013a.144.144 0 0 1 .202.134V6.3a.5.5 0 0 0 .5.5c.667 0 2.013.005 3.3.822.984.624 1.99 1.76 2.595 3.876-1.02-.983-2.185-1.516-3.205-1.799a8.74 8.74 0 0 0-1.921-.306 7.404 7.404 0 0 0-.798.008h-.013l-.005.001h-.001L7.3 9.9l-.05-.498a.5.5 0 0 0-.45.498v1.153c0 .108-.11.176-.202.134L2.614 8.254a.503.503 0 0 0-.042-.028.147.147 0 0 1 0-.252.499.499 0 0 0 .042-.028l3.984-2.933zM7.8 10.386c.068 0 .143.003.223.006.434.02 1.034.086 1.7.271 1.326.368 2.896 1.202 3.94 3.08a.5.5 0 0 0 .933-.305c-.464-3.71-1.886-5.662-3.46-6.66-1.245-.79-2.527-.942-3.336-.971v-.66a1.144 1.144 0 0 0-1.767-.96l-3.994 2.94a1.147 1.147 0 0 0 0 1.946l3.994 2.94a1.144 1.144 0 0 0 1.767-.96v-.667z"/>
@@ -131,6 +148,7 @@
     window.data = {
         ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
+        ticketActivityType: "<?=$ticketActivityType;?>",
         ticket: <?=json_encode($ticket)?>,
         memberId: "<?=$memberId?>",
         // Sub-issue #1 - 'customer' (ID in Bitrix, title (full name), e-mail address and phone number)
