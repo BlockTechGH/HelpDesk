@@ -75,15 +75,16 @@ class TicketController extends AppController
         $entityId = $this->placement['ID'];
         $entityType = $data['PLACEMENT'];
         
-        $isContact = ($entityType == '	CRM_CONTACT_DETAIL_ACTIVITY');
+        $isContact = ($entityType == 'CRM_CONTACT_DETAIL_ACTIVITY');
         $entity = $isContact 
-            ? $this->Bx24->getCompany((int)$entityId) 
-            : $this->Bx24->getContact((int)$entityId);
+            ? $this->Bx24->getContact((int)$entityId)
+            : $this->Bx24->getCompany((int)$entityId);
         $entity['TITLE'] = $this->Bx24->getEntityTitle($entity);
+
         $contacts = [];
         foreach(['PHONE', 'EMAIL'] as $contactType)
         {
-            $all = !$isContact 
+            $all = $isContact
                 ? $this->Bx24->getPersonalContacts($entity, $contactType) 
                 : $this->Bx24->getCompanyContacts($entity, $contactType);
             $contacts = array_merge($contacts, $all);
@@ -158,7 +159,7 @@ class TicketController extends AppController
             'REFRESH_ID'=> $this->refreshId,
             'member_id' => $this->memberId,
             'PLACEMENT_OPTIONS' => json_encode($this->placement),
-            'PLACEMENT' => $entityId,
+            'PLACEMENT' => $data['PLACEMENT'],
         ]);
 
         $this->render('display_crm_interface');
