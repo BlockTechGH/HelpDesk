@@ -136,7 +136,7 @@ class BitrixController extends AppController
                     'ticket' => $activityId,
                     'found' => $activities,
                 ]);
-                $ticketActivity = count($activitiesId) > 1 ? $activities[$activityId] : $activities;
+                $ticketActivity = $activities[$activityId];
                 $sourceActivity = $sourceId ? $activities[$sourceId] : $ticketActivity;
                 if($ticketActivity)
                 {
@@ -311,7 +311,7 @@ class BitrixController extends AppController
         $data = $this->request->getData('data');
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
-        $activity = $this->Bx24->getActivities([$idActivity]);
+        $activity = current($this->Bx24->getActivities([$idActivity]));
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
             'id' => $idActivity,
             'object' => $activity

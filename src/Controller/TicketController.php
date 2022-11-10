@@ -131,7 +131,7 @@ class TicketController extends AppController
                 // Write into DB
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
-                    $activity, 
+                    $activity[$activityId], 
                     1, 
                     $status['id'],
                     0
@@ -204,6 +204,17 @@ class TicketController extends AppController
             $ticketMap = array_combine($ticketActivityIDs, $ticketIds);
 
             $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
+            if(!$extendInformation)
+            {
+                $result = [
+                    'total' => '',
+                    'rowCount' => '',
+                    'current' => 1,
+                    'rows' => []
+                ];
+                return new Response(['body' => json_encode($result)]);
+            }
+
             $total = count($extendInformation);
             $result = [
                 'total' => $tickets['total'],
@@ -293,6 +304,17 @@ class TicketController extends AppController
             $ticketMap = array_combine($ticketActivityIDs, $ticketIds);
 
             $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
+            if(!$extendInformation)
+            {
+                $result = [
+                    'total' => '',
+                    'rowCount' => '',
+                    'current' => 1,
+                    'rows' => []
+                ];
+                return new Response(['body' => json_encode($result)]);
+            }
+
             $total = count($extendInformation);
             $result = [
                 'total' => $tickets['total'],

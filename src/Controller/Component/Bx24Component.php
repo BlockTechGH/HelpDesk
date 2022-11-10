@@ -332,7 +332,7 @@ class Bx24Component extends Component
         {
             $activities[$activity['ID']] = $activity;
         }
-        return count($activities) > 1 ? $activities : (count($list) ? $list[0] : null);
+        return count($activities) > 0 ? $activities : null;
     }
 
     public function getTicketSubject(int $ticketId)
@@ -416,9 +416,9 @@ class Bx24Component extends Component
 
     public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
     {
-        $source = $this->getActivities([$ticket->source_id]);
+        $source = current($this->getActivities([$ticket->source_id]));
         if (!$source) {
-            $source = $this->getActivities([$ticket->activity_id]);
+            $source = current($this->getActivities([$ticket->activity_id]));
         }
         if (!$source) {
             throw new Exception("Activity-{$ticket->source_type_id} is not found");
@@ -507,6 +507,11 @@ class Bx24Component extends Component
             'activity' => $activities
         ]);
         
+        if(!$activities)
+        {
+            return null;
+        }
+
         $uids = array_values(array_unique(array_column($activities, 'RESPONSIBLE_ID')));
         $responsibles = $this->getUsersAttributes($uids);
         
