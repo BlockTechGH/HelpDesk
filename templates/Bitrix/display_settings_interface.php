@@ -450,9 +450,17 @@ const categories = new Vue({
 </script>
 <script>
 const statuses = new Vue({
-    'el': '#statuses',
-    'data': window.data,
-    'methods': {
+    el: '#statuses',
+    data: window.data,
+    mounted: function()
+    {
+        if(Object.keys(this.statuses).length == 0)
+        {
+            console.log('пуст');
+            this.statuses = {};
+        }
+    },
+    methods: {
         save: function ()
         {
             const parameters = Object.assign(
@@ -473,19 +481,18 @@ const statuses = new Vue({
                 this.create();
                 const stored = await result.json();
                 console.log(this.statuses, stored);
-                for (const key in stored) {
-                    if (Object.hasOwnProperty.call(stored, key)) {
-                        const status = stored[key];
-                        if (Object.hasOwnProperty(this.statuses, key))
-                        {
-                            this.statuses[key].id = status.id;
-                            this.statuses[key].name = status.name;
-                            this.statuses[key].active = status.active;
-                            this.statuses[key].mark = status.mark;
-                            this.statuses[key].color = status.color;
-                        } else {
-                            this.statuses[key] = status;
-                        }
+                for(var key in stored)
+                {
+                    const status = stored[key];
+                    if (this.statuses.hasOwnProperty(key))
+                    {
+                        this.statuses[key].id = status.id;
+                        this.statuses[key].name = status.name;
+                        this.statuses[key].active = status.active;
+                        this.statuses[key].mark = status.mark;
+                        this.statuses[key].color = status.color;
+                    } else {
+                        Vue.set(this.statuses, key, stored[key]);
                     }
                 }
             });
@@ -516,7 +523,8 @@ const statuses = new Vue({
                 active: 1,
                 member_id: this.memberId,
                 mark: 0,
-                index: 0
+                index: 0,
+                color: '#ffffff'
             };
         }
     }
