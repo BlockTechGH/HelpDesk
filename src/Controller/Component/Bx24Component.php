@@ -159,7 +159,7 @@ class Bx24Component extends Component
             'CRM_CONTACT_DETAIL_ACTIVITY',
             'CRM_COMPANY_DETAIL_ACTIVITY'
         ];
-    
+
         $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
         foreach($placementList ?? [] as $placement)
         {
@@ -170,7 +170,7 @@ class Bx24Component extends Component
                     'PLACEMENT' => $placement['placement'],
                     'HANDLER' => $placement['handler']
                 ];
-    
+
                 $this->obBx24App->addBatchCall('placement.unbind', $arUnbindParams, function($result) use ($arUnbindParams)
                 {
                     $this->bx24Logger->debug('installApplicationData - placement.unbind', [
@@ -180,7 +180,7 @@ class Bx24Component extends Component
                 });
             }
         }
-    
+
         $handler = $this->getRouteUrl('crm_interface');
         foreach($arNeedPlacements as $placement)
         {
@@ -193,7 +193,7 @@ class Bx24Component extends Component
                     ]
                 ]
             ];
-    
+
             $this->obBx24App->addBatchCall('placement.bind', $arBindParams, function($result) use ($arBindParams)
             {
                 $this->bx24Logger->debug('installApplicationData - placement.bind', [
@@ -305,7 +305,7 @@ class Bx24Component extends Component
         $activities = [];
         $list = [];
 
-        // Accumulate activities in variable 
+        // Accumulate activities in variable
         $chunks = array_chunk($ids, static::BITRIX_REST_API_RESULT_LIMIT_COUNT);
         foreach($chunks as $i => $idsChunk)
         {
@@ -326,8 +326,8 @@ class Bx24Component extends Component
             }
             $list = array_merge($list, $response['result']);
         }
-        
-        
+
+
         foreach($list as $activity)
         {
             $activities[$activity['ID']] = $activity;
@@ -466,7 +466,7 @@ class Bx24Component extends Component
             $fetched = $this->obBx24App->call('user.get', $arParameters)['result'];
             $result = array_merge($result, $fetched);
         }
-        
+
         return count($result) > 0 ? (count($uids) > 0 ? $result : $result[0]) : null;
     }
 
@@ -498,6 +498,36 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
+    public function getCompanyInfo($id)
+    {
+        $response = $this->obBx24App->call('crm.company.get', ['id' => $id]);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.company.get', [
+            'id' => $id,
+            'response' => $response,
+        ]);
+        return $response['result'];
+    }
+
+    public function getContactInfo($id)
+    {
+        $response = $this->obBx24App->call('crm.contact.get', ['id' => $id]);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
+            'id' => $id,
+            'response' => $response,
+        ]);
+        return $response['result'];
+    }
+
+    public function getLeadInfo($id)
+    {
+        $response = $this->obBx24App->call('crm.lead.get', ['id' => $id]);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.lead.get', [
+            'id' => $id,
+            'response' => $response,
+        ]);
+        return $response['result'];
+    }
+
     public function getTicketAttributes($ticketIds)
     {
         $result = [];
@@ -506,7 +536,7 @@ class Bx24Component extends Component
             'id' => $ticketIds,
             'activity' => $activities
         ]);
-        
+
         if(!$activities)
         {
             return null;
@@ -514,7 +544,7 @@ class Bx24Component extends Component
 
         $uids = array_values(array_unique(array_column($activities, 'RESPONSIBLE_ID')));
         $responsibles = $this->getUsersAttributes($uids);
-        
+
         $unfound =  [
             'id' => 0,
             'abr' => "",
@@ -571,23 +601,24 @@ class Bx24Component extends Component
             }
         }
 
-        return [
+        $result = [
             'id' => intval($ticketActivity['ID']),
+            'ENTITY_TYPE_ID' => (int)$customerContacts['ENTITY_TYPE_ID'],
             'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
             'customer' => [
                 'id' => (int)$customerContacts['ENTITY_ID'],
                 'abr' => $this->makeNameAbbreviature($customerNames),
                 'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
                 'email' => $customerContacts['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@')
-                    ? $customerContacts['VALUE'] 
+                    ? $customerContacts['VALUE']
                     : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@'))
-                        ? $additionContact['VALUE'] 
+                        ? $additionContact['VALUE']
                         : ''
                     ),
-                'phone' => $customerContacts['TYPE'] == 'PHONE' 
-                    ? $customerContacts['VALUE'] 
+                'phone' => $customerContacts['TYPE'] == 'PHONE'
+                    ? $customerContacts['VALUE']
                     : ($additionContact && $additionContact['TYPE'] == 'PHONE'
-                        ? $additionContact['VALUE'] 
+                        ? $additionContact['VALUE']
                         : ''
                     ),
             ],
@@ -598,6 +629,35 @@ class Bx24Component extends Component
             'PROVIDER_PARAMS' => $ticketActivity['PROVIDER_PARAMS'],
             'PRIOVIDER_ID' => $ticketActivity['PROVIDER_ID']
         ];
+
+        if (!$result['customer']['email'] || !$result['customer']['phone'])
+        {
+            switch ($result['customer']['ENTITY_TYPE_ID'])
+            {
+                // lead
+                case 1:
+                    $entityInfo = $this->getLeadInfo($customerContacts['ENTITY_ID']);
+                    break;
+                // contact
+                case 3:
+                    $entityInfo = $this->getContactInfo($customerContacts['ENTITY_ID']);
+                    break;
+                // company
+                case 4:
+                    $entityInfo = $this->getCompanyInfo($customerContacts['ENTITY_ID']);
+                    break;
+            }
+            if (!$result['customer']['email'] && array_key_exists('EMAIL', $entityInfo))
+            {
+                $result['customer']['email'] = $entityInfo['EMAIL'][0]['VALUE'];
+            }
+            if (!$result['customer']['phone'] && array_key_exists('PHONE', $entityInfo))
+            {
+                $result['customer']['phone'] = $entityInfo['PHONE'][0]['VALUE'];
+            }
+        }
+
+        return $result;
     }
 
     public function getUsersAttributes(array $uids)
@@ -775,9 +835,9 @@ class Bx24Component extends Component
         $this->createActivityWith($arParameters);
 
         return $this->makeMessageStructure(
-            $arParameters['SETTINGS']['MESSAGE_FROM'], 
-            $arParameters['DESCRIPTION'], 
-            $arParameters['SUBJECT'], 
+            $arParameters['SETTINGS']['MESSAGE_FROM'],
+            $arParameters['DESCRIPTION'],
+            $arParameters['SUBJECT'],
             $attachment
         );
     }
@@ -793,9 +853,9 @@ class Bx24Component extends Component
         $this->createActivityWith($arParameters);
 
         return $this->makeMessageStructure(
-            $from, 
-            $arParameters['DESCRIPTION'], 
-            $arParameters['SUBJECT'], 
+            $from,
+            $arParameters['DESCRIPTION'],
+            $arParameters['SUBJECT'],
             $attachments
         );
     }
@@ -833,7 +893,7 @@ class Bx24Component extends Component
             ]);
             $response = $this->obBx24App->call('im.chat.user.add', $arParameters);
         }
-        
+
         $arParameters = [
             'DIALOG_ID' => 'chat'.$chat['ID'],
             'MESSAGE' => $text,
@@ -869,7 +929,7 @@ class Bx24Component extends Component
 
     private function makeFullName(array $arNames)
     {
-        return implode(" ", [$arNames['NAME'], $arNames['SECOND_NAME'], $arNames['LAST_NAME']]);
+        return trim(trim($arNames['NAME'] . ' ' . $arNames['SECOND_NAME']) . ' ' . $arNames['LAST_NAME']);
     }
 
     private function createActivityWith(array $arParameters)
@@ -938,11 +998,11 @@ class Bx24Component extends Component
     #endsection
 
     #section Manual ticket's creation
-    
+
     public function prepareNewActivitySource(
-        $entityId, 
-        string $subject, 
-        string $description, 
+        $entityId,
+        string $subject,
+        string $description,
         int $responsibleId,
         array $communications
     ) {
@@ -1034,7 +1094,7 @@ class Bx24Component extends Component
         }
         return $phonesList;
     }
-    
+
     private function fetchBitrixEntities(string $listMethod, $id, string $function)
     {
         $parameters = [
@@ -1094,7 +1154,7 @@ class Bx24Component extends Component
             $content = base64_encode(file_get_contents($tmpName));
             $this->bx24Logger->debug(__FUNCTION__ . ' - add file to attach', [
                 'tmpFile' => $tmpName,
-                'content' => mb_substr($content, 0, 20) . '...', 
+                'content' => mb_substr($content, 0, 20) . '...',
             ]);
             $attachment[] = ['fileData' => [$file->getClientFilename(), $content]];
         }
@@ -1127,8 +1187,8 @@ class Bx24Component extends Component
     {
         $baseFolder = "{$_SERVER['DOCUMENT_ROOT']}/webroot/files/";
         $appBaseURL = Configure::read('AppConfig.appBaseUrl');
-        $baseUrl = (!$appBaseURL) 
-            ? Router::url('/files', true) 
+        $baseUrl = (!$appBaseURL)
+            ? Router::url('/files', true)
             : $appBaseURL . Router::url('/files', false);
         $attach = [];
         $j = 0;
