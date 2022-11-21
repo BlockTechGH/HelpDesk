@@ -12,6 +12,7 @@ use Cake\Http\Response;
 use Cake\Routing\Router;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Cake\Mailer\Mailer;
 
 class BitrixController extends AppController
 {
@@ -95,12 +96,12 @@ class BitrixController extends AppController
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
 
-        if ($action == 'displaySettingsInterface') 
+        if ($action == 'displaySettingsInterface')
         {
             $this->options = $this->Options->getSettingsFor($this->memberId);
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             $this->categories = [];
-            
+
 
             $this->set('options', $this->options);
             $this->set('statuses', $this->statuses);
@@ -118,7 +119,7 @@ class BitrixController extends AppController
                         '_name' => 'home'
                     ]);
                 }
-                
+
                 $ticketAttributes = null;
                 $source = null;
                 $activityId = $this->ticket ? $this->ticket->action_id : $this->placement['activity_id'];
@@ -172,7 +173,7 @@ class BitrixController extends AppController
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
                     return $this->sendFeedback($answer ?? true, $currentUser);
-                } elseif((isset($this->placement['activity_id']) 
+                } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))
                 {
                     $this->messages = []; //$this->Bx24->getMessages($ticket);
@@ -186,7 +187,7 @@ class BitrixController extends AppController
                         $this->Bx24->setCompleteStatus($activity_id, !!$set);
                         $ticket = $this->Tickets->getByActivityIdAndMemberId($activity_id, $this->memberId)->toArray();
                         $status = $this->Statuses->getFirstStatusForMemberTickets(
-                            $this->memberId, 
+                            $this->memberId,
                             !!$set ? TicketStatusesTable::MARK_STARTABLE : TicketStatusesTable::MARK_FINAL
                         );
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
@@ -218,8 +219,8 @@ class BitrixController extends AppController
             $this->set('options', $this->options);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
-                $data['category']['id'] ?? 0, 
-                $data['category']['name'], 
+                $data['category']['id'] ?? 0,
+                $data['category']['name'],
                 $this->memberId,
                 (bool)$data['category']['active']
             );
@@ -232,8 +233,8 @@ class BitrixController extends AppController
             }
             try {
                 $this->Statuses->editStatus(
-                    $data['ticket_status']['id'], 
-                    $data['ticket_status']['name'], 
+                    $data['ticket_status']['id'],
+                    $data['ticket_status']['name'],
                     $this->memberId,
                     (bool)$data['ticket_status']['active'],
                     $mark,
@@ -245,7 +246,7 @@ class BitrixController extends AppController
             }
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             return new Response(['body' => json_encode($this->statuses)]);
-        }           
+        }
     }
 
     public function displayTicketCard($currentUser)
@@ -253,7 +254,7 @@ class BitrixController extends AppController
         $this->disableAutoRender();
 
         $data = $this->request->getParsedBody();
-        
+
         if (isset($data['ticket'])) {
             $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
@@ -276,9 +277,9 @@ class BitrixController extends AppController
         } elseif (isset($data['fetch_messages'])) {
             return new Response(['body' => json_encode([])]);
         }
- 
+
         $this->set('messages', $this->messages);
-        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}"); 
+        $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         return $this->render('display_ticket_card');
@@ -325,7 +326,7 @@ class BitrixController extends AppController
         $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
         if(
             !$this->Bx24->checkOptionalActivity(
-                $sourceProviderType, 
+                $sourceProviderType,
                 intval($activity['DIRECTION'])
             )
         )
@@ -338,8 +339,8 @@ class BitrixController extends AppController
             return;
         }
 
-        
-        $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activity['SUBJECT'], $activity['PROVIDER_TYPE_ID']) 
+
+        $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activity['SUBJECT'], $activity['PROVIDER_TYPE_ID'])
             && $sourceTypeOptions['sources_on_email'];
         $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_open_channel'];
         $yesCreateTicket |= $this->Bx24->checkCallActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_phone_calls'];
@@ -355,9 +356,9 @@ class BitrixController extends AppController
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
                 $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
                 $ticketRecord = $this->Tickets->create(
-                    $this->memberId, 
-                    $activity, 
-                    1, 
+                    $this->memberId,
+                    $activity,
+                    1,
                     $status['id'],
                     (int)$prevActivityId
                 );
@@ -367,6 +368,48 @@ class BitrixController extends AppController
                     'ticketRecord' => $ticketRecord,
                     'ticketActivity' => $activity
                 ]);
+
+                if ($ticketRecord->id)
+                {
+                    // send notification
+                    $sendEmail = true;
+                    if ($sendEmail)
+                    {
+                        $arTicketAttributes = $this->Bx24->getTicketAttributes($activity['ID']);
+                        $arParams = [
+                            'type' => 'newTicket',
+                            'subject' => $subject,
+                        ];
+                        // for responsible
+                        if ($arTicketAttributes['responsible']['email'])
+                        {
+                            $arParams['email'] = $arTicketAttributes['responsible']['email'];
+                            $arParams['name'] = $arTicketAttributes['responsible']['title'];
+                            $emailResult = $this->sendEmailNotification($arParams);
+                            //todo check result
+                        }
+                        else
+                        {
+                            $this->BxControllerLogger->debug(__FUNCTION__ . ' - email notification, responsible does not have an email');
+                        }
+                        // for client
+                        if ($arTicketAttributes['customer']['email'])
+                        {
+                            $arParams['email'] = $arTicketAttributes['customer']['email'];
+                            $arParams['name'] = $arTicketAttributes['customer']['title'];
+                            $emailResult = $this->sendEmailNotification($arParams);
+                            // todo check result
+                        }
+                        else
+                        {
+                            $this->BxControllerLogger->debug(__FUNCTION__ . ' - email notification, client does not have an email');
+                        }
+                    }
+                    else
+                    {
+                        // send sms
+                    }
+                }
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
@@ -377,9 +420,49 @@ class BitrixController extends AppController
         }
     }
 
+    public function sendEmailNotification(array $arParams) : bool
+    {
+        // todo add from address to config
+        $from = ['noreply@ourapp.com' => 'Our app'];
+        switch ($arParams['type'])
+        {
+            case 'newTicket':
+                $subject = __("Ticket ") . $arParams['subject'] . __(" has been created");
+                $template = 'ticket_created';
+                break;
+            case 'statusChanged':
+                $subject = __("Status for ticket ") . $arParams['subject'] . __(" has been changed");
+                $template = 'ticket_status_changed';
+                break;
+            case 'responsibleChanged':
+                $subject = __("Ticket ") . $arParams['subject'] . __(" has been assigned to you");
+                $template = 'ticket_reassigned';
+                break;
+            case 'escalation':
+                $subject = __("Ticket ") . $arParams['subject'] . __(" escalated");
+                $template = 'ticket_escalation';
+                break;
+        }
+
+        $mailer = new Mailer('default');
+        $mailer
+            ->setTransport('default') // email config name from app_local.php
+            ->setViewVars([
+                'name' => $arParams['name'],
+            ])
+            ->setFrom($from)
+            ->setTo($arParams['email'])
+            ->setEmailFormat('html')
+            ->setSubject($subject)
+            ->viewBuilder()
+            ->setTemplate($template);
+        $result = $mailer->deliver();
+        // todo check result and return bool
+    }
+
     private function saveSettings(array $data) : array
     {
-        $settings = array_map(function($optionName) use ($data) { 
+        $settings = array_map(function($optionName) use ($data) {
             return [
                 'member_id' => $data['member_id'],
                 'opt' => $optionName,
