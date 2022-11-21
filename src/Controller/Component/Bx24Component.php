@@ -129,7 +129,7 @@ class Bx24Component extends Component
     {
         $wwwRoot = Configure::read('App.wwwRoot');
         // "https://icons8.com/icon/6837/служба-поддержки"
-        $iconFile = "helpdesk.png";
+        $iconFile = "helpdesk-1.png";
         $iconPath = $wwwRoot . "img/" . $iconFile;
         $activityDef = static::getActivityTypeAndName();
 
@@ -353,7 +353,7 @@ class Bx24Component extends Component
                 'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
                 'COMMUNICATIONS' => $ownerActivity['COMMUNICATIONS'],
                 'COMPLETED' => static::NOT_COMPLETED,
-                'DESCRIPTION' => __(''),
+                'DESCRIPTION' => $ownerActivity['DESCRIPTION'] ?? '',
                 'DIRECTION' => static::INCOMMING,
                 'OWNER_ID' => $ownerActivity['OWNER_ID'],
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],

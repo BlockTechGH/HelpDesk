@@ -6,3 +6,7 @@
     width: 39px;
     height: 39px;
 }
+
+.ticket-customer-date {
+    text-decoration: underline;
+}

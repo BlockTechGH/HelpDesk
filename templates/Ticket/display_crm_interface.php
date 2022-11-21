@@ -60,7 +60,7 @@
 
         <footer class="d-flex justify-content-center pt-4">
             <div class="form-button">
-                <button type="button" @click="save" class="btn btn-primary">
+                <button type="button" id="saveButton" @click="save" class="btn btn-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
                     </svg>
@@ -129,6 +129,14 @@
                     const stored = await result.json();
                     this.ticket = stored.ticket;
                     this.awaiting = false;
+
+                    let addButton = document.querySelector('#saveButton');
+                    addButton.disabled = true;
+
+                    setTimeout(function()
+                    {
+                        BX24.closeApplication();
+                    }, 2000);
                 }).catch(err => {
                     console.error(err);
                     this.awaiting = false;

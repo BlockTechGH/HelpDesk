@@ -168,6 +168,8 @@ class BitrixController extends AppController
                     $source['text'] = $firstMessage['text'];
                 }
 
+                $source['text'] = str_replace(PHP_EOL, '<br>', $source['text']);
+
                 $this->set('ticket', $this->ticket);
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);

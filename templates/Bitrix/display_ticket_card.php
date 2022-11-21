@@ -108,9 +108,9 @@
                 </div>
 
                 <div class="container-fluid pt-4">
-                    <div class="border rounded p-1">
+                    <div class="border rounded p-3">
                         <?php if(!!$source): ?>
-                            <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
+                            <p class="ticket-customer-date"><?="{$source['customer']['title']} {$source['date']}";?></p>
                             <div class=""><?=$source['text'];?></div>
                             <!-- display view history button for Open channels -->
                         <?php else: ?>
