@@ -26,7 +26,7 @@
                 <?=__('Tickets');?>
             </button>
         </li>
-        <li class="nav-item" role="presentation">
+        <li class="nav-item" role="presentation" style="display: none;">
             <button class="nav-link" data-toggle="tab" type="button" role="tab"
                 aria-selected="true"
                 id="summary-tab"

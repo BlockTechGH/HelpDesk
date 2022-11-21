@@ -632,7 +632,8 @@ class Bx24Component extends Component
             'title' => $this->makeFullName($record),
             'email' => $record['EMAIL'],
             'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'] ?? $record['PHONE'] ?? "",
-            'company' => $record['WORK_COMPANY']
+            'company' => $record['WORK_COMPANY'],
+            'photo' => $record['PERSONAL_PHOTO'] ?? ''
         ];
     }
 
@@ -656,27 +657,39 @@ class Bx24Component extends Component
 
     public function getFirstMessageInOpenChannelChat(array $source)
     {
+        $arResult = [];
+
         // GET ID CHAT
-        $arParameters = [
+        $getChatParameters = [
             'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
             'ENTITY_TYPE' => 'LINES'
         ];
-        $chatId = 0;
-        $result = $this->obBx24App->call('im.chat.get', $arParameters);
-        $chatId = intval($result['result']['ID']);
+
+        $getChatParametersCmd = $this->obBx24App->addBatchCall('im.chat.get', $getChatParameters, function($result) use (&$arResult)
+        {
+            $arResult['dialogId'] = 'chat' . intval($result['result']['ID']);
+        });
 
         // GET FIRST MESSAGE
-        $arParameters = [
-            'DIALOG_ID' => "chat{$chatId}",
+        $arChatMessageParameters = [
+            'DIALOG_ID' => "chat" . '$result[' . $getChatParametersCmd . '][ID]',
             'FIRST_ID' => 0,
             'LIMIT' => 5, // Can be system: Conversation started, Data received, Enquiry assigned to, etc.
         ];
-        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
-        $noSystemMessages = array_filter($response['result']['messages'], function ($message) {
-            return $message['author_id'] != 0;
+
+        $this->obBx24App->addBatchCall('im.dialog.messages.get', $arChatMessageParameters, function($result) use (&$arResult)
+        {
+            $noSystemMessages = array_filter($result['result']['messages'], function ($message)
+            {
+                return $message['author_id'] != 0;
+            });
+
+            $arResult['message'] = array_pop($noSystemMessages);
         });
-        // Messages is sorted by creation date descending
-        return array_pop($noSystemMessages); 
+
+        $this->obBx24App->processBatchCalls();
+
+        return $arResult;
     }
 
     public function getOCMessages(int $chatId, int $ticketId) : array

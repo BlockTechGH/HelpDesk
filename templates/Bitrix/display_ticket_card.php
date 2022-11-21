@@ -1,9 +1,11 @@
+<?= $this->Html->css('ticket_card'); ?>
+
 <div id="ticket">
     <form 
         method="POST" 
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
     >
-        <div class="row h-100" role="tabpanel" aria-labelledby="ticket-tab">
+        <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
                 <div class="form-group p-2 mt-2">
                     <p class="form-input">
@@ -17,14 +19,18 @@
                 <div class="form-group p-2">
                     <label class="" for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
-                        <span class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
+                        <?php if($ticketAttributes['responsible']['photo']): ?>
+                            <img class="rounded-circle avatar-img" alt="<?= $ticketAttributes['responsible']['title'] ?>" src="<?= $ticketAttributes['responsible']['photo'] ?>" />
+                        <?php else: ?>
+                            <span class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
+                        <?php endif; ?>
                         {{ ticketAttributes.responsible.title }}
                     </div>
                 </div>
 
                 <div class="form-group p-2">
                     <label for="ticket_status">{{ i18n.Status }}</label>
-                    <select id="ticket_status" name="status" class="form-control ml-2" v-on:change="setStatus">
+                    <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
                         <option 
                             v-for="(status, index) in statuses"
                             :selected="status.id == ticket.status_id"
@@ -106,6 +112,7 @@
                         <?php if(!!$source): ?>
                             <p class=""><?="{$source['customer']['title']} {$source['date']}";?></p>
                             <div class=""><?=$source['text'];?></div>
+                            <!-- display view history button for Open channels -->
                         <?php else: ?>
                             <p class="">
                                 <?=__("Source is not found");?>
@@ -115,6 +122,12 @@
                             </div>
                         <?php endif;?>
                     </div>
+                    <?php if($ticket['source_type_id'] === 'IMOPENLINES_SESSION'): ?>
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-primary" onclick="BX24.im.openHistory('<?= $dialogId?>')"><?= __('Open history') ?></button>
+                    </div>
+                    <?php endif; ?>
+
                 </div>
             
                 <div class="row pt-4">
@@ -150,6 +163,7 @@
         required: <?=json_encode($required)?>,
         ticketActivityType: "<?=$ticketActivityType;?>",
         ticket: <?=json_encode($ticket)?>,
+        dialogId: "<?= $dialogId ?>",
         memberId: "<?=$memberId?>",
         // Sub-issue #1 - 'customer' (ID in Bitrix, title (full name), e-mail address and phone number)
         // Sub-issue #2 - 'responsible' person (ID in Bitrix, full name (title), e-mail address and phone number)
@@ -159,8 +173,8 @@
         statuses: <?=json_encode($statuses);?>,
         messages: <?=json_encode([]);?>,
         i18n: <?=json_encode([
-            'Assigned' => __('Assigned to'),
-            'Name' => __('Name'),
+            'Assigned' => __('Responsible'),
+            'Name' => __('Title'),
             'Ticket' => $ticketAttributes['subject'],
             'Status' => __('Status'),
             'Save' => __('Save'),
@@ -170,8 +184,8 @@
             'IMOPENLINES_SESSION' => __('Open Channel (chat)'),
             'CRM_EMAIL' => __('E-mail'),
             'VOXIMPLANT_CALL' => __('Phone call'),
-            'Close' => __('Close'),
-            'Reopen' => __('Reopen'),
+            'Close' => __('Close ticket'),
+            'Reopen' => __('Reopen ticket'),
             'Wait' => __('Please wait'),
         ]);?>,
         awaiting: false,
@@ -181,9 +195,9 @@
 
 <script>
     new Vue({
-        'el': '#ticket',
-        'data': window.data,
-        'methods': {
+        el: '#ticket',
+        data: window.data,
+        methods: {
             setStatus: function (event)
             {
                 this.ticket.status_id = event.target.value;
@@ -228,27 +242,33 @@
                     this.required
                 );
                 delete parameters.PLACEMENT_OPTIONS;
-                BX24.openApplication(
-                    parameters, 
-                    function () {
-                        const parameters = Object.assign(
-                            {
-                                fetch_messages: true,
-                                ticket_id: this.data.ticket.id
-                            },
-                            this.data.required
-                        );
-                        const headers = { 'Content-Type': 'application/json' };
-                        fetch('<?=$ajax;?>', {
-                            method: "POST",
-                            headers,
-                            body: JSON.stringify(parameters),
-                        }).then(async result => {
-                            const all = await result.json();
-                            this.data.messages = all;
-                        });
-                    }
-                );
+
+                if(this.ticket.source_type_id === 'IMOPENLINES_SESSION')
+                {
+                    BX24.im.openMessenger(this.dialogId);
+                } else {
+                    BX24.openApplication(
+                        parameters,
+                        function () {
+                            const parameters = Object.assign(
+                                {
+                                    fetch_messages: true,
+                                    ticket_id: this.data.ticket.id
+                                },
+                                this.data.required
+                            );
+                            const headers = { 'Content-Type': 'application/json' };
+                            fetch('<?=$ajax;?>', {
+                                method: "POST",
+                                headers,
+                                body: JSON.stringify(parameters),
+                            }).then(async result => {
+                                const all = await result.json();
+                                this.data.messages = all;
+                            });
+                        }
+                    );
+                }
             },
             upload: function() {
             //    this.answer.attachment = this.$refs.attachment.files[0];

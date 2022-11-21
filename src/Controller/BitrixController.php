@@ -140,6 +140,7 @@ class BitrixController extends AppController
                 $sourceActivity = $sourceId ? $activities[$sourceId] : $ticketActivity;
                 if($ticketActivity)
                 {
+                    // !!!!!!! where getting contact data ????
                     $ticketAttributes = $this->Bx24->getOneTicketAttributes($ticketActivity);
                     if($ticketAttributes)
                     {
@@ -158,9 +159,12 @@ class BitrixController extends AppController
                     }
                 }
 
+                $this->set('dialogId', '');
                 if($this->ticket && $this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
                 {
-                    $firstMessage = $this->Bx24->getFirstMessageInOpenChannelChat($source);
+                    $openChannelIdAndMessage = $this->Bx24->getFirstMessageInOpenChannelChat($source);
+                    $this->set('dialogId', $openChannelIdAndMessage['dialogId']);
+                    $firstMessage = $openChannelIdAndMessage['message'];
                     $source['text'] = $firstMessage['text'];
                 }
 
