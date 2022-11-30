@@ -1143,8 +1143,8 @@ class Bx24Component extends Component
     {
         $postfix = Configure::read('AppConfig.itemsPostfix');
         return [
-            'TYPE_ID' => 'HELPDESK_TICKETING' . (($postfix) ? "_" . strtoupper($postfix) : ''),
-            'NAME' => __('Helpdesk Ticketing') . (($postfix) ? " " . $postfix : ''),
+            'TYPE_ID' => 'MANUALLY_CREATED' . (($postfix) ? "_" . strtoupper($postfix) : ''),
+            'NAME' => __('Manually created') . (($postfix) ? " " . $postfix : ''),
         ];
     }
 

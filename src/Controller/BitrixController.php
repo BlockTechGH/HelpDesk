@@ -562,7 +562,6 @@ class BitrixController extends AppController
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $this->ticketAttributes['subject'],
             'ticketResponsibleId' => $this->ticketAttributes['responsible']['id'],
-            'ticketResponsibleName' => $this->ticketAttributes['responsible']['title'],
             'answerType' => '',
             'sourceType' => $ticket['source_type_id']
         ];

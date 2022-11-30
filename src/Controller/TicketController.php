@@ -6,6 +6,7 @@ namespace App\Controller;
 use App\Controller\Component\Bx24Component;
 use App\Model\Table\TicketStatusesTable;
 use Cake\Core\Configure;
+use Cake\Event\Event;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
 use Cake\I18n\FrozenDate;
@@ -57,11 +58,15 @@ class TicketController extends AppController
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketStatuses = $this->getTableLocator()->get('TicketStatuses');
 
-        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_rest.log';
+        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_controller.log';
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
 
         $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+
+        // subscribe on events
+        $eventManager = $this->getEventManager();
+        $eventManager->on('Ticket.created', [$this, 'handleTicketCreated']);
     }
 
 
@@ -120,13 +125,24 @@ class TicketController extends AppController
             // Create ticket activity
             $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$currentUser['ID'], $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
+
+            if(!$source['COMMUNICATIONS'])
+            {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - Error', ['no communication filled']);
+                return new Response([
+                    'body' => json_encode([
+                        'status' => __('Error creating ticket. Please fill in the email or phone number of the contact'),
+                        'error' => true
+                    ]),
+                ]);
+            }
+
             $activityId = $this->Bx24->createTicketBy($source, $postfix);
             $result = [
                 'status' => __('Ticket was not created'),
             ];
             if ($activityId) {
                 $activity = $this->Bx24->getActivities([$activityId]);
-                //$activity['PROVIDER_TYPE_ID'] = "USER_ACTIVITY";
 
                 // Write into DB
                 $ticketRecord = $this->Tickets->create(
@@ -140,6 +156,14 @@ class TicketController extends AppController
                     'status' => __('Ticket was created successful'), 
                     'ticket' => $activityId,
                 ];
+
+                // send event Ticket Created
+                $event = new Event('Ticket.created', $this, [
+                    'ticket' => $ticketRecord,
+                    'status' => $status->name,
+                    'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity[$activityId])
+                ]);
+                $this->getEventManager()->dispatch($event);
             }
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - finish', $result);
@@ -513,5 +537,54 @@ class TicketController extends AppController
         }
 
         return $result;
+    }
+
+    public function handleTicketCreated($event, $ticket, $status, $ticketAttributes)
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $ticketAttributes
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationCreateTicket',
+            'ticketStatus' => $status,
+            'ticketNumber' => 'GS-' . $ticket['id'],
+            'ticketSubject' => $ticketAttributes['subject'],
+            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'answerType' => '',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $arOption = $this->Options->getOption('notificationCreateTicket', $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - contact', [
+            'contactId' => $contactId
+        ]);
+
+        if($templateId && $contactId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
     }
 }

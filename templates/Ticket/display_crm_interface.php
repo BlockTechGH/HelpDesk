@@ -127,16 +127,25 @@
                     body: JSON.stringify(parameters)
                 }).then(async result => {
                     const stored = await result.json();
-                    this.ticket = stored.ticket;
-                    this.awaiting = false;
 
                     let addButton = document.querySelector('#saveButton');
                     addButton.disabled = true;
 
-                    setTimeout(function()
+                    if(stored.error)
                     {
-                        BX24.closeApplication();
-                    }, 2000);
+                        this.displayNotification(stored.status, 'error');
+                        this.awaiting = false;
+                    } else {
+                        this.displayNotification(stored.status);
+                        this.ticket = stored.ticket;
+                        this.awaiting = false;
+
+                        setTimeout(function()
+                        {
+                            BX24.closeApplication();
+                        }, 3000);
+                    }
+
                 }).catch(err => {
                     console.error(err);
                     this.awaiting = false;
@@ -145,6 +154,35 @@
             cancel: function()
             {
                 BX24.closeApplication();
+            },
+            displayNotification: function(message, type)
+            {
+                let flashMessageWrapper = document.getElementById('flashMessageWrapper');
+                let hideButton = $('<button>',
+                {
+                    type: 'button',
+                    class: "close",
+                    'data-dismiss': 'alert',
+                    'aria-label': 'Close'
+                });
+                hideButton.html('<span aria-hidden="true">&times;</span>');
+
+                let messageAlert = $('<div>',
+                {
+                    class: "alert alert-dismissible fade show col-10 notification-message-alert",
+                    role: "alert"
+                });
+
+                if(type === 'error')
+                {
+                    messageAlert.addClass('alert-danger');
+                } else {
+                    messageAlert.addClass('alert-success');
+                }
+
+                messageAlert.text(message);
+                hideButton.appendTo(messageAlert);
+                messageAlert.appendTo($(flashMessageWrapper));
             }
         }
     });
