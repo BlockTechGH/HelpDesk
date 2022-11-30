@@ -93,3 +93,7 @@ li.disabled .btn {
     border-left: #ced4da solid 1px;
     border-bottom: #ced4da solid 1px;
 }
+
+.hidden {
+    display: none;
+}

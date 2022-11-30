@@ -156,8 +156,7 @@ class Bx24Component extends Component
 
         // add placements in crm card
         $arNeedPlacements = [
-            'CRM_CONTACT_DETAIL_ACTIVITY',
-            'CRM_COMPANY_DETAIL_ACTIVITY'
+            'CRM_CONTACT_DETAIL_ACTIVITY'
         ];
 
         $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
@@ -424,6 +423,7 @@ class Bx24Component extends Component
             throw new Exception("Activity-{$ticket->source_type_id} is not found");
         }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
+            'source' => $source,
             'id' => $ticket->source_id,
             'type' => $ticket->source_type_id,
             'result' => $source
@@ -442,9 +442,26 @@ class Bx24Component extends Component
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
             case $appProps['TYPE_ID']:
+                $arParameters = $this->filterEmailsForCommunications($arParameters);
                 return $this->sendEmail($arParameters, $currentUser, $attachment);
         }
         return null;
+    }
+
+    private function filterEmailsForCommunications($arParameters)
+    {
+        $arCommunications = $arParameters['COMMUNICATIONS'];
+        $arFilteredCommunications = [];
+        foreach($arCommunications as $communication)
+        {
+            if(filter_var($communication['VALUE'], FILTER_VALIDATE_EMAIL))
+            {
+                $arFilteredCommunications[] = $communication;
+            }
+        }
+
+        $arParameters['COMMUNICATIONS'] = $arFilteredCommunications;
+        return $arParameters;
     }
 
     public function getCurrentUser()
@@ -632,7 +649,7 @@ class Bx24Component extends Component
 
         if (!$result['customer']['email'] || !$result['customer']['phone'])
         {
-            switch ($result['customer']['ENTITY_TYPE_ID'])
+            switch ($result['ENTITY_TYPE_ID'])
             {
                 // lead
                 case 1:
@@ -1228,5 +1245,54 @@ class Bx24Component extends Component
             $j++;
         }
         return $attach;
+    }
+
+    public function getContactWorkflowTemplates(): array
+    {
+        $arResult = [0 => __('Please choise ...')];
+
+        $parameters = [
+            'select' => [
+                'ID', 'NAME'
+            ],
+            'filter' => [
+                'MODULE_ID' => 'crm',
+                'ENTITY' => 'CCrmDocumentContact'
+            ]
+        ];
+
+        $result = $this->obBx24App->call('bizproc.workflow.template.list', $parameters);
+        if($result['result'])
+        {
+            foreach($result['result'] as $workflow)
+            {
+                $arResult[$workflow['ID']] = $workflow['NAME'];
+            }
+        }
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - templates", [
+            'parameters' => $parameters,
+            'result' => $result
+        ]);
+
+        return $arResult;
+    }
+
+    public function startWorkflowForContact(int $templateId, int $contactId, array $templateParameters = [])
+    {
+        $arMethodParams = [
+            'TEMPLATE_ID' => $templateId,
+            'DOCUMENT_ID' => ['crm', 'CCrmDocumentContact', $contactId],
+            'PARAMETERS' => $templateParameters
+        ];
+
+        $result = $this->obBx24App->call('bizproc.workflow.start', $arMethodParams);
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - start workflow", [
+            'arMethodParams' => $arMethodParams,
+            'result' => $result
+        ]);
+
+        return $result['result'] ?? 0;
     }
 }

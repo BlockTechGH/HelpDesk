@@ -93,8 +93,43 @@ class HelpdeskOptionsTable extends Table
         ];
         foreach ($optionsList as $option)
         {
-            $options[$option['opt']] = $option['value'] != 'off';
+            if(in_array($option['opt'], $options))
+            {
+                $options[$option['opt']] = $option['value'] != 'off';
+            } else {
+                $options[$option['opt']] = $option['value'];
+            }
         }
+
+        return $options;
+    }
+
+    public function getOption($optionName, $member_id)
+    {
+        $option = $this->find()
+            ->where([
+                'member_id' => $member_id,
+                'opt' => $optionName
+            ])
+            ->first();
+
+        return $option;
+    }
+
+    public function getNotSourceSettingsFor(string $member_id)
+    {
+        $optionsList = $this->find()
+            ->where([
+                'member_id' => $member_id,
+                'opt NOT IN' => self::SOURCE_OPTIONS
+            ])
+            ->all()
+            ->toList();
+        foreach ($optionsList as $option)
+        {
+            $options[$option['opt']] = $option['value'];
+        }
+
         return $options;
     }
 

@@ -4,7 +4,6 @@ $this->start('title');
 $this->end();
 ?>
 
-<?= $this->Html->script('fit_window'); ?>
 <div id="feedback_form" class="row m-3">
     <form 
         method="POST" 
@@ -70,9 +69,9 @@ $this->end();
 
 <script>
     new Vue({
-        'el': '#feedback_form',
-        'data': window.data,
-        'methods': {
+        el: '#feedback_form',
+        data: window.data,
+        methods: {
             send: function() {
                 this.saved = true;
                     setTimeout(function () {

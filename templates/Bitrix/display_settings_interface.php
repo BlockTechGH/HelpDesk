@@ -15,50 +15,61 @@
 
 <div id="setting_container" class="row mb-3">
     <div class="col-12">
-    <div class="mb-5"><ul class="nav nav-pills" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" data-toggle="tab" type="button" role="tab"
-                aria-selected="true"
-                id="tickets-tab"
-                data-target="#tickets"
-                aria-controls="tickets"
-            >
-                <?=__('Tickets');?>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation" style="display: none;">
-            <button class="nav-link" data-toggle="tab" type="button" role="tab"
-                aria-selected="true"
-                id="summary-tab"
-                data-target="#summary"
-                aria-controls="summary"
-            >
-                <?=__('Summary');?>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                id="sources-tab" 
-                data-target="#sources" 
-                aria-controls="sources"
-                aria-selected="false"
-            >
-                <?=__('Sources');?>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                id="statuses-tab" 
-                data-target="#statuses" 
-                aria-controls="statuses"
-                aria-selected="false"
-            >
-                <?=__('Statuses');?>
-            </button>
-        </li>
-    </ul>
-    </div>
-    <div class="tab-content" id="myTabContent">
+        <div class="mb-5">
+            <ul class="nav nav-pills" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-toggle="tab" type="button" role="tab"
+                        aria-selected="true"
+                        id="tickets-tab"
+                        data-target="#tickets"
+                        aria-controls="tickets"
+                    >
+                        <?=__('Tickets');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation" style="display: none;">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        aria-selected="true"
+                        id="summary-tab"
+                        data-target="#summary"
+                        aria-controls="summary"
+                    >
+                        <?=__('Summary');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="sources-tab" 
+                        data-target="#sources" 
+                        aria-controls="sources"
+                        aria-selected="false"
+                    >
+                        <?=__('Sources');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="statuses-tab" 
+                        data-target="#statuses" 
+                        aria-controls="statuses"
+                        aria-selected="false"
+                    >
+                        <?=__('Statuses');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="notification-tab" 
+                        data-target="#notification" 
+                        aria-controls="notification"
+                        aria-selected="false"
+                    >
+                        <?=__('Notification settings');?>
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
                 <?= $this->element('filter', [
                     'rootId' => 'filter-form',
@@ -166,21 +177,21 @@
                         <input type="checkbox"
                             id="sources_on_email" 
                             name="sources_on_email"
-                            <?=$options['sources_on_email'] ? 'checked' : '';?>/>
+                            <?= ($options['sources_on_email'] == 'on') ? 'checked' : '';?>/>
                     </div>
                     <div class="form-group">
                         <label for="sources_on_open_channel"><?=__('Create ticket by chat via Open Channel');?></label>
                         <input type="checkbox"
                             id="sources_on_open_channel" 
                             name="sources_on_open_channel"
-                            <?=$options['sources_on_open_channel'] ? 'checked' : '';?>/>
+                            <?= ($options['sources_on_open_channel'] == 'on') ? 'checked' : '';?>/>
                     </div>
                     <div class="form-group">
                         <label for="sources_on_phone_calls"><?=__('Create ticket by phone call');?></label>
                         <input type="checkbox"
                             id="sources_on_phone_calls" 
                             name="sources_on_phone_calls"
-                            <?=$options['sources_on_phone_calls'] ? 'checked' : '';?>/>
+                            <?= ($options['sources_on_phone_calls'] == 'on') ? 'checked' : '';?>/>
                     </div>
 
                     <input type="hidden" name="AUTH_ID" value="<?=$required['AUTH_ID']?>" />
@@ -296,10 +307,12 @@
                     </div>
                 </form>
             </div>
+            <div class="tab-pane fade" id="notification" role="tabpanel" aria-labelledby="summary-tab">
+                <?= $this->element('notification_settings', []); ?>
+            </div>
         </div>
     </div>
 </div>
-
 <script>
     window.data = {
         ajax: "<?= $this->Url->build([
@@ -337,6 +350,8 @@
             'FinalStatus' => __('Final'),
             'Total' => __('Total'),
             'Customer' => __('Customer'),
+            'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
+            'successSaveNotificationSettings' => __('Notification settings saved successfully'),
         ]);?>,
     };
     window.tickets = {

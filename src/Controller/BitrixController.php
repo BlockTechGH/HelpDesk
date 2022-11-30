@@ -7,6 +7,8 @@ use App\Controller\Component\Bx24Component;
 use App\Model\Table\HelpdeskOptionsTable;
 use App\Model\Table\TicketStatusesTable;
 use Cake\Core\Configure;
+use Cake\Event\Event;
+use Cake\Event\EventManager;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
 use Cake\Routing\Router;
@@ -95,6 +97,10 @@ class BitrixController extends AppController
         $this->set('domain', $this->domain);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
+
+        // subscribe on events
+        $eventManager = $this->getEventManager();
+        $eventManager->on('Ticket.statusChanged', [$this, 'handleTicketStatusChange']);
 
         if ($action == 'displaySettingsInterface')
         {
@@ -197,9 +203,13 @@ class BitrixController extends AppController
                     }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
                     $this->set('ticketAttributes', $ticketAttributes);
+                    $this->ticketAttributes = $ticketAttributes;
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
                 }
+            } else {
+                $arContactWorkflowTemplates = $this->Bx24->getContactWorkflowTemplates();
+                $this->set('arContactWorkflowTemplates', $arContactWorkflowTemplates);
             }
         }
     }
@@ -218,6 +228,8 @@ class BitrixController extends AppController
         {
             $this->options = $this->saveSettings($data);
             $this->Flash->success(__("All options saved"), $flashOptions);
+            $arNotSourceSettings = $this->Options->getNotSourceSettingsFor($this->memberId);
+            $this->options = array_merge($this->options, $arNotSourceSettings);
             $this->set('options', $this->options);
         } elseif(isset($data['category'])) {
             $category = $this->Categories->editCategory(
@@ -227,6 +239,27 @@ class BitrixController extends AppController
                 (bool)$data['category']['active']
             );
             return new Response(['body' => json_encode($category)]);
+        }
+        elseif(isset($data['saveNotificationSettings']) && $data['selectValues'])
+        {
+            // save settings here
+            $arOptions = [];
+            foreach($data['selectValues'] as $name => $value)
+            {
+                $arOptions[] = [
+                    'member_id' => $this->memberId,
+                    'opt' => $name,
+                    'value' => $value
+                ];
+            }
+
+            $saveResult = $this->Options->updateOptions($arOptions);
+
+            $result = [
+               'error' => count($saveResult) ? false : true,
+            ];
+
+            return new Response(['body' => json_encode($result)]);
         } elseif(isset($data['ticket_status'])) {
             $mark = (int)$data['ticket_status']['mark'];
             $color = $data['ticket_status']['color'];
@@ -258,6 +291,11 @@ class BitrixController extends AppController
         $data = $this->request->getParsedBody();
 
         if (isset($data['ticket'])) {
+
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - ajax data', [
+                'data' => $data
+            ]);
+
             $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
             $ticket = $this->Tickets->editTicket(
@@ -267,11 +305,20 @@ class BitrixController extends AppController
                 $this->memberId
             );
             $status = $this->Statuses->get($data['ticket']['status_id']);
+            $active = false;
             if ($status->mark != $oldMark)
             {
                 $active = $status->mark != 2;
                 $this->Bx24->setCompleteStatus($ticket['action_id'], $active);
             }
+
+            // send event Ticket Changed Status
+            $event = new Event('Ticket.statusChanged', $this, [
+                'ticket' => $ticket,
+                'status' => $status->name
+            ]);
+            $this->getEventManager()->dispatch($event);
+
             return new Response(['body' => json_encode([
                 'ticket' => $ticket,
                 'active' => $active
@@ -497,5 +544,50 @@ class BitrixController extends AppController
             ],
             'result' => $messageObj
         ]);
+    }
+
+    public function handleTicketStatusChange($event, $ticket, $status)
+    {
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $this->ticketAttributes
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationChangeTicketStatus',
+            'ticketStatus' => $status,
+            'ticketNumber' => 'GS-' . $ticket['id'],
+            'ticketSubject' => $this->ticketAttributes['subject'],
+            'ticketResponsibleId' => $this->ticketAttributes['responsible']['id'],
+            'ticketResponsibleName' => $this->ticketAttributes['responsible']['title'],
+            'answerType' => '',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $arOption = $this->Options->getOption('notificationChangeTicketStatus', $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        $contactId = ($this->ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($this->ticketAttributes['customer']['id']) : false;
+
+        if($templateId && $contactId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
     }
 }

@@ -25,7 +25,7 @@
     <body>
         <div class="container-fluid">
             <div class="row">
-                <div class="col mt-3">
+                <div id="flashMessageWrapper" class="col mt-3">
                     <?= $this->Flash->render() ?>
                 </div>
             </div>
