@@ -64,6 +64,7 @@ class AppController extends Controller
 
         $this->AppControllerLogger->debug('Request', [
             'controllerName' => $controllerName,
+            'action' => $this->request->getParam('action'),
             'data' => $this->request->getParsedBody(),
             'query' => $this->request->getQueryParams()
         ]);

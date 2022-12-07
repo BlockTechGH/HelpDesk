@@ -138,7 +138,7 @@ class BitrixController extends AppController
                 }
 
                 $activities = $this->Bx24->getActivities($activitiesId);
-                $this->BxControllerLogger->debug('activities', [
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activities', [
                     'source' => $sourceId,
                     'ticket' => $activityId,
                     'found' => $activities,
@@ -180,14 +180,14 @@ class BitrixController extends AppController
                 $this->set('ticket', $this->ticket);
                 if (isset($this->placement['answer'])) {
                     $this->set('subject', $ticketAttributes['subject']);
-                    return $this->sendFeedback($answer ?? true, $currentUser);
+                    return $this->sendFeedback($answer ?? true, $currentUser, $ticketAttributes);
                 } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))
                 {
                     $this->messages = []; //$this->Bx24->getMessages($ticket);
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
-                        return $this->sendFeedback($answer, $currentUser);
+                        return $this->sendFeedback($answer, $currentUser, $ticketAttributes);
                     }
                     if(!!$activity_id)
                     {
@@ -334,7 +334,7 @@ class BitrixController extends AppController
         return $this->render('display_ticket_card');
     }
 
-    public function sendFeedback($answer, $currentUser)
+    public function sendFeedback($answer, $currentUser, array $ticketAttributes = [])
     {
         $this->disableAutoRender();
 
@@ -345,10 +345,12 @@ class BitrixController extends AppController
                 "user_id" => $currentUser['ID'],
                 "attach" => [],
             ];
+            $this->set('needCloseApp', 0);
         } else {
             $ticketId = $this->request->getData('ticket_id') ?? $_POST['ticket_id'];
             $this->ticket = $this->Tickets->get($ticketId);
-            $this->sendMessage($answer, $currentUser);
+            $this->sendMessage($answer, $currentUser, $ticketAttributes);
+            $this->set('needCloseApp', 1);
         }
         $this->set('answer', $answer);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
@@ -365,10 +367,18 @@ class BitrixController extends AppController
         $data = $this->request->getData('data');
         $idActivity = $data['FIELDS']['ID'];
         $prevActivityId = $idActivity;
-        $activity = current($this->Bx24->getActivities([$idActivity]));
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input params', [
+            'event' => $event,
+            'data' => $data
+        ]);
+        $arActivityData = $this->Bx24->getActivityAndRelatedDataById($idActivity);
+        $activity = $arActivityData['activity'];
+
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
             'id' => $idActivity,
-            'object' => $activity
+            'activity' => $activity,
+            'bindings' => $arActivityData['bindings']
         ]);
         $sourceProviderType = $activity['PROVIDER_ID'];
 
@@ -401,7 +411,7 @@ class BitrixController extends AppController
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
-                $activity = $this->Bx24->getActivities([$activityId])[$activityId];
+                $activity = $this->Bx24->getActivityById($activityId);
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
                 $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
                 $ticketRecord = $this->Tickets->create(
@@ -417,48 +427,6 @@ class BitrixController extends AppController
                     'ticketRecord' => $ticketRecord,
                     'ticketActivity' => $activity
                 ]);
-
-                if ($ticketRecord->id)
-                {
-                    // send notification
-                    $sendEmail = true;
-                    if ($sendEmail)
-                    {
-                        $arTicketAttributes = $this->Bx24->getTicketAttributes($activity['ID']);
-                        $arParams = [
-                            'type' => 'newTicket',
-                            'subject' => $subject,
-                        ];
-                        // for responsible
-                        if ($arTicketAttributes['responsible']['email'])
-                        {
-                            $arParams['email'] = $arTicketAttributes['responsible']['email'];
-                            $arParams['name'] = $arTicketAttributes['responsible']['title'];
-                            $emailResult = $this->sendEmailNotification($arParams);
-                            //todo check result
-                        }
-                        else
-                        {
-                            $this->BxControllerLogger->debug(__FUNCTION__ . ' - email notification, responsible does not have an email');
-                        }
-                        // for client
-                        if ($arTicketAttributes['customer']['email'])
-                        {
-                            $arParams['email'] = $arTicketAttributes['customer']['email'];
-                            $arParams['name'] = $arTicketAttributes['customer']['title'];
-                            $emailResult = $this->sendEmailNotification($arParams);
-                            // todo check result
-                        }
-                        else
-                        {
-                            $this->BxControllerLogger->debug(__FUNCTION__ . ' - email notification, client does not have an email');
-                        }
-                    }
-                    else
-                    {
-                        // send sms
-                    }
-                }
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
@@ -523,8 +491,9 @@ class BitrixController extends AppController
         return $settings;
     }
 
-    private function sendMessage($answer, $currentUser)
+    private function sendMessage($answer, $currentUser, array $ticketAttributes = [])
     {
+        $result = false;
         $from = $answer['from'];
         $messageText = $answer['message'];
         $attachment = $this->request->getData('attachment');
@@ -532,10 +501,18 @@ class BitrixController extends AppController
             'from' => $from,
             'message' => $messageText,
             'attachment' => $attachment,
+            'ticketAttributes' => $ticketAttributes
         ]);
 
-        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, $attachment, $currentUser);
-        //$messages = $this->Bx24->getMessages($ticket);
+        // passing email for call and manually created ticket
+        $contactEmail = '';
+        if($ticketAttributes['customer']['email'])
+        {
+            $contactEmail = $ticketAttributes['customer']['email'];
+        }
+
+        $messageObj = $this->Bx24->sendMessage($from, $messageText, $this->ticket, $attachment, $currentUser, $contactEmail);
+
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - Bx24 - sendMessage', [
             'parameters' => [
                 'from' => $from,
@@ -544,6 +521,13 @@ class BitrixController extends AppController
             ],
             'result' => $messageObj
         ]);
+
+        if($messageObj)
+        {
+            $result = true;
+        }
+
+        return $result;
     }
 
     public function handleTicketStatusChange($event, $ticket, $status)
@@ -588,5 +572,16 @@ class BitrixController extends AppController
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
         }
+    }
+
+    public function handleReceivingCustomerResponse($event, $ticket, $status)
+    {
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $this->ticketAttributes
+        ]);
+
     }
 }

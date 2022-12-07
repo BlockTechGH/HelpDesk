@@ -89,12 +89,12 @@
                                 type="button"
                                 v-on:click="feedback"
                                 class="btn 
-                                    <?=($ticket['source_type_id'] == $ticketActivityType) 
+                                    <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL')) 
                                         && (!$ticketAttributes['customer']['email'])
                                         ? 'btn-secondary' 
                                         : 'btn-primary';?> 
                                     rounded-circle m-3"
-                                <?=($ticket['source_type_id'] == $ticketActivityType) 
+                                <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL')) 
                                     && (!$ticketAttributes['customer']['email']) 
                                     ? 'disabled' 
                                     : ''?>
@@ -231,7 +231,7 @@
                 const parameters = Object.assign(
                     {
                         'bx24_label': {
-                            'bgColor':'pink', // aqua/green/orange/brown/pink/blue/grey/violet
+                            'bgColor':'blue', // aqua/green/orange/brown/pink/blue/grey/violet
                             'text': this.ticketAttributes.subject,
                             'color': '#07ff0e',
                         },

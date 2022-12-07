@@ -20,6 +20,8 @@ class Bx24Component extends Component
     public const STATUS_AWAIT = 1;
     public const STATUS_COMPLETED = 2;
     public const HTML = 3;
+    public const PLAIN_TEXT = 1;
+    public const USER_TYPE = 6;
     public const COMPLETED = 'Y';
     public const NOT_COMPLETED = 'N';
     public const PROVIDER_OPEN_LINES = 'IMOPENLINES_SESSION';
@@ -205,8 +207,6 @@ class Bx24Component extends Component
         // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete, OnCrmActivityDelete
         $arNeedEvents = [
             'ONCRMACTIVITYADD' => 'crm_activity_handler',
-            'ONCRMACTIVITYUPDATE' => 'crm_activity_handler',
-            'ONCRMACTIVITYDELETE' => 'crm_activity_handler',
         ];
 
         foreach($arInstalledData['eventList'] as $event)
@@ -334,6 +334,58 @@ class Bx24Component extends Component
         return count($activities) > 0 ? $activities : null;
     }
 
+    public function getActivityById($activityId)
+    {
+        $response = $this->obBx24App->call('crm.activity.get', ['id' => $activityId]);
+
+        $this->bx24Logger->debug(__FUNCTION__ . ' - activity data', [
+            'result' => $response
+        ]);
+        return $response['result'];
+    }
+
+    public function getActivityAndRelatedDataById($activityId)
+    {
+        $arResult = [
+            'activity' => [],
+            'bindings' => []
+        ];
+
+        $arActivityParams = [
+            'filter' => [
+                'ID' => $activityId
+            ],
+            'select' => ['*', 'COMMUNICATIONS']
+        ];
+
+        $this->obBx24App->addBatchCall('crm.activity.list', $arActivityParams, function($result) use (&$arResult)
+        {
+            $this->bx24Logger->debug(__FUNCTION__ . ' - get activity data', [
+                'result' => $result
+            ]);
+
+            if($result['result'])
+            {
+                $arResult['activity'] = $result['result'][0];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('crm.activity.binding.list', ['activityId' => $activityId], function($result) use (&$arResult)
+        {
+            $this->bx24Logger->debug(__FUNCTION__ . ' - get bindings', [
+                'result' => $result
+            ]);
+
+            if($result['result'])
+            {
+                $arResult['bindings'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+        return $arResult;
+    }
+
     public function getTicketSubject(int $ticketId)
     {
         return static::TICKET_PREFIX . $ticketId;
@@ -395,7 +447,7 @@ class Bx24Component extends Component
 
     public function checkCallActivity(string $event, string $activityTypeName)
     {
-        return $event != static::CRM_DELETE_ACTIVITY_EVENT
+        return $event == static::CRM_NEW_ACTIVITY_EVENT
             && $activityTypeName == static::PROVIDER_VOX_CALL;
     }
 
@@ -413,42 +465,74 @@ class Bx24Component extends Component
     #section 6. Sending a response from a ticket
     #
 
-    public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser)
+    public function sendMessage($from, string $messageText, Ticket $ticket, $attachment, $currentUser, $contactEmail = '')
     {
-        $source = current($this->getActivities([$ticket->source_id]));
+        $this->bx24Logger->debug(__FUNCTION__ . ' - input params', [
+            'messageText' => $messageText,
+            'ticket' => $ticket,
+            'currentUser' => $currentUser
+        ]);
+
+        $source = [];
+        if($ticket->source_id)
+        {
+            $source = current($this->getActivities([$ticket->source_id]));
+        }
+
         if (!$source) {
-            $source = current($this->getActivities([$ticket->activity_id]));
+            $source = current($this->getActivities([$ticket->action_id]));
         }
         if (!$source) {
             throw new Exception("Activity-{$ticket->source_type_id} is not found");
         }
         $this->bx24Logger->debug(__FUNCTION__ . ' - getActivity', [
+            'source_id' => $ticket->source_id,
+            'source_type_id' => $ticket->source_type_id,
             'source' => $source,
-            'id' => $ticket->source_id,
-            'type' => $ticket->source_type_id,
-            'result' => $source
         ]);
         $currentUser['contacts'] = $this->getContactsFor($currentUser['ID']);
         $subject = $this->getTicketSubject($ticket->id);
         $arParameters = static::prepareNewActivityParameters($source, $currentUser, $subject, $messageText);
         $appProps = $this->getActivityTypeAndName();
+
+        $this->filterEmailsForCommunications($arParameters);
+        $this->addCommunicationsFromEmail($arParameters, $contactEmail);
+
+        $this->bx24Logger->debug(__FUNCTION__ . ' - parameters', [
+            'subject' => $subject,
+            'user contacts' => $currentUser['contacts'],
+            'arParameters' => $arParameters,
+        ]);
+
         switch($ticket->source_type_id)
         {
+            // email
             case static::PROVIDER_CRM_EMAIL:
                 return $this->sendEmail($arParameters, $currentUser, $attachment);
+            // call
             case static::PROVIDER_VOX_CALL:
-                //return $this->sendSMS($arParameters, $currentUser, $attachment);
-                break;
+                return $this->sendEmail($arParameters, $currentUser, $attachment);
+            // not used case - response from BX24 widjet
             case static::PROVIDER_OPEN_LINES:
                 return $this->sendOCMessage($source, $currentUser, $messageText, $subject, $attachment);
+            // manually created
             case $appProps['TYPE_ID']:
-                $arParameters = $this->filterEmailsForCommunications($arParameters);
                 return $this->sendEmail($arParameters, $currentUser, $attachment);
         }
         return null;
     }
 
-    private function filterEmailsForCommunications($arParameters)
+    private function addCommunicationsFromEmail(&$arParameters, $contactEmail)
+    {
+        if($contactEmail && !$arParameters['COMMUNICATIONS'])
+        {
+            $arParameters['COMMUNICATIONS'] = [[
+                'VALUE' => $contactEmail
+            ]];
+        }
+    }
+
+    private function filterEmailsForCommunications(&$arParameters)
     {
         $arCommunications = $arParameters['COMMUNICATIONS'];
         $arFilteredCommunications = [];
@@ -837,7 +921,8 @@ class Bx24Component extends Component
         $from = $currentUser['WORK_EMAIL'] ?? $currentUser['EMAIL'];
         //
         $arParameters['TYPE_ID'] = static::ACTIVITY_TYPE_EMAIL;
-        $arParameters['DESCRIPTION_TYPE'] = static::HTML;
+        $arParameters['DESCRIPTION'] = str_replace(array("\r\n", "\r", "\n"), '<br>', $arParameters['DESCRIPTION']);
+        $arParameters['DESCRIPTION_TYPE'] = self::HTML;
         $arParameters['SETTINGS'] = [
             'MESSAGE_FROM' => implode(
                 ' ',
@@ -951,7 +1036,7 @@ class Bx24Component extends Component
 
     private function createActivityWith(array $arParameters)
     {
-        $this->bx24Logger->debug('createActivityWith - crm.activity.add - fileds', $arParameters);
+        $this->bx24Logger->debug('createActivityWith - crm.activity.add - fields', $arParameters);
         $response = $this->obBx24App->call('crm.activity.add', ['fields' => $arParameters]);
         $this->bx24Logger->debug(__FUNCTION__ . '- crm.activity.add', [
             'arParameters' => $arParameters,
@@ -962,10 +1047,19 @@ class Bx24Component extends Component
 
     private static function prepareNewActivityParameters(array $source, $currentUser, string $subject, $text)
     {
+        if(stripos($source['SUBJECT'], $subject) !== false)
+        {
+            $activitySubject = $source['SUBJECT'];
+        } else {
+            $activitySubject = $subject . " " . $source['SUBJECT'];
+        }
+
         return [
+            'OWNER_ID' => $source['OWNER_ID'],
+            'OWNER_TYPE_ID' => $source['OWNER_TYPE_ID'],
             'ASSOCIATED_ENTITY_ID' => $source['ASSOCIATED_ENTITY_ID'],
             'TYPE_ID' => $source['TYPE_ID'],
-            'SUBJECT' => "{$subject} {$source['SUBJECT']}",
+            'SUBJECT' => $activitySubject,
             'DESCRIPTION' => $text,
             'RESPONSIBLE_ID' => $currentUser['ID'],
             'START_TIME' => date(static::DATE_TIME_FORMAT),
@@ -1028,7 +1122,9 @@ class Bx24Component extends Component
             'COMMUNICATIONS' => $communications,
             'ASSOCIATED_ENTITY_ID' => $entityId,
             'OWNER_ID' => $entityId,
-            'OWNER_TYPE_ID' => $type['TYPE_ID'],
+            'OWNER_TYPE_ID' => self::OWNER_TYPE_CONTACT,
+            'PROVIDER_ID' => 'REST_APP',
+            'PROVIDER_TYPE_ID' => $type['TYPE_ID'],
             'SUBJECT' => $subject,
             'DESCRIPTION' => $description,
             'RESPONSIBLE_ID' => $responsibleId,
@@ -1143,8 +1239,8 @@ class Bx24Component extends Component
     {
         $postfix = Configure::read('AppConfig.itemsPostfix');
         return [
-            'TYPE_ID' => 'MANUALLY_CREATED' . (($postfix) ? "_" . strtoupper($postfix) : ''),
-            'NAME' => __('Manually created') . (($postfix) ? " " . $postfix : ''),
+            'TYPE_ID' => 'HELPDESK_TICKETING' . (($postfix) ? "_" . strtoupper($postfix) : ''),
+            'NAME' => __('Helpdesk Ticketing') . (($postfix) ? " " . $postfix : ''),
         ];
     }
 

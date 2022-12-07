@@ -23,7 +23,7 @@ $this->end();
         <div class="form-group pt-1">
             <label for="answer[message]" class="form-label">{{ answer.from }}, {{ i18n.Reply }}</label>
             <textarea id="answer[message]" name="answer[message]" v-model="answer.message" class="form-control" rows="10"></textarea>
-            <div :class="{fade: !fileOversize, alert: true, 'alert-warning': true}">
+            <div :class="{fade: !fileOversize, alert: true, 'alert-warning': true, 'mt-2': true}">
                 {{ fileControl }}
             </div>
         </div>
@@ -31,14 +31,9 @@ $this->end();
             <label for="attachment[]" class="form-label">{{ i18n.Attachment }}</label>
             <input type="file" name="attachment[]" ref="file" @change="upload" class="form-control-file" multiple>
         </div>
-        <div :class="{alert: true, 'alert-success': true, 'alert-dismissible': true, fade: true, 'pt-1': true, show: saved}" role="alert">
-            {{ i18n.Sent }}
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
         <div class="btn-group pt-1">
-            <button type="submit" class="btn btn-primary" @click="send">
+            <button type="submit" class="btn btn-primary" @click="send" v-bind:disabled="isSendButtonDisabled">
+                <span role="status" aria-hidden="true" class="spinner-border spinner-border-sm ml-2" v-if="saved"></span>
                 {{ i18n.Send }}
             </button>
         </div>
@@ -64,6 +59,8 @@ $this->end();
         fileOversize: false,
         filesizeLimit: 5*1024*1024,
         saved: false,
+        needCloseApp: '<?= $needCloseApp ?>',
+        isSendButtonDisabled: false
     };
 </script>
 
@@ -74,12 +71,7 @@ $this->end();
         methods: {
             send: function() {
                 this.saved = true;
-                    setTimeout(function () {
-                        this.saved = false;
-                        BX24.closeApplication();
-                    }, 
-                    5000
-                );
+                this.isSendButtonDisabled = true;
             },
             upload: function() {
                 let fileResultSize = 0;
@@ -92,6 +84,14 @@ $this->end();
                 this.fileOversize = fileResultSize > this.filesizeLimit;
                 this.fileControl = "Files uploaded for " + fileResultSize  + " bytes. It is " + (this.fileOversize ? "oversize" : "ok");
                 console.log(this.fileControl);
+            }
+        },
+        mounted: function()
+        {
+            if(this.needCloseApp === "1")
+            {
+                this.isSendButtonDisabled = true;
+                BX24.closeApplication();
             }
         }
     });
