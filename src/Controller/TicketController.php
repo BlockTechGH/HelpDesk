@@ -119,11 +119,12 @@ class TicketController extends AppController
             $text = $data['description'];
             $statusId = intval($data['status']);
             $status = $statuses[$statusId];
+            $responsibleId = $data['responsible'] ?? $currentUser['ID'];
             $ticketId = $this->Tickets->getLatestID() + 1;
             $postfix = $this->Bx24->getTicketSubject($ticketId);
 
             // Create ticket activity
-            $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$currentUser['ID'], $contacts);
+            $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$responsibleId, $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
 
             if(!$source['COMMUNICATIONS'])

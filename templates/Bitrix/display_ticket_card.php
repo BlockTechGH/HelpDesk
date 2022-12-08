@@ -19,12 +19,10 @@
                 <div class="form-group p-2">
                     <label class="" for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
-                        <?php if($ticketAttributes['responsible']['photo']): ?>
-                            <img class="rounded-circle avatar-img" alt="<?= $ticketAttributes['responsible']['title'] ?>" src="<?= $ticketAttributes['responsible']['photo'] ?>" />
-                        <?php else: ?>
-                            <span class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
-                        <?php endif; ?>
+                        <img v-if="ticketAttributes.responsible.photo" class="rounded-circle avatar-img" v-bind:alt="ticketAttributes.responsible.title" v-bind:src="ticketAttributes.responsible.photo" />
+                        <span v-else class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
                         {{ ticketAttributes.responsible.title }}
+                        <a href="#" class="change-responsible float-right" @click="displaySelectUserDialog">{{ i18n.Change }}</a>
                     </div>
                 </div>
 
@@ -184,6 +182,7 @@
             'Close' => __('Close ticket'),
             'Reopen' => __('Reopen ticket'),
             'Wait' => __('Please wait'),
+            'Change' => __('Change')
         ]);?>,
         awaiting: false,
     };
@@ -302,6 +301,47 @@
                         console.log("Error occuried: " + content);
                     }
                 });
+            },
+            displaySelectUserDialog: function()
+            {
+                BX24.selectUser(this.handleSelectResponsible);
+            },
+            handleSelectResponsible: function(select)
+            {
+                if(select.id != this.ticketAttributes.responsible.id)
+                {
+                    BX24.callMethod('crm.activity.update',
+                        {
+                            id: this.ticketAttributes.id,
+                            fields: {
+                                'RESPONSIBLE_ID': select.id
+                            }
+                        },
+                        this.changeresponsibleInView(select)
+                    );
+                } else {
+                    return false;
+                }
+            },
+            getAbbreviation: function(name)
+            {
+                let abr = '';
+
+                let arPartial = name.split(" ", 2);
+
+                for(let i in arPartial)
+                {
+                    abr = abr + arPartial[i].substr(0, 1);
+                }
+
+                return abr;
+            },
+            changeresponsibleInView: function(data)
+            {
+                this.ticketAttributes.responsible.id = data.id;
+                this.ticketAttributes.responsible.title = data.name;
+                this.ticketAttributes.responsible.photo = data.photo;
+                this.ticketAttributes.responsible.abr = this.getAbbreviation(data.name);
             }
         }
     });

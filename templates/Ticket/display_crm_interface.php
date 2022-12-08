@@ -19,12 +19,10 @@
                 <div class="form-group p-2">
                     <label for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
-                        <?php if($responsible['photo']): ?>
-                            <img class="rounded-circle avatar-img" alt="<?= $responsible['title'] ?>" src="<?= $responsible['photo'] ?>" />
-                        <?php else: ?>
-                            <span class="border rounded-circle p-2">{{ responsible.abr }}</span>
-                        <?php endif; ?>
+                        <img v-if="responsible.photo" class="rounded-circle avatar-img" v-bind:alt="responsible.title" v-bind:src="responsible.photo" />
+                        <span v-else class="border rounded-circle p-2">{{ responsible.abr }}</span>
                         {{ responsible.title }}
+                        <a href="#" class="change-responsible float-right" @click="displaySelectUserDialog">{{ i18n.Change }}</a>
                     </div>
                 </div>
 
@@ -91,6 +89,7 @@
             'Add' => __('Add'),
             'Cancel' => __('Cancel'),
             'Wait' => __('Please wait'),
+            'Change' => __('Change')
         ]);?>,
         awaiting: false,
 
@@ -117,7 +116,7 @@
                         subject: this.subject,
                         description: this.description,
                         responsible: this.responsible.id,
-                        status: this.statusId,
+                        status: this.statusId
                     }, 
                     this.required
                 );
@@ -183,6 +182,35 @@
                 messageAlert.text(message);
                 hideButton.appendTo(messageAlert);
                 messageAlert.appendTo($(flashMessageWrapper));
+            },
+            displaySelectUserDialog: function()
+            {
+                BX24.selectUser(this.handleSelectResponsible);
+            },
+            handleSelectResponsible: function(select)
+            {
+                if(select.id != this.responsible.id)
+                {
+                    this.responsible.id = select.id;
+                    this.responsible.title = select.name;
+                    this.responsible.photo = select.photo;
+                    this.responsible.abr = this.getAbbreviation(select.name);
+                } else {
+                    return false;
+                }
+            },
+            getAbbreviation: function(name)
+            {
+                let abr = '';
+
+                let arPartial = name.split(" ", 2);
+
+                for(let i in arPartial)
+                {
+                    abr = abr + arPartial[i].substr(0, 1);
+                }
+
+                return abr;
             }
         }
     });

@@ -18,3 +18,7 @@ blockquote {
 .mail-message-gmail_quote {
     display: none;
 }
+
+.change-responsible {
+    font-size: 14px;
+}
