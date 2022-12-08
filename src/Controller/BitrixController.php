@@ -101,6 +101,7 @@ class BitrixController extends AppController
         // subscribe on events
         $eventManager = $this->getEventManager();
         $eventManager->on('Ticket.statusChanged', [$this, 'handleTicketStatusChange']);
+        $eventManager->on('Ticket.receivingCustomerResponse', [$this, 'handleReceivingCustomerResponse']);
 
         if ($action == 'displaySettingsInterface')
         {
@@ -434,6 +435,33 @@ class BitrixController extends AppController
                 'event' => $event,
                 'provider' => $activity['PROVIDER_ID']
             ]);
+
+            $matches = [];
+            $isResponseOnTicket = mb_ereg($this->Bx24::TICKET_PREFIX . '(\d+)', $activity['SUBJECT'], $matches);
+            if($isResponseOnTicket)
+            {
+                // response on ticket
+                // send event
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - it is customer response', [
+                    'idActivity' => $idActivity,
+                    'memberId' => $this->memberId,
+                    'matches' => $matches
+                ]);
+
+                $ticket = $this->Tickets->get($matches[1]);
+                $status = $this->Statuses->get($ticket['status_id']);
+
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - getting data', [
+                    'ticket' => $ticket,
+                    'status' => $status
+                ]);
+
+                $event = new Event('Ticket.receivingCustomerResponse', $this, [
+                    'ticket' => $ticket,
+                    'status' => $status->name
+                ]);
+                $this->getEventManager()->dispatch($event);
+            }
         }
     }
 
@@ -580,8 +608,49 @@ class BitrixController extends AppController
             'ticket' => $ticket,
             'status' => $status,
             'memberId' => $this->memberId,
-            'ticketAttributes' => $this->ticketAttributes
         ]);
 
+        $arActivityData = $this->Bx24->getActivityAndRelatedDataById($ticket['action_id']);
+        $activity = $arActivityData['activity'];
+        $ticketAttributes = $this->Bx24->getOneTicketAttributes($activity);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - ticket attributes', [
+            'arActivityData' => $arActivityData,
+            'ticketAttributes' => $ticketAttributes
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationReceivingCustomerResponse',
+            'ticketStatus' => $status,
+            'ticketNumber' => 'GS-' . $ticket['id'],
+            'ticketSubject' => $ticketAttributes['subject'],
+            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'answerType' => 'Reply',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $arOption = $this->Options->getOption('notificationReceivingCustomerResponse', $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - get template', [
+            'templateId' => $templateId
+        ]);
+
+        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+
+        if($templateId && $contactId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - start workflow result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
     }
 }
