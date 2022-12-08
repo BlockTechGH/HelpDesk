@@ -176,6 +176,14 @@ class BitrixController extends AppController
                     $source['text'] = $firstMessage['text'];
                 }
 
+                $arHistoryActivities = [];
+                // get history for tickets from CALL, EMAIL, MANUALLY
+                if($this->ticket && $this->ticket->source_type_id != Bx24Component::PROVIDER_OPEN_LINES)
+                {
+                    $arHistoryActivities = $this->Bx24->searchActivitiesByTicketNumber($this->ticket['id']);
+                }
+                $this->set('arHistoryActivities', $arHistoryActivities);
+
                 $source['text'] = str_replace(PHP_EOL, '<br>', $source['text']);
 
                 $this->set('ticket', $this->ticket);
@@ -185,7 +193,6 @@ class BitrixController extends AppController
                 } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))
                 {
-                    $this->messages = []; //$this->Bx24->getMessages($ticket);
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
                         return $this->sendFeedback($answer, $currentUser, $ticketAttributes);
@@ -290,6 +297,9 @@ class BitrixController extends AppController
         $this->disableAutoRender();
 
         $data = $this->request->getParsedBody();
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'data' => $data
+        ]);
 
         if (isset($data['ticket'])) {
 
@@ -325,10 +335,23 @@ class BitrixController extends AppController
                 'active' => $active
             ])]);
         } elseif (isset($data['fetch_messages'])) {
-            return new Response(['body' => json_encode([])]);
+            $arHistoryActivities = [];
+            // get history for tickets from CALL, EMAIL, MANUALLY
+            $ticketId = $data['ticketId'];
+            $sourceTypeId = $data['sourceTypeId'];
+
+            if($ticketId && $sourceTypeId != Bx24Component::PROVIDER_OPEN_LINES)
+            {
+                $arHistoryActivities = $this->Bx24->searchActivitiesByTicketNumber($ticketId);
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - fetch messages - params', [
+                    'ticketId' => $ticketId,
+                    'sourceTypeId' => $sourceTypeId,
+                    'arHistoryActivities' => $arHistoryActivities
+                ]);
+                return new Response(['body' => json_encode($arHistoryActivities)]);
+            }
         }
 
-        $this->set('messages', $this->messages);
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);

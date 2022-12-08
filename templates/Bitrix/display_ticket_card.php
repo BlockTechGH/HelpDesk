@@ -122,20 +122,17 @@
                             </div>
                         <?php endif;?>
                     </div>
-                    <?php if($ticket['source_type_id'] === 'IMOPENLINES_SESSION'): ?>
-                    <div class="text-center mt-4">
-                        <button type="button" class="btn btn-primary" onclick="BX24.im.openHistory('<?= $dialogId?>')"><?= __('Open history') ?></button>
-                    </div>
-                    <?php endif; ?>
-
                 </div>
-            
-                <div class="row pt-4">
-                    <div class="border pt-2"
-                        v-for="(message, index) in messages"
-                    >
-                        <p class="">{{ message.from }} {{ message.created }}</p>
-                        <div class="" v-html="message.text"></div>
+                <hr>
+                <?php if($ticket['source_type_id'] === 'IMOPENLINES_SESSION'): ?>
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-primary" onclick="BX24.im.openHistory('<?= $dialogId?>')"><?= __('Open history') ?></button>
+                </div>
+                <?php endif; ?>
+                <div class="row mt-2 mb-2" v-bind:class="{'justify-content-end': activity.DIRECTION == 2}" v-for="(activity, index) in arHistoryActivities" v-if="activity.ID != ticketAttributes.id">
+                    <div class="col-10 border rounded ml-3 mr-3">
+                        <div class="">{{ activity.SUBJECT }} {{ activity.CREATED }}</div>
+                        <div class="" v-html="activity.DESCRIPTION"></div>
                     </div>
                 </div>
             </div>
@@ -171,7 +168,7 @@
         ticketAttributes: <?=json_encode($ticketAttributes);?>,
         // Sub issue #3 - statuses
         statuses: <?=json_encode($statuses);?>,
-        messages: <?=json_encode([]);?>,
+        arHistoryActivities: <?=json_encode($arHistoryActivities);?>,
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Title'),
@@ -249,11 +246,13 @@
                 } else {
                     BX24.openApplication(
                         parameters,
-                        function () {
+                        function()
+                        {
                             const parameters = Object.assign(
                                 {
                                     fetch_messages: true,
-                                    ticket_id: this.data.ticket.id
+                                    ticketId: this.data.ticket.id,
+                                    sourceTypeId: this.data.ticket.source_type_id
                                 },
                                 this.data.required
                             );
@@ -261,10 +260,15 @@
                             fetch('<?=$ajax;?>', {
                                 method: "POST",
                                 headers,
-                                body: JSON.stringify(parameters),
+                                body: JSON.stringify(parameters)
                             }).then(async result => {
-                                const all = await result.json();
-                                this.data.messages = all;
+                                try {
+                                    const all = await result.json();
+                                    this.data.arHistoryActivities = all;
+                                } catch (e) {
+                                    console.log("Error occuried");
+                                    console.log(e);
+                                }
                             });
                         }
                     );

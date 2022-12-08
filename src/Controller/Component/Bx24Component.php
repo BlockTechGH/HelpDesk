@@ -1391,4 +1391,32 @@ class Bx24Component extends Component
 
         return $result['result'] ?? 0;
     }
+
+    public function searchActivitiesByTicketNumber($ticketNumber): array
+    {
+        $arResult = [];
+        $parameters = [
+            'filter' => [
+                '%SUBJECT' => self::TICKET_PREFIX . $ticketNumber
+            ],
+            'order' => [
+                'ID' => 'desc'
+            ],
+            'select' => ['ID', 'SUBJECT', 'DIRECTION', 'DESCRIPTION', 'DESCRIPTION_TYPE', 'CREATED']
+        ];
+
+        $result = $this->obBx24App->call('crm.activity.list', $parameters);
+
+        if($result['result'])
+        {
+            $arResult = $result['result'];
+
+            foreach($arResult as $i => $activity)
+            {
+                $arResult[$i]['CREATED'] = date(self::DATE_TIME_FORMAT, strtotime($activity['CREATED']));
+            }
+        }
+
+        return $arResult;
+    }
 }

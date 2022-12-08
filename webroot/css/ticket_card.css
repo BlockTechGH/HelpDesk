@@ -10,3 +10,11 @@
 .ticket-customer-date {
     text-decoration: underline;
 }
+
+blockquote {
+    display: none;
+}
+
+.mail-message-gmail_quote {
+    display: none;
+}
