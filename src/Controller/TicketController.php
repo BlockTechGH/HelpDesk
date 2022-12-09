@@ -553,7 +553,7 @@ class TicketController extends AppController
         $arTemplateParameters = [
             'eventType' => 'notificationCreateTicket',
             'ticketStatus' => $status,
-            'ticketNumber' => 'GS-' . $ticket['id'],
+            'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
             'ticketResponsibleId' => $ticketAttributes['responsible'],
             'answerType' => '',

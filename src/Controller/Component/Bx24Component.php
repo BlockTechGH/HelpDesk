@@ -11,6 +11,7 @@ use Monolog\Handler\StreamHandler;
 use Bitrix24\Exceptions\Bitrix24ApiException;
 use Bitrix24\Exceptions\Bitrix24SecurityException;
 use Cake\Http\Client;
+use Cake\I18n\FrozenTime;
 use Exception;
 
 class Bx24Component extends Component
@@ -399,19 +400,23 @@ class Bx24Component extends Component
 
     public function createActivity(string $subject, $activityType, array $ownerActivity)
     {
+        $now = FrozenTime::now();
+
         $parameters = [
             'fields' => [
                 'ASSOCIATED_ENTITY_ID' => $ownerActivity["ASSOCIATED_ENTITY_ID"],
                 'COMMUNICATIONS' => $ownerActivity['COMMUNICATIONS'],
                 'COMPLETED' => static::NOT_COMPLETED,
                 'DESCRIPTION' => $ownerActivity['DESCRIPTION'] ?? '',
+                'DESCRIPTION_TYPE' => $ownerActivity['DESCRIPTION_TYPE'] ?? '',
                 'DIRECTION' => static::INCOMMING,
                 'OWNER_ID' => $ownerActivity['OWNER_ID'],
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
-                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID']
+                'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
+                'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
         ];
         $this->bx24Logger->debug('createActivity', $parameters);

@@ -99,9 +99,13 @@ class BitrixController extends AppController
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
 
         // subscribe on events
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - subscribed', [
+            'Ticket.statusChanged', 'Ticket.receivingCustomerResponse', 'Ticket.created'
+        ]);
         $eventManager = $this->getEventManager();
         $eventManager->on('Ticket.statusChanged', [$this, 'handleTicketStatusChange']);
         $eventManager->on('Ticket.receivingCustomerResponse', [$this, 'handleReceivingCustomerResponse']);
+        $eventManager->on('Ticket.created', [$this, 'handleTicketCreated']);
 
         if ($action == 'displaySettingsInterface')
         {
@@ -435,7 +439,10 @@ class BitrixController extends AppController
             if($activityId = $this->Bx24->createTicketBy($activity, $subject))
             {
                 // ticket is activity
-                $activity = $this->Bx24->getActivityById($activityId);
+                //$activity = $this->Bx24->getActivityById($activityId);
+                $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
+                $activity = $activityInfo['activity'];
+
                 $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
                 $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
                 $ticketRecord = $this->Tickets->create(
@@ -451,6 +458,14 @@ class BitrixController extends AppController
                     'ticketRecord' => $ticketRecord,
                     'ticketActivity' => $activity
                 ]);
+
+                // send event Ticket Created
+                $event = new Event('Ticket.created', $this, [
+                    'ticket' => $ticketRecord,
+                    'status' => $status->name,
+                    'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity)
+                ]);
+                $this->getEventManager()->dispatch($event);
             }
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
@@ -670,6 +685,55 @@ class BitrixController extends AppController
         {
             $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - start workflow result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
+    }
+
+    public function handleTicketCreated($event, $ticket, $status, $ticketAttributes)
+    {
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $ticketAttributes
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationCreateTicket',
+            'ticketStatus' => $status,
+            'ticketNumber' => Bx24Component::TICKET_PREFIX . $ticket['id'],
+            'ticketSubject' => $ticketAttributes['subject'],
+            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'answerType' => '',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $arOption = $this->Options->getOption('notificationCreateTicket', $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - contact', [
+            'contactId' => $contactId
+        ]);
+
+        if($templateId && $contactId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
         } else {
