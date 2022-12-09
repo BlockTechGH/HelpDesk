@@ -118,6 +118,8 @@ class HelpdeskOptionsTable extends Table
 
     public function getNotSourceSettingsFor(string $member_id)
     {
+        $options = [];
+
         $optionsList = $this->find()
             ->where([
                 'member_id' => $member_id,
