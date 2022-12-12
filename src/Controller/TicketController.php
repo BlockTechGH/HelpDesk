@@ -555,7 +555,7 @@ class TicketController extends AppController
             'ticketStatus' => $status,
             'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
-            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => '',
             'sourceType' => $ticket['source_type_id']
         ];

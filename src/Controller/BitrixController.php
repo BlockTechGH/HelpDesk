@@ -626,7 +626,7 @@ class BitrixController extends AppController
             'ticketStatus' => $status,
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $this->ticketAttributes['subject'],
-            'ticketResponsibleId' => $this->ticketAttributes['responsible']['id'],
+            'ticketResponsibleId' => 'user_' . $this->ticketAttributes['responsible']['id'],
             'answerType' => '',
             'sourceType' => $ticket['source_type_id']
         ];
@@ -678,7 +678,7 @@ class BitrixController extends AppController
             'ticketStatus' => $status,
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
-            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => 'Reply',
             'sourceType' => $ticket['source_type_id']
         ];
@@ -722,7 +722,7 @@ class BitrixController extends AppController
             'ticketStatus' => $status,
             'ticketNumber' => Bx24Component::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
-            'ticketResponsibleId' => $ticketAttributes['responsible'],
+            'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => '',
             'sourceType' => $ticket['source_type_id']
         ];
