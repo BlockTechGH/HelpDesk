@@ -82,6 +82,7 @@ class BitrixController extends AppController
 
         $action = $this->request->getParam('action');
         $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+        unset($this->placement['subject']);
         $answer = $this->request->getData('answer');
         $activity_id = $this->request->getData('activity_id');
 
@@ -192,7 +193,7 @@ class BitrixController extends AppController
 
                 $this->set('ticket', $this->ticket);
                 if (isset($this->placement['answer'])) {
-                    $this->set('subject', $ticketAttributes['subject']);
+                    $this->set('subject', str_replace("'", "\'", $ticketAttributes['subject']));
                     return $this->sendFeedback($answer ?? true, $currentUser, $ticketAttributes);
                 } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))

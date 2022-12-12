@@ -1,6 +1,6 @@
 <?php
 $this->start('title');
-    echo __('New reply in ticket {0}', $subject);
+    echo __('New reply in ticket {0}', str_replace("\'", "'", $subject));
 $this->end();
 ?>
 
@@ -18,7 +18,7 @@ $this->end();
         <input type="hidden" name="answer[user_id]" v-model="answer.user_id">
         <input type="hidden" name="ticket_id" v-model="ticket.id">
         <div class="form-group">
-            <h1><?=__('New reply in ticket {0}', $subject);?></h1>
+            <h1><?=__('New reply in ticket {0}', str_replace("\'", "'", $subject));?></h1>
         </div>
         <div class="form-group pt-1">
             <label for="answer[message]" class="form-label">{{ answer.from }}, {{ i18n.Reply }}</label>
