@@ -131,8 +131,7 @@ class Bx24Component extends Component
     public function installApplicationData($arInstalledData)
     {
         $wwwRoot = Configure::read('App.wwwRoot');
-        // "https://icons8.com/icon/6837/служба-поддержки"
-        $iconFile = "helpdesk-1.png";
+        $iconFile = "helpdesk.png";
         $iconPath = $wwwRoot . "img/" . $iconFile;
         $activityDef = static::getActivityTypeAndName();
 
