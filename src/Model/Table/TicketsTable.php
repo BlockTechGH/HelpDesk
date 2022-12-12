@@ -251,4 +251,10 @@ class TicketsTable extends Table
             ])
             ->first();
     }
+
+    public function deleteTicketByActionId($activityId, $memberId)
+    {
+        $ticket = $this->getByActivityIdAndMemberId($activityId, $memberId);
+        return $this->delete($ticket);
+    }
 }

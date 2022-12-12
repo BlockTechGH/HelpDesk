@@ -401,106 +401,120 @@ class BitrixController extends AppController
             'event' => $event,
             'data' => $data
         ]);
-        $arActivityData = $this->Bx24->getActivityAndRelatedDataById($idActivity);
-        $activity = $arActivityData['activity'];
 
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
-            'id' => $idActivity,
-            'activity' => $activity,
-            'bindings' => $arActivityData['bindings']
-        ]);
-        $sourceProviderType = $activity['PROVIDER_ID'];
-
-        $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
-        if(
-            !$this->Bx24->checkOptionalActivity(
-                $sourceProviderType,
-                intval($activity['DIRECTION'])
-            )
-        )
+        if($event == Bx24Component::CRM_NEW_ACTIVITY_EVENT)
         {
-            $this->BxControllerLogger->debug(__FUNCTION__ . ' - skip activity', [
+            $arActivityData = $this->Bx24->getActivityAndRelatedDataById($idActivity);
+            $activity = $arActivityData['activity'];
+
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - source activity', [
                 'id' => $idActivity,
-                'provider' => $sourceProviderType,
-                'direction' => $activity['DIRECTION'],
+                'activity' => $activity,
+                'bindings' => $arActivityData['bindings']
             ]);
-            return;
+            $sourceProviderType = $activity['PROVIDER_ID'];
+
+            $sourceTypeOptions = $this->Options->getSettingsFor($this->memberId);
+            if(
+                !$this->Bx24->checkOptionalActivity(
+                    $sourceProviderType,
+                    intval($activity['DIRECTION'])
+                )
+            )
+            {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - skip activity', [
+                    'id' => $idActivity,
+                    'provider' => $sourceProviderType,
+                    'direction' => $activity['DIRECTION'],
+                ]);
+                return;
+            }
+
+
+            $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activity['SUBJECT'], $activity['PROVIDER_TYPE_ID'])
+                && $sourceTypeOptions['sources_on_email'];
+            $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_open_channel'];
+            $yesCreateTicket |= $this->Bx24->checkCallActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_phone_calls'];
+
+            if($yesCreateTicket)
+            {
+                $ticketId = $this->Tickets->getLatestID() + 1;
+                $subject = $this->Bx24->getTicketSubject($ticketId);
+                if($activityId = $this->Bx24->createTicketBy($activity, $subject))
+                {
+                    // ticket is activity
+                    //$activity = $this->Bx24->getActivityById($activityId);
+                    $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
+                    $activity = $activityInfo['activity'];
+
+                    $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
+                    $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
+                    $ticketRecord = $this->Tickets->create(
+                        $this->memberId,
+                        $activity,
+                        1,
+                        $status['id'],
+                        (int)$prevActivityId
+                    );
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
+                        'prevActivityId' => $prevActivityId,
+                        'errors' => $ticketRecord->getErrors(),
+                        'ticketRecord' => $ticketRecord,
+                        'ticketActivity' => $activity
+                    ]);
+
+                    // send event Ticket Created
+                    $event = new Event('Ticket.created', $this, [
+                        'ticket' => $ticketRecord,
+                        'status' => $status->name,
+                        'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity)
+                    ]);
+                    $this->getEventManager()->dispatch($event);
+                }
+            } else {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
+                    'settings' => $sourceTypeOptions,
+                    'event' => $event,
+                    'provider' => $activity['PROVIDER_ID']
+                ]);
+
+                $matches = [];
+                $isResponseOnTicket = mb_ereg($this->Bx24::TICKET_PREFIX . '(\d+)', $activity['SUBJECT'], $matches);
+                if($isResponseOnTicket)
+                {
+                    // response on ticket
+                    // send event
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - it is customer response', [
+                        'idActivity' => $idActivity,
+                        'memberId' => $this->memberId,
+                        'matches' => $matches
+                    ]);
+
+                    $ticket = $this->Tickets->get($matches[1]);
+                    $status = $this->Statuses->get($ticket['status_id']);
+
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - getting data', [
+                        'ticket' => $ticket,
+                        'status' => $status
+                    ]);
+
+                    $event = new Event('Ticket.receivingCustomerResponse', $this, [
+                        'ticket' => $ticket,
+                        'status' => $status->name
+                    ]);
+                    $this->getEventManager()->dispatch($event);
+                }
+            }
         }
 
-
-        $yesCreateTicket = $this->Bx24->checkEmailActivity($event, $activity['SUBJECT'], $activity['PROVIDER_TYPE_ID'])
-            && $sourceTypeOptions['sources_on_email'];
-        $yesCreateTicket |= $this->Bx24->checkOCActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_open_channel'];
-        $yesCreateTicket |= $this->Bx24->checkCallActivity($event, $sourceProviderType) && $sourceTypeOptions['sources_on_phone_calls'];
-
-        if($yesCreateTicket)
+        if($event == Bx24Component::CRM_DELETE_ACTIVITY_EVENT)
         {
-            $ticketId = $this->Tickets->getLatestID() + 1;
-            $subject = $this->Bx24->getTicketSubject($ticketId);
-            if($activityId = $this->Bx24->createTicketBy($activity, $subject))
-            {
-                // ticket is activity
-                //$activity = $this->Bx24->getActivityById($activityId);
-                $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
-                $activity = $activityInfo['activity'];
-
-                $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
-                $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
-                $ticketRecord = $this->Tickets->create(
-                    $this->memberId,
-                    $activity,
-                    1,
-                    $status['id'],
-                    (int)$prevActivityId
-                );
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
-                    'prevActivityId' => $prevActivityId,
-                    'errors' => $ticketRecord->getErrors(),
-                    'ticketRecord' => $ticketRecord,
-                    'ticketActivity' => $activity
-                ]);
-
-                // send event Ticket Created
-                $event = new Event('Ticket.created', $this, [
-                    'ticket' => $ticketRecord,
-                    'status' => $status->name,
-                    'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity)
-                ]);
-                $this->getEventManager()->dispatch($event);
-            }
-        } else {
-            $this->BxControllerLogger->debug(__FUNCTION__ . ' - activity is not match or On', [
-                'settings' => $sourceTypeOptions,
-                'event' => $event,
-                'provider' => $activity['PROVIDER_ID']
+            $result = $this->Tickets->deleteTicketByActionId($idActivity, $this->memberId);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - delete result', [
+                'result' => $result
             ]);
 
-            $matches = [];
-            $isResponseOnTicket = mb_ereg($this->Bx24::TICKET_PREFIX . '(\d+)', $activity['SUBJECT'], $matches);
-            if($isResponseOnTicket)
-            {
-                // response on ticket
-                // send event
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - it is customer response', [
-                    'idActivity' => $idActivity,
-                    'memberId' => $this->memberId,
-                    'matches' => $matches
-                ]);
-
-                $ticket = $this->Tickets->get($matches[1]);
-                $status = $this->Statuses->get($ticket['status_id']);
-
-                $this->BxControllerLogger->debug(__FUNCTION__ . ' - getting data', [
-                    'ticket' => $ticket,
-                    'status' => $status
-                ]);
-
-                $event = new Event('Ticket.receivingCustomerResponse', $this, [
-                    'ticket' => $ticket,
-                    'status' => $status->name
-                ]);
-                $this->getEventManager()->dispatch($event);
-            }
+            die();
         }
     }
 

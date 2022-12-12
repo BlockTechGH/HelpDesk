@@ -204,9 +204,10 @@ class Bx24Component extends Component
             });
         }
 
-        // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete, OnCrmActivityDelete
+        // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete
         $arNeedEvents = [
             'ONCRMACTIVITYADD' => 'crm_activity_handler',
+            'ONCRMACTIVITYDELETE' => 'crm_activity_handler',
         ];
 
         foreach($arInstalledData['eventList'] as $event)
