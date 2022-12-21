@@ -78,27 +78,75 @@ class TicketController extends AppController
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
         $entityId = $this->placement['ID'];
-        $entityType = $data['PLACEMENT'];
-        
-        $isContact = ($entityType == 'CRM_CONTACT_DETAIL_ACTIVITY');
-        $entity = $isContact 
-            ? $this->Bx24->getContact((int)$entityId)
-            : $this->Bx24->getCompany((int)$entityId);
-        $entity['TITLE'] = $this->Bx24->getEntityTitle($entity);
-
-        $contacts = [];
-        foreach(['PHONE', 'EMAIL'] as $contactType)
+        $placementType = $data['PLACEMENT'];
+        switch($placementType)
         {
-            $all = $isContact
-                ? $this->Bx24->getPersonalContacts($entity, $contactType) 
-                : $this->Bx24->getCompanyContacts($entity, $contactType);
-            $contacts = array_merge($contacts, $all);
-            $entity[$contactType] = count($all) ? $all[0] : "";
+            case 'CRM_CONTACT_DETAIL_ACTIVITY':
+                $entityType = 'CRM_CONTACT';
+                break;
+            case 'CRM_COMPANY_DETAIL_ACTIVITY':
+                $entityType = 'CRM_COMPANY';
+                break;
+            case 'CRM_DEAL_DETAIL_ACTIVITY':
+                $entityType = 'CRM_DEAL';
+                break;
+            default:
+                $entityType = null;
+                break;
         }
-        $entity['WORK_COMPANY'] = $isContact ? "" : $entity['NAME'];
 
-        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer object', $entity);
-        $customer = $this->Bx24->makeUserAttributes($entity);
+        if($entityType == 'CRM_CONTACT')
+        {
+            $entity = $this->Bx24->getContact((int)$entityId);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entity', $entity);
+
+            $contacts = [];
+            foreach(['PHONE', 'EMAIL'] as $contactType)
+            {
+                $all = $this->Bx24->getPersonalContacts($entity, $contactType);
+                $contacts = array_merge($contacts, $all);
+                $entity[$contactType] = count($all) ? $all[0] : "";
+            }
+            $entity['WORK_COMPANY'] = "";
+            $customer = $this->Bx24->makeUserAttributes($entity);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+        }
+
+        if($entityType == 'CRM_COMPANY')
+        {
+            $company = $this->Bx24->getCompany((int)$entityId);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - company', $company);
+
+            $contacts = [];
+            foreach(['PHONE', 'EMAIL'] as $contactType)
+            {
+                $all = $this->Bx24->getCompanyContactsInfo($company, $contactType);
+                $contacts = array_merge($contacts, $all);
+                $company[$contactType] = count($all) ? $all[0] : "";
+            }
+            $customer = $this->Bx24->makeCompanyAttributes($company);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+        }
+        
+        if($entityType == 'CRM_DEAL')
+        {
+            $deal = $this->Bx24->getDeal((int)$entityId);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - deal', $deal);
+
+            $contacts = [];
+            // foreach(['PHONE', 'EMAIL'] as $contactType)
+            // {
+            //     $all = $this->Bx24->getDealsContactsInfo($deal, $contactType); // create method
+            //     $contacts = array_merge($contacts, $all);
+            //     $deal[$contactType] = count($all) ? $all[0] : "";
+            // }
+            $customer = $this->Bx24->makeCompanyAttributes($deal);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+        }
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - contacts', $contacts);
+
+        // why is this necessary?
+        // $entity['TITLE'] = $this->Bx24->getEntityTitle($entity);
         
         if(!empty($customer['phone']) && !empty($customer['phone']['VALUE']))
         {
