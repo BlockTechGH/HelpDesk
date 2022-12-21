@@ -158,7 +158,9 @@ class Bx24Component extends Component
 
         // add placements in crm card
         $arNeedPlacements = [
-            'CRM_CONTACT_DETAIL_ACTIVITY'
+            'CRM_CONTACT_DETAIL_ACTIVITY',
+            'CRM_COMPANY_DETAIL_ACTIVITY',
+            'CRM_DEAL_DETAIL_ACTIVITY'
         ];
 
         $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
@@ -803,6 +805,28 @@ class Bx24Component extends Component
         ];
     }
 
+    public function makeCompanyAttributes(array $company) : array
+    {
+        if(count($company) == 0)
+        {
+            return [
+                'id' => 0,
+                'abr' => 'A N Onim',
+                'title' => 'Client undefined',
+                'email' => '',
+                'phone' => '',
+            ];
+        }
+        return [
+            'id' => (int)$company["ID"],
+            'abr' => mb_substr($company['TITLE'], 0, 1),
+            'title' => $company['TITLE'],
+            'email' => $company['EMAIL'],
+            'phone' => $company['PHONE'],
+            'photo' => $company['LOGO'] ?? ''
+        ];
+    }
+
     public function getMessages(Ticket $ticket) : array
     {
         switch ($ticket->source_type_id) {
@@ -1155,6 +1179,12 @@ class Bx24Component extends Component
         return $company;
     }
 
+    public function getDeal(int $dealID)
+    {
+        $deal = $this->getBitrixEntity("crm.deal.get", $dealID, __FUNCTION__);
+        return $deal;
+    }
+
     public function getEntityTitle($entity) : string
     {
         return !empty($entity['NAME']) && !empty($entity['LAST_NAME'])
@@ -1199,6 +1229,26 @@ class Bx24Component extends Component
             return $clercPhoneNumbers;
         }
         return $this->addContactsIntoList($contacts, $type, $clercPhoneNumbers, __FUNCTION__);
+    }
+
+    public function getCompanyContactsInfo($company, $type = 'PHONE'): array
+    {
+        $contacts = [];
+        $company = $this->getCompanyInfo($company['ID']);
+        if($company && isset($company[$type]))
+        {
+            // check it with $this->createTicketBy()
+            foreach($company[$type] as $contact)
+            {
+                $contacts[] = [
+                    'ENTITY_ID' => $company['ID'],
+                    'ENTITY_TYPE_ID' => 4,
+                    'VALUE' => isset($company[$type][0]['VALUE'])? $company[$type][0]['VALUE']: ""
+                ];
+            }
+            $this->bx24Logger->debug("getCompanyContactsInfo - contacts", ['contacts' => $contacts]);
+        }
+        return $contacts;
     }
 
     private function addContactsIntoList(array $contacts, string $type, &$phonesList, string $function)
