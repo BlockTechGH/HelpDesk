@@ -77,8 +77,9 @@ class TicketController extends AppController
         $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
-        $entityId = $this->placement['ID'];
+        $entityId = intval($this->placement['ID']);
         $placementType = $data['PLACEMENT'];
+        $contactTypes = ['PHONE', 'EMAIL'];
         switch($placementType)
         {
             case 'CRM_CONTACT_DETAIL_ACTIVITY':
@@ -97,46 +98,43 @@ class TicketController extends AppController
 
         if($entityType == 'CRM_CONTACT')
         {
-            $entity = $this->Bx24->getContact((int)$entityId);
+            $contact = $this->Bx24->getContact($entityId);
             $contacts = [];
-            foreach(['PHONE', 'EMAIL'] as $contactType)
+            foreach($contactTypes as $contactType)
             {
-                $all = $this->Bx24->getPersonalContacts($entity, $contactType);
+                $all = $this->Bx24->getPersonalContacts($contact, $contactType);
                 $contacts = array_merge($contacts, $all);
-                $entity[$contactType] = count($all) ? $all[0] : "";
+                $contact[$contactType] = count($all) ? $all[0] : "";
             }
-            $entity['WORK_COMPANY'] = "";
-            $customer = $this->Bx24->makeUserAttributes($entity);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+            $contact['WORK_COMPANY'] = "";
+            $customer = $this->Bx24->makeUserAttributes($contact);
         }
 
         if($entityType == 'CRM_COMPANY')
         {
-            $company = $this->Bx24->getCompany((int)$entityId);
+            $company = $this->Bx24->getCompanyInfo($entityId);
             $contacts = [];
-            foreach(['PHONE', 'EMAIL'] as $contactType)
+            foreach($contactTypes as $contactType)
             {
                 $all = $this->Bx24->getCompanyContactsInfo($company, $contactType);
                 $contacts = array_merge($contacts, $all);
                 $company[$contactType] = count($all) ? $all[0] : "";
             }
             $customer = $this->Bx24->makeCompanyAttributes($company);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
         }
         
         if($entityType == 'CRM_DEAL')
         {
-            $deal = $this->Bx24->getDeal((int)$entityId);
-            $contacts = [];
-            foreach(['PHONE', 'EMAIL'] as $contactType)
+            $dealData = $this->Bx24->getDealData($entityId);
+            $deal = $dealData['deal'];
+            $contacts = $this->Bx24->getDealCommunicationInfo($dealData, $contactTypes);
+            foreach($contacts as $type => $values)
             {
-                $all = $this->Bx24->getDealsContactsInfo($deal, $contactType); // need to create method
-                $contacts = array_merge($contacts, $all);
-                $deal[$contactType] = count($all) ? $all[0] : "";
+                $deal[$type] = $values[0];
             }
-            $customer = $this->Bx24->makeContactAttributes($deal);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+            $customer = $this->Bx24->makeCompanyAttributes($deal);
         }
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - contacts', $contacts);
 
         // why is this necessary?

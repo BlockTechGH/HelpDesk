@@ -807,22 +807,12 @@ class Bx24Component extends Component
 
     public function makeCompanyAttributes(array $company) : array
     {
-        if(count($company) == 0)
-        {
-            return [
-                'id' => 0,
-                'abr' => 'A N Onim',
-                'title' => 'Client undefined',
-                'email' => '',
-                'phone' => '',
-            ];
-        }
         return [
             'id' => (int)$company["ID"],
             'abr' => mb_substr($company['TITLE'], 0, 1),
             'title' => $company['TITLE'],
-            'email' => $company['EMAIL'],
-            'phone' => $company['PHONE'],
+            'email' => $company['EMAIL']?? '',
+            'phone' => $company['PHONE']?? '',
             'photo' => $company['LOGO'] ?? ''
         ];
     }
@@ -1234,20 +1224,80 @@ class Bx24Component extends Component
     public function getCompanyContactsInfo($company, $type = 'PHONE'): array
     {
         $contacts = [];
-        $company = $this->getCompanyInfo($company['ID']);
         if($company && isset($company[$type]))
         {
             // check it with $this->createTicketBy()
-            foreach($company[$type] as $contact)
+            foreach($company[$type] as $idx => $contact)
             {
                 $contacts[] = [
                     'ENTITY_ID' => $company['ID'],
                     'ENTITY_TYPE_ID' => 4,
-                    'VALUE' => isset($company[$type][0]['VALUE'])? $company[$type][0]['VALUE']: ""
+                    'VALUE' => isset($company[$type][$idx]['VALUE'])? $company[$type][$idx]['VALUE']: ""
                 ];
             }
             $this->bx24Logger->debug("getCompanyContactsInfo - contacts", ['contacts' => $contacts]);
         }
+        return $contacts;
+    }
+
+    public function getDealData($dealId)
+    {
+        $arResult = [];
+
+        $getDealCmd = $this->obBx24App->addBatchCall('crm.deal.get', ['id' => $dealId], function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['deal'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('crm.company.get', ['id' => '$result[' . $getDealCmd . '][COMPANY_ID]'], function($result) use (&$arResult)
+        {
+            if($result['result'] && $result['result']['ID'] === $arResult['deal']['COMPANY_ID'])
+            {
+                $arResult['company'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('crm.contact.get', ['id' => '$result[' . $getDealCmd . '][CONTACT_ID]'], function($result) use (&$arResult)
+        {
+            if($result['result'] && $result['result']['ID'] === $arResult['deal']['CONTACT_ID'])
+            {
+                $arResult['contact'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        $this->bx24Logger->debug('getDealData - result', ['$arResult' => $arResult]);
+
+        return $arResult;
+    }
+
+    public function getDealCommunicationInfo($dealData, $contactTypes)
+    {
+        $contacts = [];
+
+        if(isset($dealData['company']))
+        {
+            $company = $dealData['company'];
+            foreach($contactTypes as $type)
+            {
+                $contacts[$type] = $this->getCompanyContactsInfo($company, $type);
+            }
+        }
+        elseif(isset($dealData['contact']))
+        {
+            $contact = $dealData['contact'];
+            foreach($contactTypes as $type)
+            {
+                $contacts[$type] = $this->getPersonalContacts($contact, $type);
+            }
+        }
+
+        $this->bx24Logger->debug('getDealCommunicationInfo - contacts', ['contacts' => $contacts]);
+
         return $contacts;
     }
 
