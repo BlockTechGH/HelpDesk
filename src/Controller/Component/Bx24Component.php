@@ -38,6 +38,11 @@ class Bx24Component extends Component
 
     public const OWNER_TYPE_CONTACT = 3;
     public const ACTIVITY_TYPE_EMAIL = 4;
+    public const CRM_ENTITY_TYPES_IDS = [
+        'CRM_DEAL' => 2,
+        'CRM_CONTACT' => 3,
+        'CRM_COMPANY' => 4
+    ];
 
     public const BITRIX_REST_API_RESULT_LIMIT_COUNT = 50;
 
@@ -394,13 +399,7 @@ class Bx24Component extends Component
         return static::TICKET_PREFIX . $ticketId;
     }
 
-    public function createTicketBy(array $activity, string $subject)
-    {
-        $ticketActivityTypeIDs = $this->getActivityTypeAndName();
-        return $this->createActivity($subject, $ticketActivityTypeIDs, $activity);
-    }
-
-    public function createActivity(string $subject, $activityType, array $ownerActivity)
+    public function createActivity(array $ownerActivity, string $subject)
     {
         $now = FrozenTime::now();
 
@@ -416,7 +415,7 @@ class Bx24Component extends Component
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
-                'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
+                'PROVIDER_TYPE_ID' => $ownerActivity['PROVIDER_TYPE_ID'],
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
@@ -1131,6 +1130,7 @@ class Bx24Component extends Component
 
     public function prepareNewActivitySource(
         $entityId,
+        string $entityType,
         string $subject,
         string $description,
         int $responsibleId,
@@ -1141,7 +1141,7 @@ class Bx24Component extends Component
             'COMMUNICATIONS' => $communications,
             'ASSOCIATED_ENTITY_ID' => $entityId,
             'OWNER_ID' => $entityId,
-            'OWNER_TYPE_ID' => self::OWNER_TYPE_CONTACT,
+            'OWNER_TYPE_ID' => self::CRM_ENTITY_TYPES_IDS[$entityType],
             'PROVIDER_ID' => 'REST_APP',
             'PROVIDER_TYPE_ID' => $type['TYPE_ID'],
             'SUBJECT' => $subject,
@@ -1226,7 +1226,6 @@ class Bx24Component extends Component
         $contacts = [];
         if($company && isset($company[$type]))
         {
-            // check it with $this->createTicketBy()
             foreach($company[$type] as $idx => $contact)
             {
                 $contacts[] = [

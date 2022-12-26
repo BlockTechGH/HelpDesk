@@ -17,9 +17,7 @@ class TicketController extends AppController
 {
     private $Tickets;
     private $TicketStatuses;
-
     private $TicketControllerLogger;
-
     private $placement;
 
     public function initialize(): void
@@ -127,10 +125,12 @@ class TicketController extends AppController
         {
             $dealData = $this->Bx24->getDealData($entityId);
             $deal = $dealData['deal'];
-            $contacts = $this->Bx24->getDealCommunicationInfo($dealData, $contactTypes);
-            foreach($contacts as $type => $values)
+            $result = $this->Bx24->getDealCommunicationInfo($dealData, $contactTypes);
+            $contacts = [];
+            foreach($result as $type => $values)
             {
                 $deal[$type] = $values[0];
+                $contacts = array_merge($contacts, $values);
             }
             $customer = $this->Bx24->makeCompanyAttributes($deal);
         }
@@ -164,7 +164,7 @@ class TicketController extends AppController
             $postfix = $this->Bx24->getTicketSubject($ticketId);
 
             // Create ticket activity
-            $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$responsibleId, $contacts);
+            $source = $this->Bx24->prepareNewActivitySource($entityId, $entityType, $subject, $text, (int)$responsibleId, $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
 
             if(!$source['COMMUNICATIONS'])
@@ -178,7 +178,7 @@ class TicketController extends AppController
                 ]);
             }
 
-            $activityId = $this->Bx24->createTicketBy($source, $postfix);
+            $activityId = $this->Bx24->createActivity($source, $postfix);
             $result = [
                 'status' => __('Ticket was not created'),
             ];
