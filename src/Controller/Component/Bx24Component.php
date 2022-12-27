@@ -408,7 +408,13 @@ class Bx24Component extends Component
         return static::TICKET_PREFIX . $ticketId;
     }
 
-    public function createActivity(array $ownerActivity, string $subject)
+    public function createTicketBy(array $activity, string $subject)
+    {
+        $ticketActivityTypeIDs = $this->getActivityTypeAndName();
+        return $this->createActivity($activity, $subject, $ticketActivityTypeIDs);
+    }
+
+    public function createActivity(array $ownerActivity, string $subject, $activityType)
     {
         $now = FrozenTime::now();
 
@@ -424,7 +430,7 @@ class Bx24Component extends Component
                 'OWNER_TYPE_ID' => $ownerActivity['OWNER_TYPE_ID'],
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
-                'PROVIDER_TYPE_ID' => $ownerActivity['PROVIDER_TYPE_ID'],
+                'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
@@ -717,14 +723,44 @@ class Bx24Component extends Component
             }
         }
 
+        if(isset($customerNames))
+        {
+            if(isset($customerNames['NAME']))
+            {
+                $title = $this->makeFullName($customerNames);
+            }
+            elseif(isset($customerNames['COMPANY_TITLE']))
+            {
+                $title = $customerNames['COMPANY_TITLE'];
+            }
+        }
+        else
+        {
+            $title = "";
+        }
+
+        $entityTypeId = (int)$customerContacts['ENTITY_TYPE_ID'];
+        switch($entityTypeId)
+        {
+            case self::CRM_ENTITY_TYPES_IDS['CRM_CONTACT']:
+                $abr = $this->makeNameAbbreviature($customerNames);
+                break;
+            case self::CRM_ENTITY_TYPES_IDS['CRM_COMPANY']:
+                $abr = mb_substr($title, 0, 1);
+                break;
+            default:
+                $abr = "";
+                break;
+        }
+
         $result = [
             'id' => intval($ticketActivity['ID']),
-            'ENTITY_TYPE_ID' => (int)$customerContacts['ENTITY_TYPE_ID'],
+            'ENTITY_TYPE_ID' => $entityTypeId,
             'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
             'customer' => [
                 'id' => (int)$customerContacts['ENTITY_ID'],
-                'abr' => $this->makeNameAbbreviature($customerNames),
-                'title' => isset($customerNames) && isset($customerNames['NAME']) ? $this->makeFullName($customerNames) : "",
+                'abr' => $abr,
+                'title' => $title,
                 'email' => $customerContacts['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@')
                     ? $customerContacts['VALUE']
                     : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@'))

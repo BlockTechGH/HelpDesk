@@ -178,7 +178,7 @@ class TicketController extends AppController
                 ]);
             }
 
-            $activityId = $this->Bx24->createActivity($source, $postfix);
+            $activityId = $this->Bx24->createTicketBy($source, $postfix);
             $result = [
                 'status' => __('Ticket was not created'),
             ];
