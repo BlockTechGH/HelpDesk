@@ -1,45 +1,136 @@
 <?= $this->Html->script('notification_settings'); ?>
 
 <div class="row ml-3">
-    <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
-        <div class="form-group">
-            <label for="notificationCreateTicket"><?= __('Business process when creating a ticket') ?></label>
-            <select class="custom-select" id="notificationCreateTicket">
-                <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
-                    <option value="<?= $id ?>" <?= (isset($options['notificationCreateTicket']) && $id == $options['notificationCreateTicket']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+    <form method="POST" class="col-10" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
+        <!-- START CONTACT -->
+        <div class="jumbotron">
+            <h2 class="display-6"><?= __('Contact settings') ?></h2>
 
-        <div class="form-group">
-            <label for="notificationChangeTicketStatus"><?= __('Business process when changing ticket status') ?></label>
-            <select class="custom-select" id="notificationChangeTicketStatus">
-                <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
-                    <option value="<?= $id ?>" <?= (isset($options['notificationChangeTicketStatus']) && $id == $options['notificationChangeTicketStatus']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="notificationCreateTicketContact"><?= __('Business process when creating a ticket') ?></label>
+                <select class="custom-select" id="notificationCreateTicketContact">
+                    <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationCreateTicketContact']) && $id == $options['notificationCreateTicketContact']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="notificationReceivingCustomerResponse"><?= __('Business process when receiving a customer response') ?></label>
-            <select class="custom-select" id="notificationReceivingCustomerResponse">
-                <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
-                    <option value="<?= $id ?>" <?= (isset($options['notificationReceivingCustomerResponse']) && $id == $options['notificationReceivingCustomerResponse']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="notificationChangeTicketStatusContact"><?= __('Business process when changing ticket status') ?></label>
+                <select class="custom-select" id="notificationChangeTicketStatusContact">
+                    <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeTicketStatusContact']) && $id == $options['notificationChangeTicketStatusContact']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="notificationChangeResponsible"><?= __('Business process when changing the responsible') ?></label>
-            <select class="custom-select" id="notificationChangeResponsible">
-                <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
-                    <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsible']) && $id == $options['notificationChangeResponsible']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                <?php endforeach; ?>
-            </select>
+            <div class="form-group">
+                <label for="notificationReceivingCustomerResponseContact"><?= __('Business process when receiving a customer response') ?></label>
+                <select class="custom-select" id="notificationReceivingCustomerResponseContact">
+                    <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationReceivingCustomerResponseContact']) && $id == $options['notificationReceivingCustomerResponseContact']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationChangeResponsibleContact"><?= __('Business process when changing the responsible') ?></label>
+                <select class="custom-select" id="notificationChangeResponsibleContact">
+                    <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsibleContact']) && $id == $options['notificationChangeResponsibleContact']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
+        <!-- END CONTACT -->
+
+        <!-- START COMPANY -->
+        <div class="jumbotron">
+            <h2 class="display-6"><?= __('Company settings') ?></h2>
+
+            <div class="form-group">
+                <label for="notificationCreateTicketCompany"><?= __('Business process when creating a ticket') ?></label>
+                <select class="custom-select" id="notificationCreateTicketCompany">
+                    <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationCreateTicketCompany']) && $id == $options['notificationCreateTicketCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationChangeTicketStatusCompany"><?= __('Business process when changing ticket status') ?></label>
+                <select class="custom-select" id="notificationChangeTicketStatusCompany">
+                    <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeTicketStatusCompany']) && $id == $options['notificationChangeTicketStatusCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationReceivingCustomerResponseCompany"><?= __('Business process when receiving a customer response') ?></label>
+                <select class="custom-select" id="notificationReceivingCustomerResponseCompany">
+                    <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationReceivingCustomerResponseCompany']) && $id == $options['notificationReceivingCustomerResponseCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationChangeResponsibleCompany"><?= __('Business process when changing the responsible') ?></label>
+                <select class="custom-select" id="notificationChangeResponsibleCompany">
+                    <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsibleCompany']) && $id == $options['notificationChangeResponsibleCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <!-- END COMPANY -->
+
+        <!-- START DEAL -->
+        <div class="jumbotron">
+            <h2 class="display-6"><?= __('Deal settings') ?></h2>
+
+            <div class="form-group">
+                <label for="notificationCreateTicketDeal"><?= __('Business process when creating a ticket') ?></label>
+                <select class="custom-select" id="notificationCreateTicketDeal">
+                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationCreateTicketDeal']) && $id == $options['notificationCreateTicketDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationChangeTicketStatusDeal"><?= __('Business process when changing ticket status') ?></label>
+                <select class="custom-select" id="notificationChangeTicketStatusDeal">
+                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeTicketStatusDeal']) && $id == $options['notificationChangeTicketStatusDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationReceivingCustomerResponseDeal"><?= __('Business process when receiving a customer response') ?></label>
+                <select class="custom-select" id="notificationReceivingCustomerResponseDeal">
+                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationReceivingCustomerResponseDeal']) && $id == $options['notificationReceivingCustomerResponseDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationChangeResponsibleDeal"><?= __('Business process when changing the responsible') ?></label>
+                <select class="custom-select" id="notificationChangeResponsibleDeal">
+                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsibleDeal']) && $id == $options['notificationChangeResponsibleDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <!-- END DEAL -->
 
         <button id="saveNotificationsSettings" type="button" name="saveNotificationsSettings" class="btn btn-primary">
             <span id="notificationSpinner" role="status" aria-hidden="true" class="spinner-border spinner-border-sm mr-2 hidden"></span>
-            <?= __('Save') ?></button>
+            <?= __('Save') ?>
+        </button>
     </form>
 </div>

@@ -221,8 +221,13 @@ class BitrixController extends AppController
                     return $this->displayTicketCard($currentUser);
                 }
             } else {
-                $arContactWorkflowTemplates = $this->Bx24->getContactWorkflowTemplates();
+                $arTemplates = $this->Bx24->getEntityWorkflowTemplates();
+                $arContactWorkflowTemplates = $arTemplates['contact'];
+                $arCompanyWorkflowTemplates = $arTemplates['company'];
+                $arDealWorkflowTemplates = $arTemplates['deal'];
                 $this->set('arContactWorkflowTemplates', $arContactWorkflowTemplates);
+                $this->set('arCompanyWorkflowTemplates', $arCompanyWorkflowTemplates);
+                $this->set('arDealWorkflowTemplates', $arDealWorkflowTemplates);
             }
         }
     }

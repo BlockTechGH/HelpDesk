@@ -1478,6 +1478,90 @@ class Bx24Component extends Component
         return $arResult;
     }
 
+    public function getEntityWorkflowTemplates(): array
+    {
+        $arResult = [
+            'contact' => [0 => __('Please choise ...')],
+            'company' => [0 => __('Please choise ...')],
+            'deal' => [0 => __('Please choise ...')]
+        ];
+
+        // contact
+        $arContactParameters = [
+            'select' => [
+                'ID', 'NAME'
+            ],
+            'filter' => [
+                'MODULE_ID' => 'crm',
+                'ENTITY' => 'CCrmDocumentContact'
+            ]
+        ];
+
+        $this->obBx24App->addBatchCall('bizproc.workflow.template.list', $arContactParameters, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                foreach($result['result'] as $workflow)
+                {
+                    $arResult['contact'][$workflow['ID']] = $workflow['NAME'];
+                }
+            }
+        });
+
+        // company
+        $arCompanyParameters = [
+            'select' => [
+                'ID', 'NAME'
+            ],
+            'filter' => [
+                'MODULE_ID' => 'crm',
+                'ENTITY' => 'CCrmDocumentCompany'
+            ]
+        ];
+
+        $this->obBx24App->addBatchCall('bizproc.workflow.template.list', $arCompanyParameters, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                foreach($result['result'] as $workflow)
+                {
+                    $arResult['company'][$workflow['ID']] = $workflow['NAME'];
+                }
+            }
+        });
+
+        // deal
+        $arDealParameters = [
+            'select' => [
+                'ID', 'NAME'
+            ],
+            'filter' => [
+                'MODULE_ID' => 'crm',
+                'ENTITY' => 'CCrmDocumentDeal'
+            ]
+        ];
+
+        $this->obBx24App->addBatchCall('bizproc.workflow.template.list', $arDealParameters, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                foreach($result['result'] as $workflow)
+                {
+                    $arResult['deal'][$workflow['ID']] = $workflow['NAME'];
+                }
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - templates", [
+            'contactParameters' => $arContactParameters,
+            'arResult' => $arResult
+        ]);
+
+        return $arResult;
+    }
+
     public function startWorkflowForContact(int $templateId, int $contactId, array $templateParameters = [])
     {
         $arMethodParams = [
