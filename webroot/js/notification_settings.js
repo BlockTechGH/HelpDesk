@@ -14,11 +14,6 @@ $(document).ready(function()
         notificationChangeTicketStatusCompany: document.getElementById('notificationChangeTicketStatusCompany'),
         notificationReceivingCustomerResponseCompany: document.getElementById('notificationReceivingCustomerResponseCompany'),
         notificationChangeResponsibleCompany: document.getElementById('notificationChangeResponsibleCompany'),
-        // deal
-        notificationCreateTicketDeal: document.getElementById('notificationCreateTicketDeal'),
-        notificationChangeTicketStatusDeal: document.getElementById('notificationChangeTicketStatusDeal'),
-        notificationReceivingCustomerResponseDeal: document.getElementById('notificationReceivingCustomerResponseDeal'),
-        notificationChangeResponsibleDeal: document.getElementById('notificationChangeResponsibleDeal'),
     };
 
     saveNotificationButton.on('click', function()

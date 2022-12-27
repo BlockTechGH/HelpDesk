@@ -86,48 +86,6 @@
         </div>
         <!-- END COMPANY -->
 
-        <!-- START DEAL -->
-        <div class="jumbotron">
-            <h2 class="display-6"><?= __('Deal settings') ?></h2>
-
-            <div class="form-group">
-                <label for="notificationCreateTicketDeal"><?= __('Business process when creating a ticket') ?></label>
-                <select class="custom-select" id="notificationCreateTicketDeal">
-                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
-                        <option value="<?= $id ?>" <?= (isset($options['notificationCreateTicketDeal']) && $id == $options['notificationCreateTicketDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="notificationChangeTicketStatusDeal"><?= __('Business process when changing ticket status') ?></label>
-                <select class="custom-select" id="notificationChangeTicketStatusDeal">
-                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
-                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeTicketStatusDeal']) && $id == $options['notificationChangeTicketStatusDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="notificationReceivingCustomerResponseDeal"><?= __('Business process when receiving a customer response') ?></label>
-                <select class="custom-select" id="notificationReceivingCustomerResponseDeal">
-                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
-                        <option value="<?= $id ?>" <?= (isset($options['notificationReceivingCustomerResponseDeal']) && $id == $options['notificationReceivingCustomerResponseDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="notificationChangeResponsibleDeal"><?= __('Business process when changing the responsible') ?></label>
-                <select class="custom-select" id="notificationChangeResponsibleDeal">
-                    <?php foreach($arDealWorkflowTemplates as $id => $templateName): ?>
-                        <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsibleDeal']) && $id == $options['notificationChangeResponsibleDeal']) ? 'selected' : '' ?>><?= $templateName ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        <!-- END DEAL -->
-
         <button id="saveNotificationsSettings" type="button" name="saveNotificationsSettings" class="btn btn-primary">
             <span id="notificationSpinner" role="status" aria-hidden="true" class="spinner-border spinner-border-sm mr-2 hidden"></span>
             <?= __('Save') ?>

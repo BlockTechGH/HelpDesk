@@ -36,12 +36,21 @@ class Bx24Component extends Component
     public const TICKET_PREFIX = 'GS-';
     public const DATE_TIME_FORMAT = "m/d/Y h:i a";
 
+    public const OWNER_TYPE_DEAL = 2;
     public const OWNER_TYPE_CONTACT = 3;
+    public const OWNER_TYPE_COMPANY = 4;
+
     public const ACTIVITY_TYPE_EMAIL = 4;
     public const CRM_ENTITY_TYPES_IDS = [
         'CRM_DEAL' => 2,
         'CRM_CONTACT' => 3,
         'CRM_COMPANY' => 4
+    ];
+
+    public const MAP_ENTITIES = [
+        2 => 'Deal',
+        3 => 'Contact',
+        4 => 'Company'
     ];
 
     public const BITRIX_REST_API_RESULT_LIMIT_COUNT = 50;
@@ -1291,7 +1300,11 @@ class Bx24Component extends Component
             $contact = $dealData['contact'];
             foreach($contactTypes as $type)
             {
-                $contacts[$type] = $this->getPersonalContacts($contact, $type);
+                $result = $this->getPersonalContacts($contact, $type);
+                if($result)
+                {
+                    $contacts[$type] = $result;
+                }
             }
         }
 
@@ -1562,11 +1575,26 @@ class Bx24Component extends Component
         return $arResult;
     }
 
-    public function startWorkflowForContact(int $templateId, int $contactId, array $templateParameters = [])
+    public function startWorkflowFor(int $templateId, int $entityId, int $entityTypeId, array $templateParameters = [])
     {
+        switch($entityTypeId)
+        {
+            case self::OWNER_TYPE_DEAL:
+                $document = 'CCrmDocumentDeal';
+                break;
+
+            case self::OWNER_TYPE_CONTACT:
+                $document = 'CCrmDocumentContact';
+                break;
+
+            case self::OWNER_TYPE_COMPANY:
+                $document = 'CCrmDocumentCompany';
+                break;
+        }
+
         $arMethodParams = [
             'TEMPLATE_ID' => $templateId,
-            'DOCUMENT_ID' => ['crm', 'CCrmDocumentContact', $contactId],
+            'DOCUMENT_ID' => ['crm', $document, $entityId],
             'PARAMETERS' => $templateParameters
         ];
 
