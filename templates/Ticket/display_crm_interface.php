@@ -1,4 +1,4 @@
-<?= $this->Html->css('ticket_card'); ?>
+<?= $this->Html->css('ticket_card', ['block' => true]); ?>
 
 <div id="ticket">
     <form 

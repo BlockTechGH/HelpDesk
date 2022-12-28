@@ -1,4 +1,4 @@
-<?= $this->Html->script('notification_settings'); ?>
+<?= $this->Html->script('notification_settings', ['block' => true]); ?>
 
 <div class="row ml-3">
     <form method="POST" class="col-10" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
