@@ -129,7 +129,7 @@ class TicketController extends AppController
             $contacts = [];
             foreach($result as $type => $values)
             {
-                $deal[$type] = $values[0];
+                $deal[$type] = isset($values[0])? $values[0]: "";
                 $contacts = array_merge($contacts, $values);
             }
             $customer = $this->Bx24->makeCompanyAttributes($deal);
