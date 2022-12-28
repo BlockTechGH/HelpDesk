@@ -640,18 +640,36 @@ class BitrixController extends AppController
             'arTemplateParameters' => $arTemplateParameters
         ]);
 
-        $arOption = $this->Options->getOption('notificationChangeTicketStatus', $this->memberId);
+        $entityTypeId = intval($this->ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($this->ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($this->ticketAttributes['customer']['id']) : false;
-
-        if($templateId && $contactId)
+        switch($entityTypeId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($this->ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($this->ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
@@ -692,18 +710,36 @@ class BitrixController extends AppController
             'arTemplateParameters' => $arTemplateParameters
         ]);
 
-        $arOption = $this->Options->getOption('notificationReceivingCustomerResponse', $this->memberId);
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - get template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
-
-        if($templateId && $contactId)
+        switch($entityTypeId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - start workflow result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
@@ -737,22 +773,36 @@ class BitrixController extends AppController
         ]);
 
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
-        $arOption = $this->Options->getOption('notificationCreateTicket', $this->memberId);
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
 
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - contact', [
-            'contactId' => $contactId
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
         ]);
 
-        if($templateId && $contactId)
+        if($templateId && $entityId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);

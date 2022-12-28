@@ -711,8 +711,8 @@ class Bx24Component extends Component
             $this->bx24Logger->error(__FUNCTION__ . ' - ticket/source activity not found');
             return null;
         }
-        $customerContacts = $ticketActivity['COMMUNICATIONS'][0];
-        $customerNames = $customerContacts['ENTITY_SETTINGS'];
+        $customerCommunications = $ticketActivity['COMMUNICATIONS'][0];
+        $customerNames = $customerCommunications['ENTITY_SETTINGS'];
         $additionContact = null;
         if(isset($ticketActivity['COMMUNICATIONS'][1]))
         {
@@ -739,7 +739,7 @@ class Bx24Component extends Component
             $title = "";
         }
 
-        $entityTypeId = (int)$customerContacts['ENTITY_TYPE_ID'];
+        $entityTypeId = (int)$customerCommunications['ENTITY_TYPE_ID'];
         switch($entityTypeId)
         {
             case self::CRM_ENTITY_TYPES_IDS['CRM_CONTACT']:
@@ -758,17 +758,17 @@ class Bx24Component extends Component
             'ENTITY_TYPE_ID' => $entityTypeId,
             'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
             'customer' => [
-                'id' => (int)$customerContacts['ENTITY_ID'],
+                'id' => (int)$customerCommunications['ENTITY_ID'],
                 'abr' => $abr,
                 'title' => $title,
-                'email' => $customerContacts['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@')
-                    ? $customerContacts['VALUE']
-                    : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerContacts['VALUE'], '@'))
+                'email' => $customerCommunications['TYPE'] == 'EMAIL' || strstr($customerCommunications['VALUE'], '@')
+                    ? $customerCommunications['VALUE']
+                    : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerCommunications['VALUE'], '@'))
                         ? $additionContact['VALUE']
                         : ''
                     ),
-                'phone' => $customerContacts['TYPE'] == 'PHONE'
-                    ? $customerContacts['VALUE']
+                'phone' => $customerCommunications['TYPE'] == 'PHONE'
+                    ? $customerCommunications['VALUE']
                     : ($additionContact && $additionContact['TYPE'] == 'PHONE'
                         ? $additionContact['VALUE']
                         : ''
@@ -788,22 +788,22 @@ class Bx24Component extends Component
             {
                 // lead
                 case 1:
-                    $entityInfo = $this->getLeadInfo($customerContacts['ENTITY_ID']);
+                    $entityInfo = $this->getLeadInfo($customerCommunications['ENTITY_ID']);
                     break;
                 // contact
                 case 3:
-                    $entityInfo = $this->getContactInfo($customerContacts['ENTITY_ID']);
+                    $entityInfo = $this->getContactInfo($customerCommunications['ENTITY_ID']);
                     break;
                 // company
                 case 4:
-                    $entityInfo = $this->getCompanyInfo($customerContacts['ENTITY_ID']);
+                    $entityInfo = $this->getCompanyInfo($customerCommunications['ENTITY_ID']);
                     break;
             }
-            if (!$result['customer']['email'] && array_key_exists('EMAIL', $entityInfo))
+            if (!$result['customer']['email'] && isset($entityInfo) && array_key_exists('EMAIL', $entityInfo))
             {
                 $result['customer']['email'] = $entityInfo['EMAIL'][0]['VALUE'];
             }
-            if (!$result['customer']['phone'] && array_key_exists('PHONE', $entityInfo))
+            if (!$result['customer']['phone'] && isset($entityInfo) && array_key_exists('PHONE', $entityInfo))
             {
                 $result['customer']['phone'] = $entityInfo['PHONE'][0]['VALUE'];
             }
@@ -881,39 +881,30 @@ class Bx24Component extends Component
 
     public function getFirstMessageInOpenChannelChat(array $source)
     {
-        $arResult = [];
-
         // GET ID CHAT
-        $getChatParameters = [
+        $arParameters = [
             'ENTITY_ID' => $source['PROVIDER_PARAMS']['USER_CODE'],
             'ENTITY_TYPE' => 'LINES'
         ];
-
-        $getChatParametersCmd = $this->obBx24App->addBatchCall('im.chat.get', $getChatParameters, function($result) use (&$arResult)
-        {
-            $arResult['dialogId'] = 'chat' . intval($result['result']['ID']);
-        });
+        $chatId = 0;
+        $result = $this->obBx24App->call('im.chat.get', $arParameters);
+        $chatId = intval($result['result']['ID']);
+        $arResult['dialogId'] = 'chat' . $chatId;
 
         // GET FIRST MESSAGE
-        $arChatMessageParameters = [
-            'DIALOG_ID' => "chat" . '$result[' . $getChatParametersCmd . '][ID]',
+        $arParameters = [
+            'DIALOG_ID' => "chat{$chatId}",
             'FIRST_ID' => 0,
             'LIMIT' => 5, // Can be system: Conversation started, Data received, Enquiry assigned to, etc.
         ];
-
-        $this->obBx24App->addBatchCall('im.dialog.messages.get', $arChatMessageParameters, function($result) use (&$arResult)
-        {
-            $noSystemMessages = array_filter($result['result']['messages'], function ($message)
-            {
-                return $message['author_id'] != 0;
-            });
-
-            $arResult['message'] = array_pop($noSystemMessages);
+        $response = $this->obBx24App->call('im.dialog.messages.get', $arParameters);
+        $noSystemMessages = array_filter($response['result']['messages'], function ($message) {
+            return $message['author_id'] != 0;
         });
+        // Messages is sorted by creation date descending
+        $arResult['message'] = array_pop($noSystemMessages);
 
-        $this->obBx24App->processBatchCalls();
-
-        return $arResult;
+        return $arResult; 
     }
 
     public function getOCMessages(int $chatId, int $ticketId) : array
@@ -1615,10 +1606,6 @@ class Bx24Component extends Component
     {
         switch($entityTypeId)
         {
-            case self::OWNER_TYPE_DEAL:
-                $document = 'CCrmDocumentDeal';
-                break;
-
             case self::OWNER_TYPE_CONTACT:
                 $document = 'CCrmDocumentContact';
                 break;
@@ -1634,10 +1621,13 @@ class Bx24Component extends Component
             'PARAMETERS' => $templateParameters
         ];
 
+        $this->bx24Logger->debug(__FUNCTION__ . " - workflow params", [
+            'arMethodParams' => $arMethodParams,
+            'entityTypeId' => $entityTypeId
+        ]);
         $result = $this->obBx24App->call('bizproc.workflow.start', $arMethodParams);
 
-        $this->bx24Logger->debug(__FUNCTION__ . " - start workflow", [
-            'arMethodParams' => $arMethodParams,
+        $this->bx24Logger->debug(__FUNCTION__ . " - start workflow result", [
             'result' => $result
         ]);
 
