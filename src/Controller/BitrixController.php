@@ -153,7 +153,6 @@ class BitrixController extends AppController
                 $sourceActivity = $sourceId ? $activities[$sourceId] : $ticketActivity;
                 if($ticketActivity)
                 {
-                    // !!!!!!! where getting contact data ????
                     $ticketAttributes = $this->Bx24->getOneTicketAttributes($ticketActivity);
                     if($ticketAttributes)
                     {
@@ -198,6 +197,7 @@ class BitrixController extends AppController
                 } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))
                 {
+                    $this->ticketAttributes = $ticketAttributes;
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
                         return $this->sendFeedback($answer, $currentUser, $ticketAttributes);
@@ -211,12 +211,19 @@ class BitrixController extends AppController
                             $this->memberId,
                             !!$set ? TicketStatusesTable::MARK_STARTABLE : TicketStatusesTable::MARK_FINAL
                         );
+
+                        // send event Ticket Changed Status
+                        $event = new Event('Ticket.statusChanged', $this, [
+                            'ticket' => $ticket,
+                            'status' => $status->name
+                        ]);
+                        $this->getEventManager()->dispatch($event);
+
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
                     $this->set('ticketAttributes', $ticketAttributes);
-                    $this->ticketAttributes = $ticketAttributes;
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
                 }
@@ -711,7 +718,7 @@ class BitrixController extends AppController
         ]);
 
         $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
-        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
+        $arOption = $this->Options->getOption('notificationReceivingCustomerResponse' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - get template', [
@@ -774,7 +781,7 @@ class BitrixController extends AppController
 
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
         $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
-        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
+        $arOption = $this->Options->getOption('notificationCreateTicket' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
