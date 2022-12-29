@@ -414,9 +414,121 @@ class Bx24Component extends Component
         return $this->createActivity($activity, $subject, $ticketActivityTypeIDs);
     }
 
+    /*
+     * $arData[company] - company data and it communications
+     * $arData[contact] - contact data and it communications
+     * 
+     */
+    private function extractCommunications($arData)
+    {
+        $arCommunications = [];
+
+        if($arData['company'])
+        {
+            if(isset($arData['company']['EMAIL']) && $arData['company']['EMAIL'][0])
+            {
+                $arCommunications[] = [
+                    'ENTITY_ID' => $arData['company']['ID'],
+                    'ENTITY_TYPE_ID' => self::OWNER_TYPE_COMPANY,
+                    'VALUE' => $arData['company']['EMAIL'][0]['VALUE'],
+                    'TYPE' => 'EMAIL'
+                ];
+            }
+
+            if(isset($arData['company']['PHONE']) && $arData['company']['PHONE'][0])
+            {
+                $arCommunications[] = [
+                    'ENTITY_ID' => $arData['company']['ID'],
+                    'ENTITY_TYPE_ID' => self::OWNER_TYPE_COMPANY,
+                    'VALUE' => $arData['company']['PHONE'][0]['VALUE'],
+                    'TYPE' => 'PHONE'
+                ];
+            }
+        }
+
+        if(!$arCommunications && $arData['contact'])
+        {
+            if(isset($arData['contact']['EMAIL']) && $arData['contact']['EMAIL'][0])
+            {
+                $arCommunications[] = [
+                    'ENTITY_ID' => $arData['contact']['ID'],
+                    'ENTITY_TYPE_ID' => self::OWNER_TYPE_CONTACT,
+                    'VALUE' => $arData['contact']['EMAIL'][0]['VALUE'],
+                    'TYPE' => 'EMAIL'
+                ];
+            }
+
+            if(isset($arData['contact']['PHONE']) && $arData['contact']['PHONE'][0])
+            {
+                $arCommunications[] = [
+                    'ENTITY_ID' => $arData['contact']['ID'],
+                    'ENTITY_TYPE_ID' => self::OWNER_TYPE_CONTACT,
+                    'VALUE' => $arData['contact']['PHONE'][0]['VALUE'],
+                    'TYPE' => 'PHONE'
+                ];
+            }
+        }
+
+        return $arCommunications;
+    }
+
     public function createActivity(array $ownerActivity, string $subject, $activityType)
     {
+        $this->bx24Logger->debug(__FUNCTION__ . ' input params', [
+            'ownerActivity' => $ownerActivity,
+            'subject' => $subject,
+            'activityType' => $activityType
+        ]);
+
         $now = FrozenTime::now();
+
+        foreach($ownerActivity['COMMUNICATIONS'] as $i => $communication)
+        {
+            if(!in_array($communication['TYPE'], ['EMAIL', 'PHONE']))
+            {
+                unset($ownerActivity['COMMUNICATIONS'][$i]);
+            }
+        }
+
+        if($ownerActivity['OWNER_TYPE_ID'] == self::OWNER_TYPE_DEAL && !count($ownerActivity['COMMUNICATIONS']))
+        {
+            // if created ticker for deal with absent company and contact in communication
+            // case if IM and owner is deal
+            $arDealData = $this->getDealAdditionalData($ownerActivity['OWNER_ID']);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - deal data', [
+                'arDealData' => $arDealData
+            ]);
+            $ownerActivity['COMMUNICATIONS'] = $this->extractCommunications($arDealData);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - deal communications', [
+                'communications' => $ownerActivity['COMMUNICATIONS']
+            ]);
+        }
+
+        if($ownerActivity['OWNER_TYPE_ID'] == self::OWNER_TYPE_CONTACT && !count($ownerActivity['COMMUNICATIONS']))
+        {
+            // case if IM and owner is contact
+            $arContactData = $this->getContactAdditionalData($ownerActivity['OWNER_ID']);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - contact data', [
+                'arContactData' => $arContactData
+            ]);
+            $ownerActivity['COMMUNICATIONS'] = $this->extractCommunications($arContactData);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - contact communications', [
+                'communications' => $ownerActivity['COMMUNICATIONS']
+            ]);
+        }
+
+        if($ownerActivity['OWNER_TYPE_ID'] == self::OWNER_TYPE_COMPANY && !count($ownerActivity['COMMUNICATIONS']))
+        {
+            // case if IM and owner is company
+            $arCompanyData = $this->getCompanyAdditionalData($ownerActivity['OWNER_ID']);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - company data', [
+                'arCompanyData' => $arCompanyData
+            ]);
+            $ownerActivity['COMMUNICATIONS'] = $this->extractCommunications($arCompanyData);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - company communications', [
+                'communications' => $ownerActivity['COMMUNICATIONS']
+            ]);
+        }
 
         $parameters = [
             'fields' => [
@@ -435,7 +547,7 @@ class Bx24Component extends Component
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
         ];
-        $this->bx24Logger->debug('createActivity', $parameters);
+        $this->bx24Logger->debug(__FUNCTION__ . ' activity data', $parameters);
         $response = $this->obBx24App->call('crm.activity.add', $parameters);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.activity.add', [
             'arParameters' => $parameters,
@@ -632,6 +744,9 @@ class Bx24Component extends Component
 
     public function getContactInfo($id)
     {
+        $this->bx24Logger->debug(__FUNCTION__ . ' - contact id', [
+            'id' => $id
+        ]);
         $response = $this->obBx24App->call('crm.contact.get', ['id' => $id]);
         $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
             'id' => $id,
@@ -1237,7 +1352,8 @@ class Bx24Component extends Component
             $contacts[] = [
                 'ENTITY_ID' => $profile['ID'],
                 'ENTITY_TYPE_ID' => 3,
-                'VALUE' => $contact['VALUE']
+                'VALUE' => $contact['VALUE'],
+                'TYPE' => $type
             ];
         }
         return $contacts;
@@ -1267,7 +1383,8 @@ class Bx24Component extends Component
                 $contacts[] = [
                     'ENTITY_ID' => $company['ID'],
                     'ENTITY_TYPE_ID' => 4,
-                    'VALUE' => isset($company[$type][$idx]['VALUE'])? $company[$type][$idx]['VALUE']: ""
+                    'VALUE' => isset($company[$type][$idx]['VALUE'])? $company[$type][$idx]['VALUE']: "",
+                    'TYPE' => $type
                 ];
             }
             $this->bx24Logger->debug("getCompanyContactsInfo - contacts", ['contacts' => $contacts]);
@@ -1306,6 +1423,120 @@ class Bx24Component extends Component
         $this->obBx24App->processBatchCalls();
 
         $this->bx24Logger->debug('getDealData - result', ['$arResult' => $arResult]);
+
+        return $arResult;
+    }
+
+    public function getDealAdditionalData($dealId)
+    {
+        $arResult = [
+            'deal' => [],
+            'contact' => [],
+            'company' => []
+        ];
+
+        $getDealCmd = $this->obBx24App->addBatchCall('crm.deal.get', ['id' => $dealId], function($result) use (&$arResult)
+        {
+            $this->bx24Logger->debug('getDealAdditionalData - get deal result', [
+                'result' => $result
+            ]);
+
+            if($result['result'])
+            {
+                $arResult['deal'] = $result['result'];
+            }
+        });
+
+        $arGetCompanyParams = [
+            'filter' => [
+                'ID' => '$result[' . $getDealCmd . '][COMPANY_ID]'
+            ],
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+        ];
+        $this->obBx24App->addBatchCall('crm.company.list', $arGetCompanyParams, function($result) use (&$arResult)
+        {
+            $this->bx24Logger->debug('getDealAdditionalData - get company result', [
+                'result' => $result
+            ]);
+
+            if($result['result'] && count($result['result']) > 0)
+            {
+                $arResult['company'] = $result['result'][0];
+            }
+        });
+
+        $arGetContactParams = [
+            'filter' => [
+                'ID' => '$result[' . $getDealCmd . '][CONTACT_ID]'
+            ],
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+        ];
+        $this->obBx24App->addBatchCall('crm.contact.list', $arGetContactParams, function($result) use (&$arResult)
+        {
+            $this->bx24Logger->debug('getDealAdditionalData - get contact result', [
+                'result' => $result
+            ]);
+            if($result['result'] && count($result['result']) > 0)
+            {
+                $arResult['contact'] = $result['result'][0];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        $this->bx24Logger->debug('getDealData - result', ['$arResult' => $arResult]);
+
+        return $arResult;
+    }
+
+    public function getContactAdditionalData($contactId)
+    {
+        $arResult['contact'] = [];
+
+        $arGetContactParams = [
+            'filter' => [
+                'ID' => $contactId
+            ],
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+        ];
+
+        $result = $this->obBx24App->call('crm.contact.list', $arGetContactParams);
+
+        $this->bx24Logger->debug(__FUNCTION__ . ' - get contact result', [
+            'contactId' => $contactId,
+            'result' => $result
+        ]);
+
+        if($result['result'] && count($result['result']) > 0)
+        {
+            $arResult['contact'] = $result['result'][0];
+        }
+
+        return $arResult;
+    }
+
+    public function getCompanyAdditionalData($companyId)
+    {
+        $arResult['company'] = [];
+
+        $arGetCompanyParams = [
+            'filter' => [
+                'ID' => $companyId
+            ],
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+        ];
+
+        $result = $this->obBx24App->call('crm.company.list', $arGetCompanyParams);
+
+        $this->bx24Logger->debug(__FUNCTION__ . ' - get company result', [
+            'companyId' => $companyId,
+            'result' => $result
+        ]);
+
+        if($result['result'] && count($result['result']) > 0)
+        {
+            $arResult['company'] = $result['result'][0];
+        }
 
         return $arResult;
     }
