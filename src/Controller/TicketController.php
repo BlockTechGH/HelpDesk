@@ -230,6 +230,103 @@ class TicketController extends AppController
         $this->render('display_crm_interface');
     }
 
+    public function displayCrmEntityTicketsInterface()
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
+        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $this->set('statuses', $statuses);
+
+        if($this->request->is('ajax'))
+        {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
+            $this->disableAutoRender();
+            $this->viewBuilder()->disableAutoLayout();
+
+            $currentUser = $this->Bx24->getCurrentUser();
+            $data = $this->request->getData();
+            $entityId = intval($this->placement['ID']);
+            $placementType = $data['PLACEMENT'];
+            switch($placementType)
+            {
+                case 'CRM_CONTACT_DETAIL_TAB':
+                    $entityData = $this->Bx24->getContactInfo($entityId);
+                    $entityType = 'CRM_CONTACT';
+                    break;
+                case 'CRM_COMPANY_DETAIL_TAB':
+                    $entityData = $this->Bx24->getCompanyInfo($entityId);
+                    $entityType = 'CRM_COMPANY';
+                    break;
+                case 'CRM_DEAL_DETAIL_TAB':
+                    $entityData = $this->Bx24->getDeal($entityId);
+                    $entityType = 'CRM_DEAL';
+                    break;
+            }
+
+            $entityTypeId = $this->Bx24::CRM_ENTITY_TYPES_IDS[$entityType];
+            $activities = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId);
+
+            $responsibleIds = array_unique(array_map(function($activity) {
+                return $activity['RESPONSIBLE_ID'];
+            }, array_values($activities)));
+            $responsible = $this->Bx24->getUserById($responsibleIds);
+            foreach($responsible as $id => $user)
+            {
+                $responsible[$user['ID']] = $user;
+                unset($responsible[$id]);
+            }
+
+            $activitiesIds = array_unique(array_map(function($activity) {
+                return $activity['ID'];
+            }, array_values($activities)));
+
+            $tickets = $this->Tickets->getByActivityIds($activitiesIds);
+            if(!$tickets)
+            {
+                $result = [
+                    'total' => '',
+                    'rowCount' => '',
+                    'current' => 1,
+                    'rows' => []
+                ];
+                return new Response(['body' => json_encode($result)]);
+            }
+            foreach($tickets as $ticket)
+            {
+                $result['rows'][] = [
+                    'id' => $ticket['id'],
+                    'name' => $activities[$ticket->action_id]['SUBJECT'],
+                    'responsible' => $activities[$ticket->action_id]['RESPONSIBLE_ID'] ?? [],
+                    'status_id' => $ticket->status_id,
+                    'client' => $entityData['TITLE'] ?? [], // need to modify
+                    'created' => (new FrozenDate($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
+                ];
+            }
+
+            $result = [
+                'total' => count($activities),
+                'current' => 1,
+                'rowCount' => count($result['rows']),
+                'rows' => $result['rows']
+            ];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - data', [
+                'statuses' => $statuses,
+                'currentUser' => $currentUser,
+                'data' => $data,
+                'entityId' => $entityId,
+                'entityTypeId' => $entityTypeId,
+                'entityData' => $entityData,
+                'activities' => $activities,
+                'responsibleIds' => $responsibleIds,
+                'responsible' => $responsible,
+                'activitiesIds' => $activitiesIds,
+                'tickets' => $tickets,
+                'result' => $result
+            ]);
+            return new Response(['body' => json_encode($result)]);
+        }
+    }
+
     public function collectTickets()
     {
         if($this->request->is('ajax') || !$this->request->getData('rowCount'))

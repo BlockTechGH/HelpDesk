@@ -252,6 +252,15 @@ class TicketsTable extends Table
             ->first();
     }
 
+    public function getByActivityIds($activityIds)
+    {
+        if(!is_array($activityIds))
+        {
+            $activityIds = [$activityIds];
+        }
+        return $this->find()->where(['action_id IN' => $activityIds])->all();
+    }
+
     public function deleteTicketByActionId($activityId, $memberId)
     {
         $ticket = $this->getByActivityIdAndMemberId($activityId, $memberId);

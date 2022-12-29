@@ -174,7 +174,10 @@ class Bx24Component extends Component
         $arNeedPlacements = [
             'CRM_CONTACT_DETAIL_ACTIVITY',
             'CRM_COMPANY_DETAIL_ACTIVITY',
-            'CRM_DEAL_DETAIL_ACTIVITY'
+            'CRM_DEAL_DETAIL_ACTIVITY',
+            'CRM_CONTACT_DETAIL_TAB',
+            'CRM_COMPANY_DETAIL_TAB',
+            'CRM_DEAL_DETAIL_TAB'
         ];
 
         $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
@@ -198,9 +201,20 @@ class Bx24Component extends Component
             }
         }
 
-        $handler = $this->getRouteUrl('crm_interface');
+        $crmInterfaceHandler = $this->getRouteUrl('crm_interface');
+        $crmEntityTicketsInterfaceHandler = $this->getRouteUrl('crm_entity_tickets_interface');
         foreach($arNeedPlacements as $placement)
         {
+            $splitPlacement = explode('_', $placement);
+            switch(end($splitPlacement))
+            {
+                case 'ACTIVITY':
+                    $handler = $crmInterfaceHandler;
+                    break;
+                case 'TAB':
+                    $handler = $crmEntityTicketsInterfaceHandler;
+                    break;
+            }
             $arBindParams = [
                 'PLACEMENT' => $placement,
                 'HANDLER' => $handler,
@@ -1659,6 +1673,37 @@ class Bx24Component extends Component
             }
         }
 
+        return $arResult;
+    }
+
+    public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId): array
+    {
+        $arResult = [];
+        $arParams = [
+            'filter' => [
+                'OWNER_ID' => $ownerId,
+                'OWNER_TYPE_ID' => $ownerTypeId
+            ],
+            'order' => [
+                'CREATED' => 'desc'
+            ],
+            'select' => [
+                '*',
+                'COMMUNICATIONS'
+            ]
+        ];
+
+        $result = $this->obBx24App->call('crm.activity.list', $arParams);
+        $this->bx24Logger->debug(__FUNCTION__ . " - activities", [
+            'result' => $result
+        ]);
+        if($result['result'])
+        {
+            foreach($result['result'] as $activity)
+            {
+                $arResult[$activity['ID']] = $activity;
+            }
+        }
         return $arResult;
     }
 }
