@@ -734,12 +734,23 @@ class Bx24Component extends Component
 
     public function getCompanyInfo($id)
     {
-        $response = $this->obBx24App->call('crm.company.get', ['id' => $id]);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.company.get', [
-            'id' => $id,
-            'response' => $response,
+        $this->bx24Logger->debug(__FUNCTION__ . ' - company id', [
+            'id' => $id
         ]);
-        return $response['result'];
+
+        try
+        {
+            $response = $this->obBx24App->call('crm.company.get', ['id' => $id]);
+
+            $this->bx24Logger->debug(__FUNCTION__ . ' - crm.company.get', [
+                'id' => $id,
+                'response' => $response,
+            ]);
+
+            return $response['result'];
+        } catch (Bitrix24ApiException $e) {
+            return [];
+        }
     }
 
     public function getContactInfo($id)
@@ -747,12 +758,20 @@ class Bx24Component extends Component
         $this->bx24Logger->debug(__FUNCTION__ . ' - contact id', [
             'id' => $id
         ]);
-        $response = $this->obBx24App->call('crm.contact.get', ['id' => $id]);
-        $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
-            'id' => $id,
-            'response' => $response,
-        ]);
-        return $response['result'];
+
+        try
+        {
+            $response = $this->obBx24App->call('crm.contact.get', ['id' => $id]);
+
+            $this->bx24Logger->debug(__FUNCTION__ . ' - crm.contact.get', [
+                'id' => $id,
+                'response' => $response,
+            ]);
+
+            return $response['result'];
+        } catch (Bitrix24ApiException $e) {
+            return [];
+        }
     }
 
     public function getLeadInfo($id)
@@ -826,8 +845,21 @@ class Bx24Component extends Component
             $this->bx24Logger->error(__FUNCTION__ . ' - ticket/source activity not found');
             return null;
         }
-        $customerCommunications = $ticketActivity['COMMUNICATIONS'][0];
-        $customerNames = $customerCommunications['ENTITY_SETTINGS'];
+
+        if(count($ticketActivity['COMMUNICATIONS']) == 0)
+        {
+            $this->bx24Logger->debug(__FUNCTION__ . ' - activity with non communications', [
+                'activityID' => $ticketActivity['ID'],
+                'communications' => $ticketActivity['COMMUNICATIONS']
+            ]);
+        }
+
+        if(isset($ticketActivity['COMMUNICATIONS'][0]))
+        {
+            $customerCommunications = $ticketActivity['COMMUNICATIONS'][0];
+            $customerNames = $customerCommunications['ENTITY_SETTINGS'];
+        }
+
         $additionContact = null;
         if(isset($ticketActivity['COMMUNICATIONS'][1]))
         {
@@ -854,7 +886,12 @@ class Bx24Component extends Component
             $title = "";
         }
 
-        $entityTypeId = (int)$customerCommunications['ENTITY_TYPE_ID'];
+        $entityTypeId = 0;
+        if(isset($customerCommunications['ENTITY_TYPE_ID']))
+        {
+            $entityTypeId = (int)$customerCommunications['ENTITY_TYPE_ID'];
+        }
+
         switch($entityTypeId)
         {
             case self::CRM_ENTITY_TYPES_IDS['CRM_CONTACT']:
@@ -906,11 +943,11 @@ class Bx24Component extends Component
                     $entityInfo = $this->getLeadInfo($customerCommunications['ENTITY_ID']);
                     break;
                 // contact
-                case 3:
+                case self::OWNER_TYPE_CONTACT:
                     $entityInfo = $this->getContactInfo($customerCommunications['ENTITY_ID']);
                     break;
                 // company
-                case 4:
+                case self::OWNER_TYPE_COMPANY:
                     $entityInfo = $this->getCompanyInfo($customerCommunications['ENTITY_ID']);
                     break;
             }
