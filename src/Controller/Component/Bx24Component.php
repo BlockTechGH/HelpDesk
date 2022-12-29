@@ -1912,7 +1912,7 @@ class Bx24Component extends Component
             'order' => [
                 'ID' => 'desc'
             ],
-            'select' => ['ID', 'SUBJECT', 'DIRECTION', 'DESCRIPTION', 'DESCRIPTION_TYPE', 'CREATED']
+            'select' => ['ID', 'SUBJECT', 'DIRECTION', 'DESCRIPTION', 'DESCRIPTION_TYPE', 'CREATED', 'FILES']
         ];
 
         $result = $this->obBx24App->call('crm.activity.list', $parameters);

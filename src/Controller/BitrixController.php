@@ -186,6 +186,22 @@ class BitrixController extends AppController
                 {
                     $arHistoryActivities = $this->Bx24->searchActivitiesByTicketNumber($this->ticket['id']);
                 }
+
+                foreach($arHistoryActivities as $i => $activity)
+                {
+                    if(isset($activity['FILES']) && $activity['FILES'])
+                    {
+                        foreach($activity['FILES'] as $j => $file)
+                        {
+                            $fileName = $this->getFileNameByUrlHeaders($file['url']);
+                            if($fileName)
+                            {
+                                $arHistoryActivities[$i]['FILES'][$j]['fileName'] = $fileName;
+                            }
+                        }
+                    }
+                }
+
                 $this->set('arHistoryActivities', $arHistoryActivities);
 
                 $source['text'] = str_replace(PHP_EOL, '<br>', $source['text']);
@@ -816,5 +832,29 @@ class BitrixController extends AppController
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
         }
+    }
+
+    private function getFileNameByUrlHeaders($url)
+    {
+        $fileName = '';
+
+        $headers = get_headers($url, 1);
+
+        $this->BxControllerLogger->debug('getFileNameByUrlHeaders', [
+            'url' => $url,
+            'headers' => $headers
+        ]);
+
+        if (isset($headers['Content-Disposition']))
+        {
+            $headerLine = $headers['Content-Disposition'];
+            preg_match_all("/[^\'\']+$/", $headerLine, $matches);
+            if ($matches[0][0])
+            {
+                $fileName = rawurldecode($matches[0][0]);
+            }
+        }
+
+        return $fileName;
     }
 }

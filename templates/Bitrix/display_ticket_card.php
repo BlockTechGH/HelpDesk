@@ -130,7 +130,10 @@
                 <div class="row mt-2 mb-2" v-bind:class="{'justify-content-end': activity.DIRECTION == 2}" v-for="(activity, index) in arHistoryActivities" v-if="activity.ID != ticketAttributes.id">
                     <div class="col-10 border rounded ml-3 mr-3">
                         <div class="">{{ activity.SUBJECT }} {{ activity.CREATED }}</div>
-                        <div class="" v-html="activity.DESCRIPTION"></div>
+                        <div v-html="activity.DESCRIPTION"></div>
+                        <div v-if="activity.FILES" class="attachments mb-2">
+                            <div v-for="file in activity.FILES"><a v-bind:href="file.url">{{file.fileName}}</a></div>
+                        </div>
                     </div>
                 </div>
             </div>
