@@ -158,6 +158,7 @@
 <script>
     window.data = {
         ajax: "<?=$ajax;?>",
+        onChangeResponsibleUrl: "<?= $onChangeResponsibleUrl ?>",
         required: <?=json_encode($required)?>,
         ticketActivityType: "<?=$ticketActivityType;?>",
         ticket: <?=json_encode($ticket)?>,
@@ -345,6 +346,38 @@
                 this.ticketAttributes.responsible.title = data.name;
                 this.ticketAttributes.responsible.photo = data.photo;
                 this.ticketAttributes.responsible.abr = this.getAbbreviation(data.name);
+
+                this.runOnChangeResponsible(data);
+            },
+            runOnChangeResponsible: function(data)
+            {
+                console.log('onChangeResponsible');
+                console.log(data);
+                console.log(this.onChangeResponsibleUrl);
+                const parameters = Object.assign(
+                    {
+                        activityId: this.ticketAttributes.id,
+                        newResponsible: data
+                    },
+                    this.required
+                );
+
+                fetch(this.onChangeResponsibleUrl,
+                {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    try
+                    {
+                        const response = await result.json();
+                        console.log(response);
+                    } catch (e) {
+                        content = await result.text();
+                        console.error("Error occuried: " + content);
+                    }
+                });
+
             }
         }
     });
