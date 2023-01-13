@@ -1676,7 +1676,7 @@ class Bx24Component extends Component
         return $arResult;
     }
 
-    public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId): array
+    public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $additionalFilter = []): array
     {
         $arResult = [];
         $arParams = [
@@ -1685,13 +1685,18 @@ class Bx24Component extends Component
                 'OWNER_TYPE_ID' => $ownerTypeId
             ],
             'order' => [
-                'CREATED' => 'desc'
+                'ID' => 'DESC'
             ],
             'select' => [
                 '*',
                 'COMMUNICATIONS'
             ]
         ];
+
+        if($additionalFilter)
+        {
+            $arParams['filter'] = array_merge($arParams['filter'], $additionalFilter);
+        }
 
         $result = $this->obBx24App->call('crm.activity.list', $arParams);
         $this->bx24Logger->debug(__FUNCTION__ . " - activities", [

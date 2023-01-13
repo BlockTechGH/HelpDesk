@@ -12,24 +12,28 @@
 <div>
     <table id="ticketsGrid" class="table table-condensed table-hover table-striped">
         <thead>
-            <th data-column-id="id"><?=__('ID');?></th>
+            <th data-column-id="id" data-header-css-class="header-id" data-order="desc"><?=__('ID');?></th>
             <th data-column-id="name"><?=__('Name');?></th>
-            <th data-column-id="responsible" ><?=__('Responsible person');?></th>
-            <th data-column-id="status_id" data-formatter="status"><?=__('Status');?></th>
+            <th data-column-id="responsible"><?=__('Responsible person');?></th>
+            <th data-column-id="status"><?=__('Status');?></th>
             <th data-column-id="client"><?=__('Client');?></th>
-            <th data-column-id="created" data-order="desc"><?=__('Created');?></th>
+            <th data-column-id="created"><?=__('Created');?></th>
         </thead>
     </table>
 </div>
 
 <script>
-// Grid
-let grid = $('#ticketsGrid').bootgrid({
+    // Grid
+BX24.ready(function()
+{
+    var auth = BX24.getAuth();
+    if(!auth)
+    {
+        console.error('Not auth');
+    }
+
+    let grid = $('#ticketsGrid').bootgrid({
         rowCount: 50,
-        formatters: {
-            'person': (column, row) => row[column.id]?.title,
-            'status': (column, row) => json_encode($statuses)[row.status_id].name,
-        },
         templates: {
             header: "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\"><div class=\"actionBar\"><p class=\"{{css.actions}}\"></p></div></div></div>",
         },
@@ -38,17 +42,20 @@ let grid = $('#ticketsGrid').bootgrid({
             selected: "active text-primary"
         },
         ajax: true,
-        url: "<?= $this->Url->build(['_name' => 'crm_entity_tickets_interface']); ?>",
+        url: '<?= $this->Url->build(['_name' => 'crm_entity_tickets_interface', '?' => ['DOMAIN' => $domain]]); ?>',
         post: function (request)
         {
-            var auth = BX24.getAuth();
-            if (typeof(request) == "undefined")
-            {
-                request = {};
-            }
-            request['memberId'] = auth.member_id;
-            request['auth'] = auth;
+            request = {
+                member_id: auth.member_id,
+                AUTH_ID: auth.access_token,
+                REFRESH_ID: auth.refresh_token,
+                AUTH_EXPIRES: auth.expires_in,
+                PLACEMENT: '<?= $place ?>',
+                PLACEMENT_OPTIONS: '<?= $placementOptions ?>',
+            };
+
             return request;
         }
     });
+});
 </script>
