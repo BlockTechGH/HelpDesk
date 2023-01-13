@@ -67,6 +67,7 @@ class TicketController extends AppController
         // subscribe on events
         $eventManager = $this->getEventManager();
         $eventManager->on('Ticket.created', [$this, 'handleTicketCreated']);
+        $eventManager->on('Ticket.changeResponsible', [$this, 'handleTicketChangeResponsible']);
     }
 
 
@@ -570,6 +571,59 @@ class TicketController extends AppController
         }
     }
 
+    public function onChangeResponsible()
+    {
+        $this->viewBuilder()->disableAutoLayout();
+        $this->disableAutoRender();
+
+        $activityId = intval($this->request->getData('activityId'));
+        $responsibleData = $this->request->getData('newResponsible');
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input parameters', [
+            'isPost' => $this->request->is('post'),
+            'activityId' => $activityId,
+            'responsibleData' => $responsibleData,
+        ]);
+
+        if($this->request->is('post') && $activityId && $responsibleData)
+        {
+            $ticketRecord = $this->Tickets->getByActivityIdAndMemberId($activityId, $this->memberId);
+
+            $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+            $status = $statuses[$ticketRecord['status_id']];
+            $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
+            $activity = $activityInfo['activity'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - collected data', [
+                'status' => $status,
+                'activityInfo' => $activityInfo
+            ]);
+
+            // send event Ticket Responsible Change
+            $event = new Event('Ticket.changeResponsible', $this, [
+                'ticket' => $ticketRecord,
+                'status' => $status->name,
+                'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity),
+                'newResponsible' => $responsibleData['id']
+            ]);
+            $this->getEventManager()->dispatch($event);
+
+            $result = [
+                'error' => false,
+                'status' => 'OK'
+            ];
+        } else {
+            $result = [
+                'status' => __('Bad request'),
+                'error' => true
+            ];
+        }
+
+        $body = json_encode($result);
+
+        return new Response(['body' => $body]);
+    }
+
     private function calcTeamsSummary(array $rows, array $statuses) : array
     {
         $this->TicketControllerLogger->debug('getSummary - ' . __FUNCTION__ . '- arguments', [
@@ -719,6 +773,74 @@ class TicketController extends AppController
         }
 
         return $result;
+    }
+
+    public function handleTicketChangeResponsible($event, $ticket, $status, $ticketAttributes, $newResponsible)
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $ticketAttributes,
+            'newResponsible' => $newResponsible
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationChangeResponsible',
+            'ticketStatus' => $status,
+            'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
+            'ticketSubject' => $ticketAttributes['subject'],
+            'ticketResponsibleId' => 'user_' . $newResponsible,
+            'answerType' => '',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeResponsible' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_DEAL:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
     }
 
     public function handleTicketCreated($event, $ticket, $status, $ticketAttributes)
