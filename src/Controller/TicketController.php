@@ -10,6 +10,7 @@ use Cake\Event\Event;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
 use Cake\I18n\FrozenDate;
+use Cake\I18n\FrozenTime;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -50,7 +51,6 @@ class TicketController extends AppController
                 '_name' => 'home',
             ]);
         }
-        
 
         $this->loadComponent('Bx24');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
@@ -60,7 +60,9 @@ class TicketController extends AppController
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
 
-        $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+        $this->placementOptions = $this->request->getData('PLACEMENT_OPTIONS') ?? "";
+        $this->placement = json_decode($this->placementOptions, true);
+        $this->place = $this->request->getData('PLACEMENT');
 
         // subscribe on events
         $eventManager = $this->getEventManager();
@@ -231,6 +233,145 @@ class TicketController extends AppController
         $this->render('display_crm_interface');
     }
 
+    public function displayCrmEntityTicketsInterface()
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
+        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $this->set('statuses', $statuses);
+        $this->set('domain', $this->domain);
+        $this->set('placementOptions', $this->placementOptions);
+        $this->set('place', $this->place);
+
+        if($this->request->is('ajax'))
+        {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
+            $this->disableAutoRender();
+            $this->viewBuilder()->disableAutoLayout();
+
+            $data = $this->request->getData();
+            $entityId = intval($this->placement['ID']);
+            $placementType = $data['PLACEMENT'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - params', [
+                'entityId' => $entityId,
+                'data' => $data
+            ]);
+
+            switch($placementType)
+            {
+                case 'CRM_CONTACT_DETAIL_TAB':
+                    $entityData = $this->Bx24->getContactInfo($entityId);
+                    $entityType = 'CRM_CONTACT';
+                    break;
+                case 'CRM_COMPANY_DETAIL_TAB':
+                    $entityData = $this->Bx24->getCompanyInfo($entityId);
+                    $entityType = 'CRM_COMPANY';
+                    break;
+                case 'CRM_DEAL_DETAIL_TAB':
+                    $entityData = $this->Bx24->getDeal($entityId);
+                    $entityType = 'CRM_DEAL';
+                    break;
+            }
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entityData', [
+                'entityType' => $entityType,
+                'entityData' => $entityData
+            ]);
+
+            $entityTypeId = $this->Bx24::CRM_ENTITY_TYPES_IDS[$entityType];
+
+            $arOurTypeActivityData = $this->Bx24->getActivityTypeAndName();
+            $additionalFilter = [
+                'PROVIDER_TYPE_ID' => $arOurTypeActivityData['TYPE_ID']
+            ];
+
+            $activities = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $additionalFilter);
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
+                'activities' => $activities
+            ]);
+
+            $tickets = [];
+
+            if($activities)
+            {
+                $responsibleIds = array_unique(array_map(function($activity) {
+                    return $activity['RESPONSIBLE_ID'];
+                }, array_values($activities)));
+
+                $responsible = $this->Bx24->getUserById($responsibleIds);
+
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - users', [
+                    'responsibleIds' => $responsibleIds,
+                    'responsible' => $responsible
+                ]);
+
+                foreach($responsible as $id => $user)
+                {
+                    $responsible[$user['ID']] = $user;
+                    unset($responsible[$id]);
+                }
+
+                $activitiesIds = array_unique(array_map(function($activity) {
+                    return $activity['ID'];
+                }, array_values($activities)));
+
+                $tickets = $this->Tickets->getByActivityIds($activitiesIds);
+            }
+
+            if(!$tickets)
+            {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - no tickets found');
+
+                $result = [
+                    'total' => 0,
+                    'rowCount' => 0,
+                    'current' => 1,
+                    'rows' => []
+                ];
+                return new Response(['body' => json_encode($result)]);
+            }
+
+            foreach($tickets as $ticket)
+            {
+                $responsibleId = $activities[$ticket->action_id]['RESPONSIBLE_ID'];
+                $responsibleName = implode(' ', [$responsible[$responsibleId]['NAME'], $responsible[$responsibleId]['LAST_NAME']]);
+
+                $result['rows'][] = [
+                    'id' => $ticket['id'],
+                    'name' => $activities[$ticket->action_id]['SUBJECT'],
+                    'responsible' => $responsibleName,
+                    'status' => $statuses[$ticket->status_id]['name'],
+                    'client' => $entityData['TITLE'] ?? implode(' ', [$entityData['NAME'], $entityData['LAST_NAME']]),
+                    'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
+                ];
+            }
+
+            $result = [
+                'total' => count($activities),
+                'current' => 1,
+                'rowCount' => count($result['rows']),
+                'rows' => $result['rows']
+            ];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - data', [
+                'statuses' => $statuses,
+                'data' => $data,
+                'entityId' => $entityId,
+                'entityTypeId' => $entityTypeId,
+                'entityData' => $entityData,
+                'activities' => $activities,
+                'responsibleIds' => $responsibleIds,
+                'responsible' => $responsible,
+                'activitiesIds' => $activitiesIds,
+                'tickets' => $tickets,
+                'result' => $result
+            ]);
+
+            return new Response(['body' => json_encode($result)]);
+        }
+    }
+
     public function collectTickets()
     {
         if($this->request->is('ajax') || !$this->request->getData('rowCount'))
@@ -310,7 +451,7 @@ class TicketController extends AppController
                     'responsible' => $attributes['responsible'] ?? [],
                     'status_id' => $ticket->status_id,
                     'client' => $attributes['customer'] ?? [],
-                    'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [
@@ -408,7 +549,7 @@ class TicketController extends AppController
                     'customer' => $attributes['customer'] ?? [],
                     'status_id' => $ticket->status_id,
                     'client' => $attributes['customer'] ?? [],
-                    'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [

@@ -110,6 +110,13 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'crm_interface']
         );
 
+        $builder->connect('/entity_tickets',
+            [
+                'controller' => 'Ticket',
+                'action' => 'displayCrmEntityTicketsInterface'
+            ], ['_name' => 'crm_entity_tickets_interface']
+        );
+
         // Handle change responsible for ticket
         $builder->connect('/tickets/onchangeresponsible',
             [
@@ -117,7 +124,8 @@ return static function (RouteBuilder $routes) {
                 'action' => 'onChangeResponsible',
             ], ['_name' => 'on_change_responsible']
         );
-       /*
+
+        /*
          * ...and connect the rest of 'Pages' controller's URLs.
          */
         $builder->connect('/pages/*', 'Pages::display');
