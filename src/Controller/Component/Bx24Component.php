@@ -1944,7 +1944,7 @@ class Bx24Component extends Component
         return $arResult;
     }
 
-    public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $additionalFilter = []): array
+    public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $order = ['id' => 'desc'], $start = 0, $additionalFilter = []): array
     {
         $arResult = [];
         $arParams = [
@@ -1952,13 +1952,12 @@ class Bx24Component extends Component
                 'OWNER_ID' => $ownerId,
                 'OWNER_TYPE_ID' => $ownerTypeId
             ],
-            'order' => [
-                'ID' => 'DESC'
-            ],
             'select' => [
                 '*',
                 'COMMUNICATIONS'
-            ]
+            ],
+            'order' => $order,
+            'start' => $start
         ];
 
         if($additionalFilter)
@@ -1974,8 +1973,9 @@ class Bx24Component extends Component
         {
             foreach($result['result'] as $activity)
             {
-                $arResult[$activity['ID']] = $activity;
+                $arResult['activities'][$activity['ID']] = $activity;
             }
+            $arResult['total'] = $result['total'];
         }
         return $arResult;
     }

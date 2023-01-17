@@ -13,10 +13,10 @@
     <table id="ticketsGrid" class="table table-condensed table-hover table-striped">
         <thead>
             <th data-column-id="id" data-header-css-class="header-id" data-order="desc"><?=__('ID');?></th>
-            <th data-column-id="name"><?=__('Name');?></th>
-            <th data-column-id="responsible"><?=__('Responsible person');?></th>
-            <th data-column-id="status"><?=__('Status');?></th>
-            <th data-column-id="client"><?=__('Client');?></th>
+            <th data-column-id="name" data-sortable = "false"><?=__('Name');?></th>
+            <th data-column-id="responsible" data-sortable = "false"><?=__('Responsible person');?></th>
+            <th data-column-id="status" data-sortable = "false"><?=__('Status');?></th>
+            <th data-column-id="client" data-sortable = "false"><?=__('Client');?></th>
             <th data-column-id="created"><?=__('Created');?></th>
         </thead>
     </table>
