@@ -153,7 +153,6 @@ class BitrixController extends AppController
                 $sourceActivity = $sourceId ? $activities[$sourceId] : $ticketActivity;
                 if($ticketActivity)
                 {
-                    // !!!!!!! where getting contact data ????
                     $ticketAttributes = $this->Bx24->getOneTicketAttributes($ticketActivity);
                     if($ticketAttributes)
                     {
@@ -187,6 +186,22 @@ class BitrixController extends AppController
                 {
                     $arHistoryActivities = $this->Bx24->searchActivitiesByTicketNumber($this->ticket['id']);
                 }
+
+                foreach($arHistoryActivities as $i => $activity)
+                {
+                    if(isset($activity['FILES']) && $activity['FILES'])
+                    {
+                        foreach($activity['FILES'] as $j => $file)
+                        {
+                            $fileName = $this->getFileNameByUrlHeaders($file['url']);
+                            if($fileName)
+                            {
+                                $arHistoryActivities[$i]['FILES'][$j]['fileName'] = $fileName;
+                            }
+                        }
+                    }
+                }
+
                 $this->set('arHistoryActivities', $arHistoryActivities);
 
                 $source['text'] = str_replace(PHP_EOL, '<br>', $source['text']);
@@ -198,6 +213,7 @@ class BitrixController extends AppController
                 } elseif((isset($this->placement['activity_id'])
                     && $this->placement['action'] == 'view_activity'))
                 {
+                    $this->ticketAttributes = $ticketAttributes;
                     if(!!$answer) {
                         $this->set('subject', $ticketAttributes['subject']);
                         return $this->sendFeedback($answer, $currentUser, $ticketAttributes);
@@ -211,18 +227,30 @@ class BitrixController extends AppController
                             $this->memberId,
                             !!$set ? TicketStatusesTable::MARK_STARTABLE : TicketStatusesTable::MARK_FINAL
                         );
+
+                        // send event Ticket Changed Status
+                        $event = new Event('Ticket.statusChanged', $this, [
+                            'ticket' => $ticket,
+                            'status' => $status->name
+                        ]);
+                        $this->getEventManager()->dispatch($event);
+
                         $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
                     $this->set('ticketAttributes', $ticketAttributes);
-                    $this->ticketAttributes = $ticketAttributes;
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
                 }
             } else {
-                $arContactWorkflowTemplates = $this->Bx24->getContactWorkflowTemplates();
+                $arTemplates = $this->Bx24->getEntityWorkflowTemplates();
+                $arContactWorkflowTemplates = $arTemplates['contact'];
+                $arCompanyWorkflowTemplates = $arTemplates['company'];
+                $arDealWorkflowTemplates = $arTemplates['deal'];
                 $this->set('arContactWorkflowTemplates', $arContactWorkflowTemplates);
+                $this->set('arCompanyWorkflowTemplates', $arCompanyWorkflowTemplates);
+                $this->set('arDealWorkflowTemplates', $arDealWorkflowTemplates);
             }
         }
     }
@@ -360,6 +388,7 @@ class BitrixController extends AppController
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
+        $this->set('onChangeResponsibleUrl', $this->getUrlOf('on_change_responsible', $this->domain));
         return $this->render('display_ticket_card');
     }
 
@@ -635,18 +664,36 @@ class BitrixController extends AppController
             'arTemplateParameters' => $arTemplateParameters
         ]);
 
-        $arOption = $this->Options->getOption('notificationChangeTicketStatus', $this->memberId);
+        $entityTypeId = intval($this->ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeTicketStatus' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($this->ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($this->ticketAttributes['customer']['id']) : false;
-
-        if($templateId && $contactId)
+        switch($entityTypeId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($this->ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($this->ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
@@ -687,18 +734,36 @@ class BitrixController extends AppController
             'arTemplateParameters' => $arTemplateParameters
         ]);
 
-        $arOption = $this->Options->getOption('notificationReceivingCustomerResponse', $this->memberId);
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationReceivingCustomerResponse' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - get template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
-
-        if($templateId && $contactId)
+        switch($entityTypeId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - start workflow result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
@@ -732,27 +797,65 @@ class BitrixController extends AppController
         ]);
 
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
-        $arOption = $this->Options->getOption('notificationCreateTicket', $this->memberId);
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationCreateTicket' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
 
-        $this->BxControllerLogger->debug(__FUNCTION__ . ' - contact', [
-            'contactId' => $contactId
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
         ]);
 
-        if($templateId && $contactId)
+        if($templateId && $entityId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);
         } else {
             $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
         }
+    }
+
+    private function getFileNameByUrlHeaders($url)
+    {
+        $fileName = '';
+
+        $headers = get_headers($url, 1);
+
+        $this->BxControllerLogger->debug('getFileNameByUrlHeaders', [
+            'url' => $url,
+            'headers' => $headers
+        ]);
+
+        if (isset($headers['Content-Disposition']))
+        {
+            $headerLine = $headers['Content-Disposition'];
+            preg_match_all("/[^\'\']+$/", $headerLine, $matches);
+            if ($matches[0][0])
+            {
+                $fileName = rawurldecode($matches[0][0]);
+            }
+        }
+
+        return $fileName;
     }
 }

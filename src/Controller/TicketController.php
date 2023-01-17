@@ -10,6 +10,7 @@ use Cake\Event\Event;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
 use Cake\I18n\FrozenDate;
+use Cake\I18n\FrozenTime;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -17,9 +18,7 @@ class TicketController extends AppController
 {
     private $Tickets;
     private $TicketStatuses;
-
     private $TicketControllerLogger;
-
     private $placement;
 
     public function initialize(): void
@@ -52,7 +51,6 @@ class TicketController extends AppController
                 '_name' => 'home',
             ]);
         }
-        
 
         $this->loadComponent('Bx24');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
@@ -62,11 +60,14 @@ class TicketController extends AppController
         $this->TicketControllerLogger = new Logger('TicketController');
         $this->TicketControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
 
-        $this->placement = json_decode($this->request->getData('PLACEMENT_OPTIONS') ?? "", true);
+        $this->placementOptions = $this->request->getData('PLACEMENT_OPTIONS') ?? "";
+        $this->placement = json_decode($this->placementOptions, true);
+        $this->place = $this->request->getData('PLACEMENT');
 
         // subscribe on events
         $eventManager = $this->getEventManager();
         $eventManager->on('Ticket.created', [$this, 'handleTicketCreated']);
+        $eventManager->on('Ticket.changeResponsible', [$this, 'handleTicketChangeResponsible']);
     }
 
 
@@ -77,8 +78,9 @@ class TicketController extends AppController
         $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
-        $entityId = $this->placement['ID'];
+        $entityId = intval($this->placement['ID']);
         $placementType = $data['PLACEMENT'];
+        $contactTypes = ['PHONE', 'EMAIL'];
         switch($placementType)
         {
             case 'CRM_CONTACT_DETAIL_ACTIVITY':
@@ -97,52 +99,45 @@ class TicketController extends AppController
 
         if($entityType == 'CRM_CONTACT')
         {
-            $entity = $this->Bx24->getContact((int)$entityId);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entity', $entity);
-
+            $contact = $this->Bx24->getContact($entityId);
             $contacts = [];
-            foreach(['PHONE', 'EMAIL'] as $contactType)
+            foreach($contactTypes as $contactType)
             {
-                $all = $this->Bx24->getPersonalContacts($entity, $contactType);
+                $all = $this->Bx24->getPersonalContacts($contact, $contactType);
                 $contacts = array_merge($contacts, $all);
-                $entity[$contactType] = count($all) ? $all[0] : "";
+                $contact[$contactType] = count($all) ? $all[0] : "";
             }
-            $entity['WORK_COMPANY'] = "";
-            $customer = $this->Bx24->makeUserAttributes($entity);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
+            $contact['WORK_COMPANY'] = "";
+            $customer = $this->Bx24->makeUserAttributes($contact);
         }
 
         if($entityType == 'CRM_COMPANY')
         {
-            $company = $this->Bx24->getCompany((int)$entityId);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - company', $company);
-
+            $company = $this->Bx24->getCompanyInfo($entityId);
             $contacts = [];
-            foreach(['PHONE', 'EMAIL'] as $contactType)
+            foreach($contactTypes as $contactType)
             {
                 $all = $this->Bx24->getCompanyContactsInfo($company, $contactType);
                 $contacts = array_merge($contacts, $all);
                 $company[$contactType] = count($all) ? $all[0] : "";
             }
             $customer = $this->Bx24->makeCompanyAttributes($company);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
         }
         
         if($entityType == 'CRM_DEAL')
         {
-            $deal = $this->Bx24->getDeal((int)$entityId);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - deal', $deal);
-
+            $dealData = $this->Bx24->getDealData($entityId);
+            $deal = $dealData['deal'];
+            $result = $this->Bx24->getDealCommunicationInfo($dealData, $contactTypes);
             $contacts = [];
-            // foreach(['PHONE', 'EMAIL'] as $contactType)
-            // {
-            //     $all = $this->Bx24->getDealsContactsInfo($deal, $contactType); // create method
-            //     $contacts = array_merge($contacts, $all);
-            //     $deal[$contactType] = count($all) ? $all[0] : "";
-            // }
+            foreach($result as $type => $values)
+            {
+                $deal[$type] = isset($values[0])? $values[0]: "";
+                $contacts = array_merge($contacts, $values);
+            }
             $customer = $this->Bx24->makeCompanyAttributes($deal);
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
         }
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - customer', $customer);
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - contacts', $contacts);
 
         // why is this necessary?
@@ -172,7 +167,7 @@ class TicketController extends AppController
             $postfix = $this->Bx24->getTicketSubject($ticketId);
 
             // Create ticket activity
-            $source = $this->Bx24->prepareNewActivitySource((int)$entityId, $subject, $text, (int)$responsibleId, $contacts);
+            $source = $this->Bx24->prepareNewActivitySource($entityId, $entityType, $subject, $text, (int)$responsibleId, $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
 
             if(!$source['COMMUNICATIONS'])
@@ -236,6 +231,151 @@ class TicketController extends AppController
         ]);
 
         $this->render('display_crm_interface');
+    }
+
+    public function displayCrmEntityTicketsInterface()
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
+        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $this->set('statuses', $statuses);
+        $this->set('domain', $this->domain);
+        $this->set('placementOptions', $this->placementOptions);
+        $this->set('place', $this->place);
+
+        if($this->request->is('ajax'))
+        {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
+            $this->disableAutoRender();
+            $this->viewBuilder()->disableAutoLayout();
+
+            $data = $this->request->getData();
+            $currentPage = intval($this->request->getData('current'));
+            $rowCount = intval($this->request->getData('rowCount'));
+            $order = $this->request->getData('sort');
+            $entityId = intval($this->placement['ID']);
+            $placementType = $data['PLACEMENT'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - params', [
+                'entityId' => $entityId,
+                'data' => $data
+            ]);
+
+            switch($placementType)
+            {
+                case 'CRM_CONTACT_DETAIL_TAB':
+                    $entityData = $this->Bx24->getContactInfo($entityId);
+                    $entityType = 'CRM_CONTACT';
+                    break;
+                case 'CRM_COMPANY_DETAIL_TAB':
+                    $entityData = $this->Bx24->getCompanyInfo($entityId);
+                    $entityType = 'CRM_COMPANY';
+                    break;
+                case 'CRM_DEAL_DETAIL_TAB':
+                    $entityData = $this->Bx24->getDeal($entityId);
+                    $entityType = 'CRM_DEAL';
+                    break;
+            }
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entityData', [
+                'entityType' => $entityType,
+                'entityData' => $entityData
+            ]);
+
+            $entityTypeId = $this->Bx24::CRM_ENTITY_TYPES_IDS[$entityType];
+
+            $arOurTypeActivityData = $this->Bx24->getActivityTypeAndName();
+            $additionalFilter = [
+                'PROVIDER_TYPE_ID' => $arOurTypeActivityData['TYPE_ID']
+            ];
+            $start = ($currentPage - 1) * $rowCount;
+
+            $result = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $order, $start, $additionalFilter);
+            $activities = $result['activities'];
+            $total = $result['total'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
+                'activities' => $activities
+            ]);
+
+            $tickets = [];
+
+            if($activities)
+            {
+                $responsibleIds = array_unique(array_map(function($activity) {
+                    return $activity['RESPONSIBLE_ID'];
+                }, array_values($activities)));
+
+                $responsible = $this->Bx24->getUserById($responsibleIds);
+
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - users', [
+                    'responsibleIds' => $responsibleIds,
+                    'responsible' => $responsible
+                ]);
+
+                foreach($responsible as $id => $user)
+                {
+                    $responsible[$user['ID']] = $user;
+                    unset($responsible[$id]);
+                }
+
+                $activitiesIds = array_unique(array_map(function($activity) {
+                    return $activity['ID'];
+                }, array_values($activities)));
+
+                $tickets = $this->Tickets->getByActivityIds($activitiesIds, $order);
+            }
+
+            if(!$tickets)
+            {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - no tickets found');
+
+                $result = [
+                    'total' => 0,
+                    'rowCount' => 0,
+                    'current' => 1,
+                    'rows' => []
+                ];
+                return new Response(['body' => json_encode($result)]);
+            }
+
+            foreach($tickets as $ticket)
+            {
+                $responsibleId = $activities[$ticket->action_id]['RESPONSIBLE_ID'];
+                $responsibleName = implode(' ', [$responsible[$responsibleId]['NAME'], $responsible[$responsibleId]['LAST_NAME']]);
+
+                $result['rows'][] = [
+                    'id' => $ticket['id'],
+                    'name' => $activities[$ticket->action_id]['SUBJECT'],
+                    'responsible' => $responsibleName,
+                    'status' => $statuses[$ticket->status_id]['name'],
+                    'client' => $entityData['TITLE'] ?? implode(' ', [$entityData['NAME'], $entityData['LAST_NAME']]),
+                    'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
+                ];
+            }
+
+            $result = [
+                'total' => $total,
+                'current' => $currentPage,
+                'rowCount' => $rowCount,
+                'rows' => $result['rows']
+            ];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - data', [
+                'statuses' => $statuses,
+                'data' => $data,
+                'entityId' => $entityId,
+                'entityTypeId' => $entityTypeId,
+                'entityData' => $entityData,
+                'activities' => $activities,
+                'responsibleIds' => $responsibleIds,
+                'responsible' => $responsible,
+                'activitiesIds' => $activitiesIds,
+                'tickets' => $tickets,
+                'result' => $result
+            ]);
+
+            return new Response(['body' => json_encode($result)]);
+        }
     }
 
     public function collectTickets()
@@ -317,7 +457,7 @@ class TicketController extends AppController
                     'responsible' => $attributes['responsible'] ?? [],
                     'status_id' => $ticket->status_id,
                     'client' => $attributes['customer'] ?? [],
-                    'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [
@@ -415,7 +555,7 @@ class TicketController extends AppController
                     'customer' => $attributes['customer'] ?? [],
                     'status_id' => $ticket->status_id,
                     'client' => $attributes['customer'] ?? [],
-                    'created' => (new FrozenDate($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [
@@ -435,6 +575,59 @@ class TicketController extends AppController
             unset($rows);
             return new Response(['body' => json_encode($result)]);
         }
+    }
+
+    public function onChangeResponsible()
+    {
+        $this->viewBuilder()->disableAutoLayout();
+        $this->disableAutoRender();
+
+        $activityId = intval($this->request->getData('activityId'));
+        $responsibleData = $this->request->getData('newResponsible');
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input parameters', [
+            'isPost' => $this->request->is('post'),
+            'activityId' => $activityId,
+            'responsibleData' => $responsibleData,
+        ]);
+
+        if($this->request->is('post') && $activityId && $responsibleData)
+        {
+            $ticketRecord = $this->Tickets->getByActivityIdAndMemberId($activityId, $this->memberId);
+
+            $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+            $status = $statuses[$ticketRecord['status_id']];
+            $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
+            $activity = $activityInfo['activity'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - collected data', [
+                'status' => $status,
+                'activityInfo' => $activityInfo
+            ]);
+
+            // send event Ticket Responsible Change
+            $event = new Event('Ticket.changeResponsible', $this, [
+                'ticket' => $ticketRecord,
+                'status' => $status->name,
+                'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity),
+                'newResponsible' => $responsibleData['id']
+            ]);
+            $this->getEventManager()->dispatch($event);
+
+            $result = [
+                'error' => false,
+                'status' => 'OK'
+            ];
+        } else {
+            $result = [
+                'status' => __('Bad request'),
+                'error' => true
+            ];
+        }
+
+        $body = json_encode($result);
+
+        return new Response(['body' => $body]);
     }
 
     private function calcTeamsSummary(array $rows, array $statuses) : array
@@ -588,6 +781,74 @@ class TicketController extends AppController
         return $result;
     }
 
+    public function handleTicketChangeResponsible($event, $ticket, $status, $ticketAttributes, $newResponsible)
+    {
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticket' => $ticket,
+            'status' => $status,
+            'memberId' => $this->memberId,
+            'ticketAttributes' => $ticketAttributes,
+            'newResponsible' => $newResponsible
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationChangeResponsible',
+            'ticketStatus' => $status,
+            'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
+            'ticketSubject' => $ticketAttributes['subject'],
+            'ticketResponsibleId' => 'user_' . $newResponsible,
+            'answerType' => '',
+            'sourceType' => $ticket['source_type_id']
+        ];
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationChangeResponsible' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_DEAL:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
+    }
+
     public function handleTicketCreated($event, $ticket, $status, $ticketAttributes)
     {
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input data', [
@@ -613,22 +874,40 @@ class TicketController extends AppController
         ]);
 
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
-        $arOption = $this->Options->getOption('notificationCreateTicket', $this->memberId);
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationCreateTicket' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
         $templateId = intval($arOption['value']);
 
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - template', [
             'templateId' => $templateId
         ]);
 
-        $contactId = ($ticketAttributes['ENTITY_TYPE_ID'] == Bx24Component::OWNER_TYPE_CONTACT) ? intval($ticketAttributes['customer']['id']) : false;
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_DEAL:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
 
-        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - contact', [
-            'contactId' => $contactId
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
         ]);
 
-        if($templateId && $contactId)
+        if($templateId && $entityId)
         {
-            $arResultStartWorkflow = $this->Bx24->startWorkflowForContact($templateId, $contactId, $arTemplateParameters);
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
                 'arResultStartWorkflow' => $arResultStartWorkflow
             ]);

@@ -252,9 +252,23 @@ class TicketsTable extends Table
             ->first();
     }
 
+    public function getByActivityIds($activityIds, $order = [])
+    {
+        if(!is_array($activityIds))
+        {
+            $activityIds = [$activityIds];
+        }
+        return $this->find()->where(['action_id IN' => $activityIds])->order($order)->all();
+    }
+
     public function deleteTicketByActionId($activityId, $memberId)
     {
         $ticket = $this->getByActivityIdAndMemberId($activityId, $memberId);
-        return $this->delete($ticket);
+        if($ticket)
+        {
+            return $this->delete($ticket);
+        } else {
+            return __('Ticket not exist');
+        }
     }
 }

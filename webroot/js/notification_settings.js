@@ -4,10 +4,16 @@ $(document).ready(function()
     const notificationSpinner = document.getElementById('notificationSpinner');
 
     const notificationSelects = {
-        notificationCreateTicket: document.getElementById('notificationCreateTicket'),
-        notificationChangeTicketStatus: document.getElementById('notificationChangeTicketStatus'),
-        notificationReceivingCustomerResponse: document.getElementById('notificationReceivingCustomerResponse'),
-        notificationChangeResponsible: document.getElementById('notificationChangeResponsible')
+        // contact
+        notificationCreateTicketContact: document.getElementById('notificationCreateTicketContact'),
+        notificationChangeTicketStatusContact: document.getElementById('notificationChangeTicketStatusContact'),
+        notificationReceivingCustomerResponseContact: document.getElementById('notificationReceivingCustomerResponseContact'),
+        notificationChangeResponsibleContact: document.getElementById('notificationChangeResponsibleContact'),
+        // company
+        notificationCreateTicketCompany: document.getElementById('notificationCreateTicketCompany'),
+        notificationChangeTicketStatusCompany: document.getElementById('notificationChangeTicketStatusCompany'),
+        notificationReceivingCustomerResponseCompany: document.getElementById('notificationReceivingCustomerResponseCompany'),
+        notificationChangeResponsibleCompany: document.getElementById('notificationChangeResponsibleCompany'),
     };
 
     saveNotificationButton.on('click', function()
@@ -92,7 +98,7 @@ function displayNotification(message, type)
 
     let messageAlert = $('<div>',
     {
-        class: "alert alert-dismissible fade show col-5 notification-message-alert",
+        class: "alert alert-dismissible fade show col-10 notification-message-alert",
         role: "alert"
     });
 
@@ -106,4 +112,5 @@ function displayNotification(message, type)
     messageAlert.text(message);
     hideButton.appendTo(messageAlert);
     messageAlert.appendTo($(flashMessageWrapper));
+    flashMessageWrapper.scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});
 }

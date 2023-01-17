@@ -1,4 +1,4 @@
-<?= $this->Html->css('ticket_card'); ?>
+<?= $this->Html->css('ticket_card', ['block' => true]); ?>
 
 <div id="ticket">
     <form 
@@ -130,7 +130,10 @@
                 <div class="row mt-2 mb-2" v-bind:class="{'justify-content-end': activity.DIRECTION == 2}" v-for="(activity, index) in arHistoryActivities" v-if="activity.ID != ticketAttributes.id">
                     <div class="col-10 border rounded ml-3 mr-3">
                         <div class="">{{ activity.SUBJECT }} {{ activity.CREATED }}</div>
-                        <div class="" v-html="activity.DESCRIPTION"></div>
+                        <div v-html="activity.DESCRIPTION"></div>
+                        <div v-if="activity.FILES" class="attachments mb-2">
+                            <div v-for="file in activity.FILES"><a v-bind:href="file.url">{{file.fileName}}</a></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -155,6 +158,7 @@
 <script>
     window.data = {
         ajax: "<?=$ajax;?>",
+        onChangeResponsibleUrl: "<?= $onChangeResponsibleUrl ?>",
         required: <?=json_encode($required)?>,
         ticketActivityType: "<?=$ticketActivityType;?>",
         ticket: <?=json_encode($ticket)?>,
@@ -342,6 +346,38 @@
                 this.ticketAttributes.responsible.title = data.name;
                 this.ticketAttributes.responsible.photo = data.photo;
                 this.ticketAttributes.responsible.abr = this.getAbbreviation(data.name);
+
+                this.runOnChangeResponsible(data);
+            },
+            runOnChangeResponsible: function(data)
+            {
+                console.log('onChangeResponsible');
+                console.log(data);
+                console.log(this.onChangeResponsibleUrl);
+                const parameters = Object.assign(
+                    {
+                        activityId: this.ticketAttributes.id,
+                        newResponsible: data
+                    },
+                    this.required
+                );
+
+                fetch(this.onChangeResponsibleUrl,
+                {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    try
+                    {
+                        const response = await result.json();
+                        console.log(response);
+                    } catch (e) {
+                        content = await result.text();
+                        console.error("Error occuried: " + content);
+                    }
+                });
+
             }
         }
     });
