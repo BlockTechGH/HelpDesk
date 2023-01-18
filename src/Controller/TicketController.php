@@ -249,6 +249,9 @@ class TicketController extends AppController
             $this->viewBuilder()->disableAutoLayout();
 
             $data = $this->request->getData();
+            $currentPage = intval($this->request->getData('current'));
+            $rowCount = intval($this->request->getData('rowCount'));
+            $order = $this->request->getData('sort');
             $entityId = intval($this->placement['ID']);
             $placementType = $data['PLACEMENT'];
 
@@ -284,8 +287,11 @@ class TicketController extends AppController
             $additionalFilter = [
                 'PROVIDER_TYPE_ID' => $arOurTypeActivityData['TYPE_ID']
             ];
+            $start = ($currentPage - 1) * $rowCount;
 
-            $activities = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $additionalFilter);
+            $result = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $order, $start, $additionalFilter);
+            $activities = $result['activities'];
+            $total = $result['total'];
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
                 'activities' => $activities
@@ -316,7 +322,7 @@ class TicketController extends AppController
                     return $activity['ID'];
                 }, array_values($activities)));
 
-                $tickets = $this->Tickets->getByActivityIds($activitiesIds);
+                $tickets = $this->Tickets->getByActivityIds($activitiesIds, $order);
             }
 
             if(!$tickets)
@@ -348,9 +354,9 @@ class TicketController extends AppController
             }
 
             $result = [
-                'total' => count($activities),
-                'current' => 1,
-                'rowCount' => count($result['rows']),
+                'total' => $total,
+                'current' => $currentPage,
+                'rowCount' => $rowCount,
                 'rows' => $result['rows']
             ];
 
