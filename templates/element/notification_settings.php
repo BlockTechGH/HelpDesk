@@ -3,7 +3,7 @@
 <div class="row ml-3">
     <form method="POST" class="col-10" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
         <!-- START CONTACT -->
-        <div class="jumbotron">
+        <div class="jumbotron p2">
             <h2 class="display-6"><?= __('Contact settings') ?></h2>
 
             <div class="form-group">
@@ -45,7 +45,7 @@
         <!-- END CONTACT -->
 
         <!-- START COMPANY -->
-        <div class="jumbotron">
+        <div class="jumbotron p2">
             <h2 class="display-6"><?= __('Company settings') ?></h2>
 
             <div class="form-group">

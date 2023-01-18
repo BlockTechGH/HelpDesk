@@ -59,6 +59,16 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="sla-tab" 
+                        data-target="#sla" 
+                        aria-controls="sla"
+                        aria-selected="false"
+                    >
+                        <?=__('SLA settings');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                         id="notification-tab" 
                         data-target="#notification" 
                         aria-controls="notification"
@@ -170,7 +180,7 @@
                     </div>
                 </div>
             </div>
-            <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
+            <div class="tab-pane fade ml-4" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <div class="form-group">
                         <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
@@ -307,7 +317,10 @@
                     </div>
                 </form>
             </div>
-            <div class="tab-pane fade" id="notification" role="tabpanel" aria-labelledby="summary-tab">
+            <div class="tab-pane fade" id="sla" role="tabpanel" aria-labelledby="sla-tab">
+                <?= $this->element('sla_settings', []); ?>
+            </div>
+            <div class="tab-pane fade" id="notification" role="tabpanel" aria-labelledby="notification-tab">
                 <?= $this->element('notification_settings', []); ?>
             </div>
         </div>

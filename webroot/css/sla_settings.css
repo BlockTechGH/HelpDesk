@@ -1,0 +1,107 @@
+hr.devide-kpi-block {
+    border-bottom: 1px solid white;
+}
+
+.jumbotron.p2 {
+    padding-top: 2rem;
+}
+
+.fade-enter-active, .fade-leave-active {
+    transition: all .5s ease;
+}
+
+.fade-enter, .fade-leave-to {
+    opacity: 0;
+}
+
+.user-outer-container {
+    background: #FFF;
+    border: 1px solid #c6cdd3;
+    padding: 2px 3px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 5px;
+}
+
+.user-container {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    min-height: 33px;
+    overflow-x: hidden;
+}
+
+.user-items {
+    display: flex;
+    flex-wrap: wrap;
+    height: 100%;
+    width: 100%;
+}
+
+.user-add-button {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    margin: 2px;
+    height: 29px;
+}
+
+.user-add-button-caption {
+    position: relative;
+    display: inline-flex;
+    margin: 0 7px 0 18px;
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    color: #2067b0;
+    cursor: pointer;
+    transition: 0.1s;
+    align-items: baseline;
+}
+
+.user-add-button-caption:before {
+    content: '';
+    display: inline-block;
+    height: 8px;
+    width: 8px;
+    margin: 0 6px 0 -12px;
+    background: url("data:image/svg+xml;charset=utf-8,%3Csvg width='8' height='8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M5 0H3v3H0v2h3v3h2V5h3V3H5V0z' fill='%231069C3'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.user-item {
+    background-color: rgb(188, 237, 252);
+    display: inline-flex;
+    align-items: center;
+    color: #1066bb !important;
+    overflow: hidden;
+    max-width: 200px;
+    border-radius: 2px;
+    position: relative;
+    margin: 2px;
+    height: 29px;
+}
+
+.user-item-title {
+    color: rgb(16, 102, 187);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 10px;
+}
+
+.user-item-remove {
+    min-width: 25px;
+    height: 100%;
+    margin-left: 3px;
+    opacity: 0.1;
+    cursor: pointer;
+    transition: 0.3s;
+    background: url("data:image/svg+xml;charset=utf-8,%3Csvg width='8' height='7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6.106.276L4.08 2.303 2.053.276c-.368-.368-.829-.368-1.197 0-.369.369-.369.83 0 1.198L2.882 3.5.856 5.526c-.369.369-.369.83 0 1.198.368.368.829.368 1.197 0L4.08 4.697l2.026 2.027c.368.368.829.368 1.197 0 .369-.369.369-.83 0-1.198L5.277 3.5l2.026-2.026c.369-.369.369-.83 0-1.198C6.935 0 6.383 0 6.106.276z' fill='%23000'/%3E%3C/svg%3E") center no-repeat;
+}
+
+.sla-panel {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: #FFF;
+}
