@@ -71,7 +71,7 @@ class HelpdeskOptionsTable extends Table
 
         $validator
             ->scalar('value')
-            ->maxLength('value', 255)
+            ->maxLength('value', 65000)
             ->requirePresence('value', 'create')
             ->notEmptyString('value');
 
