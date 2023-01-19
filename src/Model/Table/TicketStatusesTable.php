@@ -160,19 +160,4 @@ class TicketStatusesTable extends Table
             'mark' => $mark
         ]);
     }
-
-    public function getStatuses($filter = [])
-    {
-        return $this->find()->where($filter)->all();
-    }
-
-    protected function getFinalStatus()
-    {
-        return $this->getStatuses(['mark' => self::MARK_FINAL]);
-    }
-
-    protected function getStartStatus()
-    {
-        return $this->getStatuses(['mark' => self::MARK_STARTABLE]);
-    }
 }
