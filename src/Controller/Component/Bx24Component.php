@@ -375,6 +375,32 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
+    public function getActivitiesFromCommand(array $ids): array
+    {
+        $arParams = [
+            'filter' => [
+                'ID' => $ids,
+            ],
+            'select' => [
+                'ID',
+                'OWNER_ID',
+                'OWNER_TYPE_ID',
+                'RESPONSIBLE_ID'
+            ]
+        ];
+
+        $activities = [];
+        $result = $this->obBx24App->call('crm.activity.list', $arParams);
+        if($result['result'])
+        {
+            foreach($result['result'] as $activity)
+            {
+                $activities[$activity['ID']] = $activity;
+            }
+        }
+        return $activities;
+    }
+
     public function getActivityAndRelatedDataById($activityId)
     {
         $arResult = [

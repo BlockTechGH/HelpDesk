@@ -271,4 +271,25 @@ class TicketsTable extends Table
             return __('Ticket not exist');
         }
     }
+
+    public function getTicketsExcludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $memberId): array
+    {
+        return $this->find()->where([
+            'member_id' => $memberId,
+            'status_id NOT IN' => $statusIds,
+            'modified <' => $deadlineTime])
+            ->toArray();
+    }
+
+    public function changeTicketStatus($ids, $statusId)
+    {
+        $tickets = $this->find()->where(['id IN' => $ids])->all();
+        foreach($tickets as $ticket)
+        {
+            $ticket->status_id = $statusId;
+        }
+
+        $result = $this->saveMany($tickets);
+        return $result ? true : false;
+    }
 }
