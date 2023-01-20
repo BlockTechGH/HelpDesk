@@ -50,7 +50,7 @@ class EscalationCommand extends Command
         $minLevelResponseTime = $this->getMinLevelResponseTime($this->slaOptions);
         $deadlineTime = $this->getDeadlineTime($minLevelResponseTime);
 
-        $statuses = $this->TicketStatusesTable->getStatusesByMemberIdAndMarks($this->memberId, [3, 2]);
+        $statuses = $this->TicketStatusesTable->getStatusesByMemberIdAndMarks($this->memberId, [$this->TicketStatusesTable::MARK_FINAL, $this->TicketStatusesTable::MARK_ESCALATED]);
         $statusIds = array_column($statuses, 'id');
 
         $levelTickets = $this->TicketsTable->getTicketsExcludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $this->memberId);
@@ -82,7 +82,7 @@ class EscalationCommand extends Command
             $escatatedStatus = $this->TicketStatusesTable->getEscalatedStatus($this->memberId);
 
             // change ticket status in database
-            $result = $this->TicketsTable->changeTicketStatus($expiredTicketIds, $escatatedStatus->id);
+            $result = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
 
             // run workflow when changing ticket status
             $result = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);

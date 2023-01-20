@@ -281,7 +281,7 @@ class TicketsTable extends Table
             ->toArray();
     }
 
-    public function changeTicketStatus($ids, $statusId)
+    public function changeTicketsStatus($ids, $statusId)
     {
         $tickets = $this->find()->where(['id IN' => $ids])->all();
         foreach($tickets as $ticket)
