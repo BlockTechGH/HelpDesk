@@ -224,6 +224,7 @@
                             <th>{{ i18n.Active }}</th>
                             <th>{{ i18n.StartStatus }}</th>
                             <th>{{ i18n.FinalStatus }}</th>
+                            <th>{{ i18n.EscalatedStatus }}</th>
                             <th>{{ i18n.Color }}</th>
                             <th>{{ i18n.Action }}</th>
                         </tr></thead>
@@ -233,6 +234,7 @@
                                 <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 1 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 2 ? i18n.Yes : i18n.No }}</td>
+                                <td>{{ status.mark == 3 ? i18n.Yes : i18n.No }}</td>
                                 <td :style="'color: ' + status.color">{{ status.color }}</td>
                                 <td>
                                     <button 
@@ -261,6 +263,9 @@
 
                         <label for="final" class="ml-1">{{ i18n.FinalStatus }}</label>
                         <input type="checkbox" :checked="currentStatus.mark==2" @change="markStatus(0, 2)" class="btn btn-primary">
+
+                        <label for="escalated" class="ml-1">{{ i18n.EscalatedStatus }}</label>
+                        <input type="checkbox" :checked="currentStatus.mark==3" @change="markStatus(0, 3)" class="btn btn-primary">
 
                         <label for="color" class="ml-1">{{ i18n.Color }}</label>
                         <input type="color" id="color" v-model="currentStatus.color">
@@ -361,6 +366,7 @@
             'No' => __('No'),
             'StartStatus' => __('Start'),
             'FinalStatus' => __('Final'),
+            'EscalatedStatus' => __('Escalated'),
             'Total' => __('Total'),
             'Customer' => __('Customer'),
             'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
@@ -484,7 +490,7 @@ const statuses = new Vue({
     {
         if(Object.keys(this.statuses).length == 0)
         {
-            console.log('пуст');
+            console.log('Empty');
             this.statuses = {};
         }
     },
