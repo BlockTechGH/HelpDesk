@@ -84,12 +84,15 @@ class EscalationCommand extends Command
             // change ticket status in database
             $result = $this->TicketsTable->changeTicketStatus($expiredTicketIds, $escatatedStatus->id);
 
-            // run business process when changing ticket status 1 batch
+            // run workflow when changing ticket status
+            $result = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
+            $io->out(print_r($result, true));
 
-            // run workflow template for notifications 1 batch
+            // run workflow for sla notifications
+            $result = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level);
+            $io->out(print_r($result, true));
             sleep(1);
         }
-        // $io->out(print_r($packages, true));
 
         return static::CODE_SUCCESS;
     }
@@ -163,7 +166,10 @@ class EscalationCommand extends Command
                 $ticket->entityId = $activities[$ticket->action_id]['OWNER_ID'];
                 $ticket->entityTypeId = $activities[$ticket->action_id]['OWNER_TYPE_ID'];
                 $entityType = strtolower($this->Bx24::MAP_ENTITIES[$ticket->entityTypeId]);
-                $ticket->workfowTempalteId = $this->slaOptions[$responsibleDepartmentId]["{$entityType}Template"];
+                $ticket->slaNotificationTemplateId = $this->slaOptions[$responsibleDepartmentId]["{$entityType}Template"];
+                $ticket->responsibleUsers = $this->slaOptions[$responsibleDepartmentId]["{$this->level}NotificationUsers"];
+                $ticket->responsibleId = $responsibleId;
+                $ticket->changeStatusTemplateId = $this->HelpdeskOptionsTable->getOption('notificationChangeTicketStatus' . ucfirst($entityType), $this->memberId)->value;
 
                 $expiredTickets[] = $ticket;
             }
