@@ -948,7 +948,7 @@ class Bx24Component extends Component
             'PRIOVIDER_ID' => $ticketActivity['PROVIDER_ID']
         ];
 
-        if (!$result['customer']['email'] || !$result['customer']['phone'])
+        if (!$result['customer']['email'] && !$result['customer']['phone'])
         {
             switch ($result['ENTITY_TYPE_ID'])
             {

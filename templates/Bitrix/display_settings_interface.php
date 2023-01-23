@@ -27,7 +27,7 @@
                         <?=__('Tickets');?>
                     </button>
                 </li>
-                <li class="nav-item" role="presentation" style="display: none;">
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" data-toggle="tab" type="button" role="tab"
                         aria-selected="true"
                         id="summary-tab"
@@ -747,7 +747,6 @@ $(document).ready(function () {
                 },
             }
         });
-        period.fetchData();
         $("#startDate").datetimepicker({
             format: 'MM/YYYY',
             viewMode: 'months',
