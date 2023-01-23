@@ -59,6 +59,16 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="sla-tab" 
+                        data-target="#sla" 
+                        aria-controls="sla"
+                        aria-selected="false"
+                    >
+                        <?=__('SLA settings');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                         id="notification-tab" 
                         data-target="#notification" 
                         aria-controls="notification"
@@ -170,7 +180,7 @@
                     </div>
                 </div>
             </div>
-            <div class="tab-pane fade" id="sources" role="tabpanel" aria-labelledby="sources-tab">
+            <div class="tab-pane fade ml-4" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <div class="form-group">
                         <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
@@ -214,6 +224,7 @@
                             <th>{{ i18n.Active }}</th>
                             <th>{{ i18n.StartStatus }}</th>
                             <th>{{ i18n.FinalStatus }}</th>
+                            <th>{{ i18n.EscalatedStatus }}</th>
                             <th>{{ i18n.Color }}</th>
                             <th>{{ i18n.Action }}</th>
                         </tr></thead>
@@ -223,6 +234,7 @@
                                 <td>{{ status.active > 0 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 1 ? i18n.Yes : i18n.No }}</td>
                                 <td>{{ status.mark == 2 ? i18n.Yes : i18n.No }}</td>
+                                <td>{{ status.mark == 3 ? i18n.Yes : i18n.No }}</td>
                                 <td :style="'color: ' + status.color">{{ status.color }}</td>
                                 <td>
                                     <button 
@@ -251,6 +263,9 @@
 
                         <label for="final" class="ml-1">{{ i18n.FinalStatus }}</label>
                         <input type="checkbox" :checked="currentStatus.mark==2" @change="markStatus(0, 2)" class="btn btn-primary">
+
+                        <label for="escalated" class="ml-1">{{ i18n.EscalatedStatus }}</label>
+                        <input type="checkbox" :checked="currentStatus.mark==3" @change="markStatus(0, 3)" class="btn btn-primary">
 
                         <label for="color" class="ml-1">{{ i18n.Color }}</label>
                         <input type="color" id="color" v-model="currentStatus.color">
@@ -307,7 +322,10 @@
                     </div>
                 </form>
             </div>
-            <div class="tab-pane fade" id="notification" role="tabpanel" aria-labelledby="summary-tab">
+            <div class="tab-pane fade" id="sla" role="tabpanel" aria-labelledby="sla-tab">
+                <?= $this->element('sla_settings', []); ?>
+            </div>
+            <div class="tab-pane fade" id="notification" role="tabpanel" aria-labelledby="notification-tab">
                 <?= $this->element('notification_settings', []); ?>
             </div>
         </div>
@@ -348,6 +366,7 @@
             'No' => __('No'),
             'StartStatus' => __('Start'),
             'FinalStatus' => __('Final'),
+            'EscalatedStatus' => __('Escalated'),
             'Total' => __('Total'),
             'Customer' => __('Customer'),
             'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
@@ -471,7 +490,7 @@ const statuses = new Vue({
     {
         if(Object.keys(this.statuses).length == 0)
         {
-            console.log('пуст');
+            console.log('Empty');
             this.statuses = {};
         }
     },

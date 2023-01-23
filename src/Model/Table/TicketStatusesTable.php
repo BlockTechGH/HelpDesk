@@ -32,6 +32,7 @@ class TicketStatusesTable extends Table
     public const MARK_INTERMEDIATE = 0;
     public const MARK_STARTABLE = 1;
     public const MARK_FINAL = 2;
+    public const MARK_ESCALATED = 3;
 
     /**
      * Initialize method
@@ -66,7 +67,7 @@ class TicketStatusesTable extends Table
         $validator
             ->integer('mark')
             ->greaterThan('mark', -1)
-            ->lessThan('mark', 3);
+            ->lessThan('mark', 4);
 
         return $validator;
     }
@@ -120,7 +121,7 @@ class TicketStatusesTable extends Table
             'member_id' => $memberId,
             'name' => $name,
             'active' => (int)$active,
-            'mark' => $mark >= static::MARK_INTERMEDIATE && $mark <= static::MARK_FINAL ? $mark : static::MARK_INTERMEDIATE,
+            'mark' => $mark >= static::MARK_INTERMEDIATE && $mark <= static::MARK_ESCALATED ? $mark : static::MARK_INTERMEDIATE,
             'color' => mb_ereg_replace('#', '', $color),
         ];
         if($id == null)

@@ -121,6 +121,7 @@ class BitrixController extends AppController
             $this->set('tickets', []);
 
             if (isset($this->placement['activity_id'])) {
+                // activity card
                 $currentUser = $this->Bx24->getCurrentUser();
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
                 if ($this->ticket) {
@@ -281,6 +282,30 @@ class BitrixController extends AppController
             );
             return new Response(['body' => json_encode($category)]);
         }
+        elseif(isset($data['saveSLASettings']))
+        {
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - save sla settings', ['data' => $data]);
+
+            $arOptions[] = [
+                'member_id' => $this->memberId,
+                'opt' => 'sla_settings',
+                'value' => serialize($data['settings'])
+            ];
+
+            $saveResult = $this->Options->updateOptions($arOptions);
+
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - save result', [
+                'result' => $saveResult,
+                'value_len' => strlen(serialize($data['settings'])),
+                'arOptions' => $arOptions
+            ]);
+
+            $result = [
+               'error' => count($saveResult) ? false : true
+            ];
+
+            return new Response(['body' => json_encode($result)]);
+        }
         elseif(isset($data['saveNotificationSettings']) && $data['selectValues'])
         {
             // save settings here
@@ -323,6 +348,15 @@ class BitrixController extends AppController
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
             return new Response(['body' => json_encode($this->statuses)]);
         }
+
+        $arDepartments = [];
+        $arRowDepartments = $this->Bx24->getDepartmentsByIds([]);
+        foreach($arRowDepartments as $department)
+        {
+            $arDepartments[$department['ID']] = $department['NAME'];
+        }
+
+        $this->set('arDepartments', $arDepartments);
     }
 
     public function displayTicketCard($currentUser)
