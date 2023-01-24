@@ -491,6 +491,7 @@ class TicketController extends AppController
             $fromDate = $this->request->getData('from');
             $toDate = $this->request->getData('to');
             $period = $this->request->getData('period') ?? "month";
+            $arDepartments = $this->request->getData('arDepartments');
 
             $tickets = $this->Tickets->getTicketsFor(
                 $this->memberId,
@@ -571,7 +572,7 @@ class TicketController extends AppController
             }
 
             $result['total'] = count($rows);
-            $result = array_merge($result, ['summary' => $summary], $this->calcTeamsSummary($rows, $statuses));
+            $result = array_merge($result, ['summary' => $summary], $this->calcTeamsSummary($rows, $statuses, $arDepartments));
             unset($rows);
             return new Response(['body' => json_encode($result)]);
         }
@@ -630,7 +631,7 @@ class TicketController extends AppController
         return new Response(['body' => $body]);
     }
 
-    private function calcTeamsSummary(array $rows, array $statuses) : array
+    private function calcTeamsSummary(array $rows, array $statuses, array $arDepartments) : array
     {
         $this->TicketControllerLogger->debug('getSummary - ' . __FUNCTION__ . '- arguments', [
             'rows' => $rows,
@@ -661,24 +662,21 @@ class TicketController extends AppController
             $customers[] = $row['customer']['id'];
         }
         
-        // user.get
-        $users = $this->Bx24->getUserById(array_keys($agents));
-        if(!$users){
+        if(!$agents){
             return null;
         }
         
         // Get departments and make maps
-        foreach($users as $user)
+        foreach($agents as $id => $user)
         {
-            $uid = intval($user['ID']);
-            $userIn = $user['UF_DEPARTMENT'] ?? [];
+            $userIn = $user['department'] ?? [];
             foreach($userIn as $teamID)
             {
-                $departments[$teamID][] = $uid;
+                $departments[$teamID][] = $id;
             }
-            $perUser[$uid] = [];
+            $perUser[$id] = [];
         }
-        $departmentInformation = $this->Bx24->getDepartmentsByIds(array_keys($departments));
+        $departmentInformation = array_intersect_key($arDepartments, $departments);
 
         // Cals statistics
         foreach($rows as $row)

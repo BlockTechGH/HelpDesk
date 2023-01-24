@@ -1011,7 +1011,8 @@ class Bx24Component extends Component
             'email' => $record['EMAIL'],
             'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'] ?? $record['PHONE'] ?? "",
             'company' => $record['WORK_COMPANY'],
-            'photo' => $record['PERSONAL_PHOTO'] ?? ''
+            'photo' => $record['PERSONAL_PHOTO'] ?? '',
+            'department' => $record['UF_DEPARTMENT'] ?? []
         ];
     }
 

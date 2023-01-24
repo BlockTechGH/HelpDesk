@@ -698,7 +698,8 @@ $(document).ready(function () {
                         period: this.modes[$('#between option:selected').val()].title,
                         from: $('#startDate').val(),
                         to: $('#finalDate').val(),
-                        auth: this.required
+                        auth: this.required,
+                        arDepartments: <?= json_encode($arDepartments) ?>
                     };
                     const statistics = await fetch(
                         "<?=$this->Url->build(['_name' => 'get_summary', '?' => ['DOMAIN' => $domain]]);?>", {
