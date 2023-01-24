@@ -12,7 +12,7 @@ use Cake\Controller\ComponentRegistry;
 use App\Controller\Component\Bx24Component;
 use App\Controller\CommandController;
 
-class EscalationFirstLevelCommand extends Command
+class EscalationInitialLevelCommand extends Command
 {
     private $memberId;
     private $packageLength = 50;
