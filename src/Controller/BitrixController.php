@@ -353,7 +353,7 @@ class BitrixController extends AppController
         $arRowDepartments = $this->Bx24->getDepartmentsByIds([]);
         foreach($arRowDepartments as $department)
         {
-            $arDepartments[$department['ID']] = $department['NAME'];
+            $arDepartments[$department['ID']] = $department;
         }
 
         $this->set('arDepartments', $arDepartments);
