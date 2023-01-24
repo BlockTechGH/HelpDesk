@@ -6,15 +6,18 @@ use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Core\Configure;
 use Cake\I18n\FrozenTime;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Cake\Controller\ComponentRegistry;
 use App\Controller\Component\Bx24Component;
 use App\Controller\CommandController;
 
-class EscalationCommand extends Command
+class EscalationFirstLevelCommand extends Command
 {
     private $memberId;
     private $packageLength = 50;
     private $level = 'initial';
+    private $logger;
 
     public static function getDescription(): string
     {
@@ -36,10 +39,17 @@ class EscalationCommand extends Command
 
         $registry = new ComponentRegistry(new CommandController());
         $this->Bx24 = new Bx24Component($registry);
+
+        // logger
+        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'escalation_first_level.log';
+        $this->logger = new Logger('EscalationFirstLevel');
+        $this->logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
     }
 
     public function execute(Arguments $args, ConsoleIo $io): int
     {
+        $this->logger->debug("*** start ***");
+
         $this->slaOptions = $this->getSlaOptionsValue();
         if(!$this->slaOptions)
         {
@@ -56,43 +66,71 @@ class EscalationCommand extends Command
         $levelTickets = $this->TicketsTable->getTicketsExcludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $this->memberId);
         $packages = $this->getTicketPackages($levelTickets);
 
-        foreach($packages as $package)
+        foreach($packages as $i => $package)
         {
+            $this->logger->debug(__FUNCTION__ . " - package: " . $i, ['package' => $package]);
+
             $activitiesIds = array_column($package, 'action_id');
             $activities = $this->Bx24->getActivitiesFromCommand($activitiesIds);
+
+            $this->logger->debug(__FUNCTION__ . " - activities: " . $i, ['activities' => $activities]);
 
             if($activities)
             {
                 $responsibleIds = array_unique(array_map(function($activity) {
                     return $activity['RESPONSIBLE_ID'];
                 }, array_values($activities)));
-                $responsible = $this->Bx24->getUserById($responsibleIds);
+                $arRowResponsible = $this->Bx24->getUserById($responsibleIds);
 
-                foreach($responsible as $id => $user)
+                $responsible = [];
+                foreach($arRowResponsible as $id => $user)
                 {
                     $responsible[$user['ID']] = $user;
-                    unset($responsible[$id]);
+                    unset($arRowResponsible[$id]);
                 }
+
+                $this->logger->debug(__FUNCTION__ . " - responsibles: " . $i, [
+                    'responsible' => $responsible
+                ]);
+
                 sleep(1);
             }
 
             // get expired tickets
-            $expiredTickets = $this->getExpiredTicketsInPackage($package, $activities, $responsible);
+            $expiredTickets = $this->getExpiredTicketsInPackage($package, $activities, $responsible, $io);
+
+            $this->logger->debug(__FUNCTION__ . " - expiredTickets: " . $i, [
+                'expiredTickets' => $expiredTickets
+            ]);
+
             $expiredTicketIds = array_column($expiredTickets, 'id');
             $escatatedStatus = $this->TicketStatusesTable->getEscalatedStatus($this->memberId);
 
             // change ticket status in database
-            $result = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
+            $resultChangeTicketStatus = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
+
+            $this->logger->debug(__FUNCTION__ . " - result change ticket status: " . $i, [
+                'result' => $resultChangeTicketStatus
+            ]);
 
             // run workflow when changing ticket status
-            $result = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
-            $io->out(print_r($result, true));
+            $resultToChangeStatus = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
+
+            $this->logger->debug(__FUNCTION__ . " - result start change status workflows: " . $i, [
+                'result' => $resultToChangeStatus
+            ]);
 
             // run workflow for sla notifications
-            $result = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level);
-            $io->out(print_r($result, true));
+            $resultSlaNotification = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level, $activities);
+
+            $this->logger->debug(__FUNCTION__ . " - result sla notification workflows: " . $i, [
+                'result' => $resultSlaNotification
+            ]);
+
             sleep(1);
         }
+
+        $this->logger->debug("*** end ***");
 
         return static::CODE_SUCCESS;
     }
@@ -133,7 +171,7 @@ class EscalationCommand extends Command
         return $packages;
     }
 
-    protected function getExpiredTicketsInPackage($package, $activities, $responsible): array
+    protected function getExpiredTicketsInPackage($package, $activities, $responsible, $io): array
     {
         $expiredTickets = [];
 
@@ -141,35 +179,46 @@ class EscalationCommand extends Command
         {
             $responsibleId = $activities[$ticket->action_id]['RESPONSIBLE_ID'];
             $responsibleDepartments = $responsible[$responsibleId]['UF_DEPARTMENT'];
-            if(count($responsibleDepartments) > 1)
+
+            $responseTime = 0;
+
+            // get min response time
+            foreach($responsibleDepartments as $departmentId)
             {
-                $responsibleDepartmentId = $responsibleDepartments[0];
-                $responseTime = $this->slaOptions[$responsibleDepartmentId]["{$this->level}RTKPI"];
-                foreach($responsibleDepartments as $departmentId)
+                if(isset($this->slaOptions[$departmentId]) && $responseTime > 0 && $this->slaOptions[$departmentId]["{$this->level}RTKPI"] < $responseTime)
                 {
-                    if($this->slaOptions[$departmentId] < $responseTime)
-                    {
-                        $responseTime = $responsibleDepartments[$departmentId]["{$this->level}RTKPI"];
-                        $responsibleDepartmentId = $departmentId;
-                    }
+                    $responseTime = $this->slaOptions[$departmentId]["{$this->level}RTKPI"];
+                    $responsibleDepartmentId = $departmentId;
+                }
+
+                if(isset($this->slaOptions[$departmentId]) && $responseTime === 0 && $this->slaOptions[$departmentId]["{$this->level}RTKPI"] > 0)
+                {
+                    $responseTime = $this->slaOptions[$departmentId]["{$this->level}RTKPI"];
+                    $responsibleDepartmentId = $departmentId;
                 }
             }
-            else
-            {
-                $responsibleDepartmentId = $responsibleDepartments[0];
-                $responseTime = $this->slaOptions[$responsibleDepartmentId]["{$this->level}RTKPI"];
-            }
 
-            $deadlineTime = $this->getDeadlineTime($responseTime);
-            if($ticket->modified < $deadlineTime)
+            if($responseTime && $ticket->created < $this->getDeadlineTime($responseTime))
             {
+                $ticket->ticketAttributes = $this->Bx24->getOneTicketAttributes($activities[$ticket->action_id]);
                 $ticket->entityId = $activities[$ticket->action_id]['OWNER_ID'];
                 $ticket->entityTypeId = $activities[$ticket->action_id]['OWNER_TYPE_ID'];
-                $entityType = strtolower($this->Bx24::MAP_ENTITIES[$ticket->entityTypeId]);
-                $ticket->slaNotificationTemplateId = $this->slaOptions[$responsibleDepartmentId]["{$entityType}Template"];
-                $ticket->responsibleUsers = $this->slaOptions[$responsibleDepartmentId]["{$this->level}NotificationUsers"];
-                $ticket->responsibleId = $responsibleId;
-                $ticket->changeStatusTemplateId = $this->HelpdeskOptionsTable->getOption('notificationChangeTicketStatus' . ucfirst($entityType), $this->memberId)->value;
+                $entityType = strtolower($this->Bx24::MAP_ENTITIES[$ticket->ticketAttributes['ENTITY_TYPE_ID']]);
+
+                if($ticket->ticketAttributes['ENTITY_TYPE_ID'] == $this->Bx24::OWNER_TYPE_DEAL)
+                {
+                    $ticket->slaNotificationTemplateId = 0;
+                    $ticket->responsibleUsers = [];
+                    $ticket->responsibleId = $responsibleId;
+                    $ticket->responsibleDepartmentId = $responsibleDepartmentId;
+                    $ticket->changeStatusTemplateId = 0;
+                } else {
+                    $ticket->slaNotificationTemplateId = $this->slaOptions[$responsibleDepartmentId]["{$entityType}Template"];
+                    $ticket->responsibleUsers = $this->slaOptions[$responsibleDepartmentId]["{$this->level}NotificationUsers"];
+                    $ticket->responsibleId = $responsibleId;
+                    $ticket->responsibleDepartmentId = $responsibleDepartmentId;
+                    $ticket->changeStatusTemplateId = $this->HelpdeskOptionsTable->getOption('notificationChangeTicketStatus' . ucfirst($entityType), $this->memberId)->value;
+                }
 
                 $expiredTickets[] = $ticket;
             }
