@@ -161,4 +161,18 @@ class TicketStatusesTable extends Table
             'mark' => $mark
         ]);
     }
+
+    public function getStatusesByMemberIdAndMarks(string $memberId, array $marks = [])
+    {
+        $statuses = $this->find()->where([
+                'member_id' => $memberId,
+                'mark IN' => $marks
+            ])->toArray();
+        return $statuses;
+    }
+
+    public function getEscalatedStatus($memberId)
+    {
+        return $this->find()->where(['member_id' => $memberId, 'mark' => static::MARK_ESCALATED])->first();
+    }
 }

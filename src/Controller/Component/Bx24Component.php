@@ -375,6 +375,48 @@ class Bx24Component extends Component
         return $response['result'];
     }
 
+    public function getActivitiesFromCommand(array $ids): array
+    {
+        $this->bx24Logger->debug(__FUNCTION__ . ' - input data', [
+            'ids' => $ids
+        ]);
+
+        $arParams = [
+            'filter' => [
+                'ID' => $ids,
+            ],
+            'select' => [
+                'ID',
+                'SUBJECT',
+                'DESCRIPTION',
+                'CREATED',
+                'COMPLETED',
+                'PROVIDER_ID',
+                'PROVIDER_PARAMS',
+                'OWNER_ID',
+                'OWNER_TYPE_ID',
+                'RESPONSIBLE_ID',
+                'COMMUNICATIONS'
+            ]
+        ];
+
+        $activities = [];
+        $result = $this->obBx24App->call('crm.activity.list', $arParams);
+
+        $this->bx24Logger->debug(__FUNCTION__ . ' - result data', [
+            'result' => $result
+        ]);
+
+        if($result['result'])
+        {
+            foreach($result['result'] as $activity)
+            {
+                $activities[$activity['ID']] = $activity;
+            }
+        }
+        return $activities;
+    }
+
     public function getActivityAndRelatedDataById($activityId)
     {
         $arResult = [
@@ -1915,6 +1957,111 @@ class Bx24Component extends Component
         ]);
 
         return $result['result'] ?? 0;
+    }
+
+    public function startWorkflowsToExpiredTickets($tickets, $level, $activities)
+    {
+        $arResult = [];
+        $document = [
+            self::OWNER_TYPE_CONTACT => 'CCrmDocumentContact',
+            self::OWNER_TYPE_COMPANY => 'CCrmDocumentCompany'
+        ];
+
+        foreach($tickets as $ticket)
+        {
+            if($ticket->slaNotificationTemplateId)
+            {
+                $arUsers = [];
+                foreach($ticket->responsibleUsers as $userId => $userName)
+                {
+                    $arUsers[] = 'user_' . $userId;
+                }
+
+                $arParams = [
+                    'TEMPLATE_ID' => $ticket->slaNotificationTemplateId,
+                    'DOCUMENT_ID' => [
+                        'crm',
+                        $document[$ticket->ticketAttributes['ENTITY_TYPE_ID']],
+                        $ticket->ticketAttributes['customer']['id']
+                    ],
+                    'PARAMETERS' => [
+                        'level' => $level,
+                        'users' => $arUsers,
+                        'ticketNumber' => 'GS-' . $ticket['id'],
+                        'ticketSubject' => $activities[$ticket->action_id]['SUBJECT'],
+                        'ticketResponsibleId' => 'user_' . $ticket->responsibleId,
+                    ]
+                ];
+
+                $this->obBx24App->addBatchCall('bizproc.workflow.start', $arParams, function($result) use (&$arResult, $arParams)
+                {
+                    if($result['result'])
+                    {
+                        $arResult[] = $result['result'];
+                    }
+                    $this->bx24Logger->debug("startWorkflowsToExpiredTickets - bizproc.workflow.start", [
+                        'arParams' => $arParams,
+                        'result' => $result
+                    ]);
+                });
+            }
+        }
+        $this->obBx24App->processBatchCalls();
+        $this->bx24Logger->debug(__FUNCTION__ . " - arResult", ['arResult' => $arResult]);
+
+        return $arResult;
+    }
+
+    public function startWorkflowsToChangeStatuses($tickets, $activities, $status)
+    {
+        $arResult = [];
+        $document = [
+            self::OWNER_TYPE_CONTACT => 'CCrmDocumentContact',
+            self::OWNER_TYPE_COMPANY => 'CCrmDocumentCompany'
+        ];
+
+        foreach($tickets as $ticket)
+        {
+            if($ticket->changeStatusTemplateId)
+            {
+                $templateParameters = [
+                    'eventType' => 'notificationChangeTicketStatus',
+                    'ticketStatus' => $status->name,
+                    'ticketNumber' => 'GS-' . $ticket['id'],
+                    'ticketSubject' => $activities[$ticket->action_id]['SUBJECT'],
+                    'ticketResponsibleId' => 'user_' . $ticket->responsibleId,
+                    'answerType' => '',
+                    'sourceType' => $ticket['source_type_id']
+                ];
+
+                $arParams = [
+                    'TEMPLATE_ID' => $ticket->changeStatusTemplateId,
+                    'DOCUMENT_ID' => [
+                        'crm',
+                        $document[$ticket->ticketAttributes['ENTITY_TYPE_ID']],
+                        $ticket->ticketAttributes['customer']['id']
+                    ],
+                    'PARAMETERS' => $templateParameters
+                ];
+
+                $this->obBx24App->addBatchCall('bizproc.workflow.start', $arParams, function($result) use (&$arResult, $arParams)
+                {
+                    if($result['result'])
+                    {
+                        $arResult[] = $result['result'];
+                    }
+
+                    $this->bx24Logger->debug("startWorkflowsToChangeStatuses - bizproc.workflow.start", [
+                        'arParams' => $arParams,
+                        'result' => $result
+                    ]);
+                });
+            }
+        }
+        $this->obBx24App->processBatchCalls();
+        $this->bx24Logger->debug(__FUNCTION__ . " - arResult", ['arResult' => $arResult]);
+
+        return $arResult;
     }
 
     public function searchActivitiesByTicketNumber($ticketNumber): array
