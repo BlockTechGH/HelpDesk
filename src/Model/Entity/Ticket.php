@@ -39,5 +39,6 @@ class Ticket extends Entity
         'source_id' => true,
         'ticket_status' => true,
         'ticket_category' => true,
+        'sla_notified' => true,
     ];
 }

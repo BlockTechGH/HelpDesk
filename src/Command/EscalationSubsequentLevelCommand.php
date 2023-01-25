@@ -12,16 +12,18 @@ use Cake\Controller\ComponentRegistry;
 use App\Controller\Component\Bx24Component;
 use App\Controller\CommandController;
 
-class EscalationInitialLevelCommand extends Command
+class EscalationSubsequentLevelCommand extends Command
 {
     private $memberId;
     private $packageLength = 50;
-    private $level = 'initial';
+    private $level = 'subsequent';
     private $logger;
+    private $commandController;
+    private $slaOptions;
 
     public static function getDescription(): string
     {
-        return 'Command for the Initial level of escalation';
+        return 'Command for the subsequent level of escalation';
     }
 
     public function initialize(): void
@@ -50,8 +52,8 @@ class EscalationInitialLevelCommand extends Command
         $this->Bx24 = new Bx24Component($registry);
 
         // logger
-        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'escalation_initial_level.log';
-        $this->logger = new Logger('EscalationInitialLevel');
+        $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'escalation_subsequent_level.log';
+        $this->logger = new Logger('EscalationSubsequentLevel');
         $this->logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
     }
 
@@ -59,7 +61,6 @@ class EscalationInitialLevelCommand extends Command
     {
         $this->logger->debug("*** start ***");
 
-        $this->slaOptions = $this->getSlaOptionsValue();
         if(!$this->slaOptions)
         {
             $io->error('SLA settings not received, please check member_id');
@@ -69,10 +70,10 @@ class EscalationInitialLevelCommand extends Command
         $minLevelResponseTime = $this->commandController->getMinLevelResponseTime();
         $deadlineTime = $this->commandController->getDeadlineTime($minLevelResponseTime);
 
-        $statuses = $this->TicketStatusesTable->getStatusesByMemberIdAndMarks($this->memberId, [$this->TicketStatusesTable::MARK_FINAL, $this->TicketStatusesTable::MARK_ESCALATED]);
+        $statuses = $this->TicketStatusesTable->getStatusesByMemberIdAndMarks($this->memberId, [$this->TicketStatusesTable::MARK_ESCALATED]);
         $statusIds = array_column($statuses, 'id');
 
-        $levelTickets = $this->TicketsTable->getTicketsExcludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $this->memberId);
+        $levelTickets = $this->TicketsTable->getTicketsIncludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $this->memberId);
         $packages = $this->commandController->getTicketPackages($levelTickets);
 
         foreach($packages as $i => $package)
@@ -113,20 +114,12 @@ class EscalationInitialLevelCommand extends Command
             ]);
 
             $expiredTicketIds = array_column($expiredTickets, 'id');
-            $escatatedStatus = $this->TicketStatusesTable->getEscalatedStatus($this->memberId);
 
-            // change ticket status in database
-            $resultChangeTicketStatus = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
+            // mark as SLA notified
+            $resultMarkAsNotified = $this->TicketsTable->markAsSlaNotified($expiredTicketIds);
 
-            $this->logger->debug(__FUNCTION__ . " - result change ticket status: " . $i, [
-                'result' => $resultChangeTicketStatus
-            ]);
-
-            // run workflow when changing ticket status
-            $resultToChangeStatus = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
-
-            $this->logger->debug(__FUNCTION__ . " - result start change status workflows: " . $i, [
-                'result' => $resultToChangeStatus
+            $this->logger->debug(__FUNCTION__ . " - result mark as SLA notified: " . $i, [
+                'result' => $resultMarkAsNotified
             ]);
 
             // run workflow for sla notifications
