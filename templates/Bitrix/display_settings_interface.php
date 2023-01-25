@@ -122,10 +122,10 @@
                     <div class="col-4"></div>
                     <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
                 </div>
-                <div class="row">
+                <div id="department" class="row" v-if="Object.keys(department.teams).length">
                     <div class="ml-2 col-12">
                         <h2 class="m-3"><?=__('Tickets per Agent/Team');?></h2>
-                        <table id="department" class="table table-hover table-bordered table-condensed">
+                        <table class="table table-hover table-bordered table-condensed">
                             <thead>
                                 <th>{{department.i18n.Agent}}</th>
                                 <th v-for="status in statuses">{{ status.name }}</th>
@@ -162,10 +162,10 @@
                         </table>
                     </div>
                 </div>
-                <div class="row">
+                <div id="customer" class="row" v-if="Object.keys(perCustomer).length">
                     <div class="ml-2 col-12">
                         <h2 class="m-3"><?=__('Tickets per customer');?></h2>
-                        <table id="customer" class="table table-hover table-bordered table-condensed">
+                        <table class="table table-hover table-bordered table-condensed">
                             <thead>
                                 <th>{{ department.i18n.Customer }}</th>
                                 <th>{{ department.i18n.Total }}</th>
@@ -710,6 +710,16 @@ $(document).ready(function () {
                     ).then(response => response.json());
 
                     // Put data for the table
+                    if(typeof statistics.teams === 'undefined')
+                    {
+                        statistics.teams = {};
+                    }
+
+                    if(typeof statistics.perCustomer === 'undefined')
+                    {
+                        statistics.perCustomer = {};
+                    }
+
                     this.department = Object.assign(this.department, statistics);
                     this.perCustomer = statistics.perCustomer;
                     console.log('Teams data', this.department);
