@@ -277,7 +277,17 @@ class TicketsTable extends Table
         return $this->find()->where([
             'member_id' => $memberId,
             'status_id NOT IN' => $statusIds,
-            'modified <' => $deadlineTime])
+            'created <' => $deadlineTime])
+            ->toArray();
+    }
+
+    public function getTicketsIncludingStatusesAndExceedingDeadlineTime($deadlineTime, $statusIds, $memberId): array
+    {
+        return $this->find()->where([
+            'member_id' => $memberId,
+            'status_id IN' => $statusIds,
+            'sla_notified !=' => 1, // only not notified
+            'created <' => $deadlineTime])
             ->toArray();
     }
 
@@ -287,6 +297,18 @@ class TicketsTable extends Table
         foreach($tickets as $ticket)
         {
             $ticket->status_id = $statusId;
+        }
+
+        $result = $this->saveMany($tickets);
+        return $result ? true : false;
+    }
+
+    public function markAsSlaNotified($ids)
+    {
+        $tickets = $this->find()->where(['id IN' => $ids])->all();
+        foreach($tickets as $ticket)
+        {
+            $ticket->sla_notified = 1;
         }
 
         $result = $this->saveMany($tickets);
