@@ -1980,4 +1980,32 @@ class Bx24Component extends Component
         }
         return $arResult;
     }
+
+    public function getActivitiesByFilterWithPagination(array $filter = [], array $order = ['created' => 'desc'], int $start = 0): array
+    {
+        $arResult = [];
+        $arParams = [
+            'filter' => $filter,
+            'select' => [
+                '*',
+                'COMMUNICATIONS'
+            ],
+            'order' => $order,
+            'start' => $start
+        ];
+
+        $result = $this->obBx24App->call('crm.activity.list', $arParams);
+        $this->bx24Logger->debug(__FUNCTION__ . " - activities", [
+            'result' => $result
+        ]);
+        if($result['result'])
+        {
+            foreach($result['result'] as $activity)
+            {
+                $arResult['activities'][$activity['ID']] = $activity;
+            }
+            $arResult['total'] = $result['total'];
+        }
+        return $arResult;
+    }
 }
