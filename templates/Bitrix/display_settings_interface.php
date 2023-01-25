@@ -573,7 +573,7 @@ $(document).ready(function () {
             labels: ['open', 'assigned', 'process', 'closed', 'escalated'],
             datasets: [
                 {
-                    data: [1, 1, 1, 1, 1],
+                    data: [0, 0, 0, 0, 0],
                     backgroundColor: <?=json_encode(array_column($statuses, 'color'));?>,
                 }
             ]
