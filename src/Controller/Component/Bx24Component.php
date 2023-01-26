@@ -2130,7 +2130,10 @@ class Bx24Component extends Component
 
     public function getActivitiesByFilterWithPagination(array $filter = [], array $order = ['created' => 'desc'], int $start = 0): array
     {
-        $arResult = [];
+        $arResult = [
+            'activities' => [],
+            'total' => 0
+        ];
         $arParams = [
             'filter' => $filter,
             'select' => [
