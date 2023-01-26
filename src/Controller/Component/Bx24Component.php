@@ -2094,7 +2094,10 @@ class Bx24Component extends Component
 
     public function getActivitiesByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $order = ['id' => 'desc'], $start = 0, $additionalFilter = []): array
     {
-        $arResult = [];
+        $arResult = [
+            'activities' => [],
+            'total' => 0
+        ];
         $arParams = [
             'filter' => [
                 'OWNER_ID' => $ownerId,
