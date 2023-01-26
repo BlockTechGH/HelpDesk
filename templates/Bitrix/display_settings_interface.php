@@ -763,6 +763,7 @@ $(document).ready(function () {
         $("#startDate").datetimepicker({
             format: 'MM/YYYY',
             viewMode: 'months',
+            useCurrent: false
         }).on('dp.change', function(e) {
             $('#finalDate').data("DateTimePicker").minDate(e.date);
             period.fetchData();
