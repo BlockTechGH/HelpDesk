@@ -35,7 +35,7 @@ class TicketsTable extends Table
 {
     public const PERIOD_MONTH = "month";
     public const PERIOD_DAY = "date";
-    public const PERIOD_BETWEEN = "";
+    public const PERIOD_BETWEEN = "between";
 
     /**
      * Initialize method
