@@ -396,17 +396,21 @@ class TicketController extends AppController
 
             $filter = [];
             if ($fromDate) {
-                if ($period == 'month')
+                if ($period == $this->Tickets::PERIOD_MONTH)
                 {
-                    $parts = explode('/', $fromDate);
-                    if(count($parts) == 2)
-                    {
-                        $fromDate = implode("/", [$parts[0], "01", $parts[1]]);
-                    }
+                    $fromDate = FrozenDate::createFromFormat('m/Y', $fromDate)->firstOfMonth();
+                    $filter['<=CREATED'] = $fromDate->modify('+ 1 month')->i18nFormat('yyyy-MM-dd HH:mm:ss');
                 }
-                $fromDate = FrozenDate::createFromFormat('m/d/Y', $fromDate)
-                    ->i18nFormat('yyyy-MM-dd HH:mm:ss');
-                $filter['>=CREATED'] = $fromDate;
+                elseif($period == $this->Tickets::PERIOD_DAY)
+                {
+                    $fromDate = FrozenDate::createFromFormat('m/d/Y', $fromDate);
+                    $filter['<=CREATED'] = $fromDate->modify('+1 day')->i18nFormat('yyyy-MM-dd HH:mm:ss');
+                }
+                else
+                {
+                    $fromDate = FrozenDate::createFromFormat('m/d/Y', $fromDate);
+                }
+                $filter['>=CREATED'] = $fromDate->i18nFormat('yyyy-MM-dd HH:mm:ss');
             }
             if ($toDate) {
                 $parts = explode('/', $toDate);
