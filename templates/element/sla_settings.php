@@ -19,10 +19,16 @@ if($serializeSlaSettings)
         }
     }
 }
+
+$arNeedFormatDepartments = [];
+foreach($arDepartments as $department)
+{
+    $arNeedFormatDepartments[$department['ID']] = $department['NAME'];
+}
 ?>
 <script type="text/javascript">
     window.slaData = {
-        arDepartments: <?= json_encode($arDepartments) ?>,
+        arDepartments: <?= json_encode($arNeedFormatDepartments) ?>,
         arContactWorkflowTemplates: <?= json_encode($arContactWorkflowTemplates) ?>,
         arCompanyWorkflowTemplates: <?= json_encode($arCompanyWorkflowTemplates) ?>,
         departmentsConfigs: <?= json_encode($arSlaSettings) ?>,
