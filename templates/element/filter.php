@@ -9,7 +9,6 @@
         </div>
         <div class='ml-3 datepicker-limit form-input date'>
             <input id="<?=$fromDatePickerId;?>" type='text' class="form-control" 
-                value="<?=date('m/y')?>" 
                 <?= !!$onDateChange ? "@change='{$onDateChange}'" : "" ?> />
             <span class="input-group-addon">
                 <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
