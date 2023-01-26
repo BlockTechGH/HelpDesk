@@ -99,10 +99,10 @@
                         >
                             <?=__('ID');?>
                         </th>
-                        <th data-column-id="name"><?=__('Name');?></th>
-                        <th data-column-id="responsible" data-formatter="person"><?=__('Responsible person');?></th>
-                        <th data-column-id="status_id" data-sortable="true" data-formatter="status"><?=__('Status');?></th>
-                        <th data-column-id="client" data-formatter="person"><?=__('Client');?></th>
+                        <th data-column-id="name" data-sortable="false"><?=__('Name');?></th>
+                        <th data-column-id="responsible" data-sortable="false"><?=__('Responsible person');?></th>
+                        <th data-column-id="status_id" data-sortable="false" data-formatter="status"><?=__('Status');?></th>
+                        <th data-column-id="client" data-sortable="false" data-formatter="person"><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                     </thead>
                 </table>

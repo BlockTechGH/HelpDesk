@@ -385,96 +385,135 @@ class TicketController extends AppController
             $this->disableAutoRender();
             $this->viewBuilder()->disableAutoLayout();
 
-            $current = (int)($this->request->getData('current') ?? 1);
+            $currentPage = (int)($this->request->getData('current') ?? 1);
             $rowCount = (int)($this->request->getData('rowCount'));
             $fromDate = $this->request->getData('from');
             $toDate = $this->request->getData('to');
             $searchPhrase = $this->request->getData('searchPhrase') ?? "";
             $period = $this->request->getData('period') ?? "month";
+            $order = $this->request->getData('sort');
+            $limitCount = $this->Bx24::BITRIX_REST_API_RESULT_LIMIT_COUNT;
 
-            $tickets = $this->Tickets->getTicketsFor(
-                $this->memberId,
-                // Custom filter 
-                [], 
-                // Order of tickets
-                ['created' => 'desc'],
-                // Pagination: [page, count]
-                [$current, $rowCount],
-                // Date diapazone 
-                $period,
-                $fromDate, 
-                $toDate
-            );
-            
-            $total = intval($tickets['total']);
-            $ticketActivityIDs = array_column($tickets['rows'], 'action_id');
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ticket activities', [
-                'id' => $ticketActivityIDs,
-                'total' => $total,
-                'rows' => count($tickets['rows']),
-            ]);
-            $ticketIds = count($ticketActivityIDs) > 0 ? range(0, count($ticketActivityIDs)-1) : [];
-            $ticketMap = array_combine($ticketActivityIDs, $ticketIds);
-
-            $extendInformation = $this->Bx24->getTicketAttributes($ticketActivityIDs);
-            if(!$extendInformation)
+            $filter = [];
+            if ($fromDate) {
+                if ($period == 'month')
+                {
+                    $parts = explode('/', $fromDate);
+                    if(count($parts) == 2)
+                    {
+                        $fromDate = implode("/", [$parts[0], "01", $parts[1]]);
+                    }
+                }
+                $fromDate = FrozenDate::createFromFormat('m/d/Y', $fromDate)
+                    ->i18nFormat('yyyy-MM-dd HH:mm:ss');
+                $filter['>=CREATED'] = $fromDate;
+            }
+            if ($toDate) {
+                $parts = explode('/', $toDate);
+                if(count($parts) == 2)
+                {
+                    $toDate = implode("/", [$parts[0], "01", $parts[1]]);
+                }
+                $toDate = FrozenDate::createFromFormat('m/d/Y', $toDate)
+                    ->modify('+ 1 day')
+                    ->i18nFormat('yyyy-MM-dd HH:mm:ss');
+                $filter['<=CREATED'] = $toDate;
+            }
+            if($searchPhrase)
             {
+                $filter['%SUBJECT'] = $searchPhrase;
+            }
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - filter params', [
+                'filter' => $filter,
+                'order' => $order
+            ]);
+
+            $sliceStart = ($currentPage - 1) * $rowCount;
+            $paginationStart = intval(floor($sliceStart / $limitCount)) * $limitCount;
+            if($sliceStart >= $paginationStart)
+            {
+                $sliceStart = $sliceStart - $paginationStart;
+            }
+
+            $result = $this->Bx24->getActivitiesByFilterWithPagination($filter, $order, $paginationStart);
+            $activities = $result['activities'];
+            $total = $result['total'];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
+                '$activities' => $activities
+            ]);
+
+            $tickets = [];
+
+            if($activities)
+            {
+                $activities = array_slice($activities, $sliceStart, $rowCount, true);
+
+                $responsibleIds = array_unique(array_map(function($activity) {
+                    return $activity['RESPONSIBLE_ID'];
+                }, array_values($activities)));
+
+                $arRowResponsible = $this->Bx24->getUserById($responsibleIds);
+                $responsible = [];
+                foreach($arRowResponsible as $id => $user)
+                {
+                    $responsible[$user['ID']] = $user;
+                    unset($arRowResponsible[$id]);
+                }
+
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - users', [
+                    'responsibleIds' => $responsibleIds,
+                    'responsible' => $responsible
+                ]);
+
+                $activitiesIds = array_unique(array_map(function($activity) {
+                    return $activity['ID'];
+                }, array_values($activities)));
+
+                $tickets = $this->Tickets->getByActivityIds($activitiesIds, $order);
+            }
+
+            if(!$tickets)
+            {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - no tickets found');
+
                 $result = [
-                    'total' => '',
-                    'rowCount' => '',
+                    'total' => 0,
+                    'rowCount' => 0,
                     'current' => 1,
                     'rows' => []
                 ];
                 return new Response(['body' => json_encode($result)]);
             }
 
-            $total = count($extendInformation);
-            $result = [
-                'total' => $tickets['total'],
-                'rowCount' => $rowCount,
-                'current' => $current,
-                'rows' => []
-            ];
-            $idsOfActivityWhatIsNotFound = [];
-            foreach($extendInformation as $id => $attributes)
+            foreach($tickets as $ticket)
             {
-                if(
-                    !$attributes 
-                    || !isset($ticketMap[$id]) 
-                    || ($searchPhrase && !mb_strstr($attributes['subject'], $searchPhrase))
-                )
-                {
-                    $idsOfActivityWhatIsNotFound[] = $id;
-                    $total--;
-                    continue;
-                }
-                $ticketNo = $ticketMap[$id];
-                unset($ticketMap[$id]); // One activity for one ticket
-                $ticket = $tickets['rows'][$ticketNo];
+                $responsibleId = $activities[$ticket->action_id]['RESPONSIBLE_ID'];
+                $responsibleName = implode(' ', [$responsible[$responsibleId]['NAME'], $responsible[$responsibleId]['LAST_NAME']]);
+                $client = $this->Bx24->getOneTicketAttributes($activities[$ticket->action_id]);
+
                 $result['rows'][] = [
                     'id' => $ticket['id'],
-                    'name' => $attributes['subject'],
-                    'responsible' => $attributes['responsible'] ?? [],
+                    'name' => $activities[$ticket->action_id]['SUBJECT'],
+                    'responsible' => $responsibleName,
                     'status_id' => $ticket->status_id,
-                    'client' => $attributes['customer'] ?? [],
-                    'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'client' => $client['customer'] ?? [],
+                    'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
             }
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities not found', [
-                'id' => $idsOfActivityWhatIsNotFound
+
+            $result = [
+                'total' => $total,
+                'current' => $currentPage,
+                'rowCount' => $rowCount,
+                'rows' => $result['rows']
+            ];
+
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'result' => $result
             ]);
 
-            $result['total'] = count($result['rows']);
-            if ($rowCount > 0) {
-                $result['rows'] = array_slice($result['rows'], ($current - 1)*$rowCount, $rowCount);
-            }
-            $result['rowCount'] = count($result['rows']);
-            $result['total'] = $total;
-            $this->TicketControllerLogger->debug('displaySettingsInterface - ' . __FUNCTION__ , [
-                'parameters' => $this->request->getParsedBody(),
-                'result.page.size' => count($result['rows']),
-                'result.total' => $result['total'],
-            ]);
             return new Response(['body' => json_encode($result)]);
         }
     }
