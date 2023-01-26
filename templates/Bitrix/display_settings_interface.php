@@ -88,6 +88,7 @@
                     'fromDatePickerId' => 'fromDate',
                     'toDatePickerId' =>   'toDate',
                     'onDateChange' => null,
+                    'value' => date('m/y')
                 ]);?>
                 <table id="ticketsGrid" 
                     class="table table-condensed table-hover table-striped"
@@ -116,6 +117,7 @@
                         'fromDatePickerId' => 'startDate',
                         'toDatePickerId' =>   'finalDate',
                         'onDateChange' => 'fetchData',
+                        'value' => ''
                     ]);?>
                 </div>
                 <div class="row">
