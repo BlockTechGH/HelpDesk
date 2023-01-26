@@ -394,6 +394,13 @@ class TicketController extends AppController
             $order = $this->request->getData('sort');
             $limitCount = $this->Bx24::BITRIX_REST_API_RESULT_LIMIT_COUNT;
 
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input filter params', [
+                'period' => $period,
+                'fromDate' => $fromDate,
+                'toDate' => $toDate,
+                'searchPhrase' => $searchPhrase
+            ]);
+
             $filter = [];
             if ($fromDate) {
                 if ($period == $this->Tickets::PERIOD_MONTH)
@@ -412,7 +419,7 @@ class TicketController extends AppController
                 }
                 $filter['>=CREATED'] = $fromDate->i18nFormat('yyyy-MM-dd HH:mm:ss');
             }
-            if ($toDate) {
+            if ($toDate && $period == $this->Tickets::PERIOD_BETWEEN) {
                 $parts = explode('/', $toDate);
                 if(count($parts) == 2)
                 {
