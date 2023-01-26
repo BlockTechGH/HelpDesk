@@ -393,6 +393,7 @@ class TicketController extends AppController
             $period = $this->request->getData('period') ?? "month";
             $order = $this->request->getData('sort');
             $limitCount = $this->Bx24::BITRIX_REST_API_RESULT_LIMIT_COUNT;
+            $arOurTypeActivityData = $this->Bx24->getActivityTypeAndName();
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input filter params', [
                 'period' => $period,
@@ -401,7 +402,10 @@ class TicketController extends AppController
                 'searchPhrase' => $searchPhrase
             ]);
 
-            $filter = [];
+            $filter = [
+                'PROVIDER_TYPE_ID' => $arOurTypeActivityData['TYPE_ID'],
+                'PROVIDER_ID' => 'REST_APP'
+            ];
             if ($fromDate) {
                 if ($period == $this->Tickets::PERIOD_MONTH)
                 {
