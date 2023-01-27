@@ -81,6 +81,7 @@ class TicketController extends AppController
         $entityId = intval($this->placement['ID']);
         $placementType = $data['PLACEMENT'];
         $contactTypes = ['PHONE', 'EMAIL'];
+
         switch($placementType)
         {
             case 'CRM_CONTACT_DETAIL_ACTIVITY':
@@ -163,7 +164,7 @@ class TicketController extends AppController
             $statusId = intval($data['status']);
             $status = $statuses[$statusId];
             $responsibleId = $data['responsible'] ?? $currentUser['ID'];
-            $ticketId = $this->Tickets->getLatestID() + 1;
+            $ticketId = $this->Tickets->getNextID();
             $postfix = $this->Bx24->getTicketSubject($ticketId);
 
             // Create ticket activity

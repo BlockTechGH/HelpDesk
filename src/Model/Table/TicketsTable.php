@@ -9,6 +9,7 @@ use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\ConnectionManager;
 use DateTime;
 
 /**
@@ -132,6 +133,16 @@ class TicketsTable extends Table
             $this->save($entity);
         }
         return $entity;
+    }
+
+    public function getNextID(): int
+    {
+        $connection = ConnectionManager::get('default');
+        $tableName = $this->getTable();
+
+        $result = $connection->execute("SELECT `auto_increment` FROM INFORMATION_SCHEMA.TABLES WHERE table_name = '{$tableName}'")->fetch('assoc');
+
+        return intval($result['auto_increment']);
     }
 
     public function getLatestID()

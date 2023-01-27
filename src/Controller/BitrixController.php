@@ -501,7 +501,7 @@ class BitrixController extends AppController
 
             if($yesCreateTicket)
             {
-                $ticketId = $this->Tickets->getLatestID() + 1;
+                $ticketId = $this->Tickets->getNextID();
                 $subject = $this->Bx24->getTicketSubject($ticketId);
                 if($activityId = $this->Bx24->createTicketBy($activity, $subject))
                 {
