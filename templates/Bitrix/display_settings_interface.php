@@ -571,12 +571,15 @@ const statuses = new Vue({
 $(document).ready(function () {
     BX24.init(function(){
         // Chart
+        let labels = <?= json_encode(array_column($statuses, 'name')); ?>;
+        let initialLabelsValues = new Array(labels.length).fill(0);
+        let statusesBgColors = <?= json_encode(array_column($statuses, 'color')); ?>;
         const chartData = {
-            labels: ['open', 'assigned', 'process', 'closed', 'escalated'],
+            labels:  labels,
             datasets: [
                 {
-                    data: [0, 0, 0, 0, 0],
-                    backgroundColor: <?=json_encode(array_column($statuses, 'color'));?>,
+                    data: initialLabelsValues,
+                    backgroundColor: statusesBgColors,
                 }
             ]
         };
@@ -729,7 +732,7 @@ $(document).ready(function () {
                     // make dota for chart
                     const dataset = {
                         data: [],
-                        backgroundColor: chartData.datasets[0].backgroundColor,
+                        backgroundColor: []
                     };
                 
                     chart.data.labels = [];
@@ -738,6 +741,14 @@ $(document).ready(function () {
                             const value = statistics.summary[label];
                             chart.data.labels.push(label);
                             dataset.data.push(value);
+
+                            let labelBgColor;
+                            Object.values(window.summary.statuses).forEach(function(status) {
+                                if(status.name == label) {
+                                    labelBgColor = status.color;
+                                }
+                            });
+                            dataset.backgroundColor.push(labelBgColor);
                         }
                     }
                     chart.data.datasets = [dataset];
