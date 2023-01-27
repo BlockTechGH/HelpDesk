@@ -575,8 +575,8 @@ class TicketController extends AppController
             if(!$extendInformation)
             {
                 $result = [
-                    'total' => '',
-                    'rowCount' => '',
+                    'total' => 0,
+                    'rowCount' => 0,
                     'current' => 1,
                     'rows' => []
                 ];
