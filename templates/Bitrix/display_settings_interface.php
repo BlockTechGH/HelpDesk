@@ -765,16 +765,34 @@ $(document).ready(function () {
             viewMode: 'months',
             useCurrent: false
         }).on('dp.change', function(e) {
-            $('#finalDate').data("DateTimePicker").minDate(e.date);
-            period.fetchData();
+            if(e.oldDate === null)
+            {
+                let dpData = $("#startDate").data("DateTimePicker");
+                let currentFormat = dpData.format();
+                dpData.date(e.date.format(currentFormat));
+            }
+            else
+            {
+                $('#finalDate').data("DateTimePicker").minDate(e.date);
+                period.fetchData();
+            }
         });
         $("#finalDate").datetimepicker({
             format: 'MM/YYYY',
             viewMode: 'months',
             useCurrent: false,
         }).on('dp.change', function(e) {
-            $('#startDate').data("DateTimePicker").maxDate(e.date);
-            period.fetchData();
+            if(e.oldDate === null)
+            {
+                let dpData = $("#finalDate").data("DateTimePicker");
+                let currentFormat = dpData.format();
+                dpData.date(e.date.format(currentFormat));
+            }
+            else
+            {
+                $('#startDate').data("DateTimePicker").maxDate(e.date);
+                period.fetchData();
+            }
         });
 
         // Grid
