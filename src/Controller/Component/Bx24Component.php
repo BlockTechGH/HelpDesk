@@ -1046,13 +1046,14 @@ class Bx24Component extends Component
                 'company' => '',
             ];
         }
+
         return [
             'id' => (int)$record["ID"],
             'abr' => $this->makeNameAbbreviature($record),
             'title' => $this->makeFullName($record),
             'email' => $record['EMAIL'],
             'phone' => $record['UF_PHONE_INNER'] ?? $record['PERSONAL_PHONE'] ?? $record['PERSONAL_MOBILE'] ?? $record['PHONE'] ?? "",
-            'company' => $record['WORK_COMPANY'],
+            'company' => $record['WORK_COMPANY'] ?? '',
             'photo' => $record['PERSONAL_PHOTO'] ?? '',
             'department' => $record['UF_DEPARTMENT'] ?? []
         ];

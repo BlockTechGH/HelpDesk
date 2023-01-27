@@ -28,15 +28,22 @@
 
                 <div class="form-group p-2">
                     <label for="ticket_status">{{ i18n.Status }}</label>
-                    <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
-                        <option 
-                            v-for="(status, index) in statuses"
-                            :selected="status.id == ticket.status_id"
-                            :value="status.id"
-                        >
-                            {{ status.name }}
-                        </option>
-                    </select>
+                    <div class="input-group">
+                        <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
+                            <option 
+                                v-for="(status, index) in statuses"
+                                :selected="status.id == ticket.status_id"
+                                :value="status.id"
+                            >
+                                {{ status.name }}
+                            </option>
+                        </select>
+                        <span class="input-group-addon" v-if="awaiting">
+                            <div class="d-flex align-items-center h-100">
+                                <span role="status" aria-hidden="true" class="spinner-border status-spiner ml-2"></span>
+                            </div>
+                        </span>
+                    </div>
                 </div>
             </div>
             <div class="col-9 border">

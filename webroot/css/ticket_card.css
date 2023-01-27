@@ -22,3 +22,8 @@ blockquote {
 .change-responsible {
     font-size: 14px;
 }
+
+.status-spiner {
+    width: 1.5rem;
+    height: 1.5rem;
+}
