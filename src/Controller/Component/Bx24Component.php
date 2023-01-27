@@ -33,6 +33,7 @@ class Bx24Component extends Component
     public const PROVIDER_SMS = 'CRM_SMS';
     public const CRM_NEW_ACTIVITY_EVENT = 'ONCRMACTIVITYADD';
     public const CRM_DELETE_ACTIVITY_EVENT = 'ONCRMACTIVITYDELETE';
+    public const CRM_UPDATE_ACTIVITY_EVENT = 'ONCRMACTIVITYUPDATE';
     public const TICKET_PREFIX = 'GS-';
     public const DATE_TIME_FORMAT = "m/d/Y h:i a";
 
@@ -236,8 +237,9 @@ class Bx24Component extends Component
 
         // Bind/unbind on OnCrmActivityAdd, OnCrmActivityDelete
         $arNeedEvents = [
-            'ONCRMACTIVITYADD' => 'crm_activity_handler',
-            'ONCRMACTIVITYDELETE' => 'crm_activity_handler',
+            self::CRM_NEW_ACTIVITY_EVENT => 'crm_activity_handler',
+            self::CRM_DELETE_ACTIVITY_EVENT => 'crm_activity_handler',
+            self::CRM_UPDATE_ACTIVITY_EVENT => 'crm_activity_handler',
         ];
 
         foreach($arInstalledData['eventList'] as $event)

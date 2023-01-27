@@ -570,6 +570,44 @@ class BitrixController extends AppController
             }
         }
 
+        if($event == Bx24Component::CRM_UPDATE_ACTIVITY_EVENT)
+        {
+            $arActivityData = $this->Bx24->getActivityAndRelatedDataById($idActivity);
+            $activity = $arActivityData['activity'];
+
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - update activity event', [
+                'id' => $idActivity,
+                'activity' => $activity,
+            ]);
+
+            $ourActivityTypeAndName = $this->Bx24->getActivityTypeAndName();
+
+            // we need set status close for ticket in db
+            if($activity && $activity['PROVIDER_ID'] == 'REST_APP' && $activity['PROVIDER_TYPE_ID'] == $ourActivityTypeAndName['TYPE_ID'])
+            {
+                $finalStatus = $this->Statuses->getFinalStatus($this->memberId);
+                $ticket = $this->Tickets->getByActivityIdAndMemberId($idActivity, $this->memberId);
+
+                if($activity['COMPLETED'] == "Y" && $ticket->status_id != $finalStatus->id)
+                {
+                    $resultUpdate = $this->Tickets->editTicket($ticket->id, $finalStatus->id, null, $this->memberId);
+
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - result update ticket', [
+                        'ticket' => $ticket,
+                        'resultUpdate' => $resultUpdate
+                    ]);
+
+                    // send event Ticket Changed Status
+                    $this->ticketAttributes = $this->Bx24->getOneTicketAttributes($activity);
+                    $event = new Event('Ticket.statusChanged', $this, [
+                        'ticket' => $resultUpdate,
+                        'status' => $finalStatus->name
+                    ]);
+                    $this->getEventManager()->dispatch($event);
+                }
+            }
+        }
+
         if($event == Bx24Component::CRM_DELETE_ACTIVITY_EVENT)
         {
             $result = $this->Tickets->deleteTicketByActionId($idActivity, $this->memberId);
@@ -689,7 +727,7 @@ class BitrixController extends AppController
             'ticketStatus' => $status,
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $this->ticketAttributes['subject'],
-            'ticketResponsibleId' => 'user_' . $this->ticketAttributes['responsible']['id'],
+            'ticketResponsibleId' => 'user_' . ($this->ticketAttributes['responsible']['id'] ?? $this->ticketAttributes['responsible']),
             'answerType' => '',
             'sourceType' => $ticket['source_type_id']
         ];

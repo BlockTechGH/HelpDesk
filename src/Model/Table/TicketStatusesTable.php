@@ -171,6 +171,16 @@ class TicketStatusesTable extends Table
         return $statuses;
     }
 
+    public function getFinalStatus(string $memberId)
+    {
+        $status = $this->find()->where([
+            'member_id' => $memberId,
+            'mark' => self::MARK_FINAL
+        ])->first();
+
+        return $status;
+    }
+
     public function getEscalatedStatus($memberId)
     {
         return $this->find()->where(['member_id' => $memberId, 'mark' => static::MARK_ESCALATED])->first();
