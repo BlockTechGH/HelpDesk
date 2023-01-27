@@ -40,7 +40,7 @@
                         </select>
                         <span class="input-group-addon" v-if="awaiting">
                             <div class="d-flex align-items-center h-100">
-                                <span role="status" aria-hidden="true" class="spinner-border status-spiner ml-2"></span>
+                                <span role="status" aria-hidden="true" class="spinner-border status-spiner text-primary ml-2"></span>
                             </div>
                         </span>
                     </div>
