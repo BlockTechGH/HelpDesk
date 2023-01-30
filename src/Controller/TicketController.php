@@ -55,6 +55,7 @@ class TicketController extends AppController
         $this->loadComponent('Bx24');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketStatuses = $this->getTableLocator()->get('TicketStatuses');
+        $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_controller.log';
         $this->TicketControllerLogger = new Logger('TicketController');
@@ -187,16 +188,34 @@ class TicketController extends AppController
                 'status' => __('Ticket was not created'),
             ];
             if ($activityId) {
-                $activity = $this->Bx24->getActivities([$activityId]);
+                $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
+                $activity = $activityInfo['activity'];
+                $bindings = $activityInfo['bindings'];
 
                 // Write into DB
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
-                    $activity[$activityId], 
+                    $activity,
                     1, 
                     $status['id'],
                     0
                 );
+                if($bindings)
+                {
+                    foreach($bindings as $binding)
+                    {
+                        if($binding['entityTypeId'] != $activity['OWNER_TYPE_ID'] || $binding['entityId'] != $activity['OWNER_ID'])
+                        {
+                            $entityId = $binding['entityId'];
+                            $entityTypeId = $binding['entityTypeId'];
+
+                            // write into ticket_bindings table
+                            $activityBinding = $this->TicketBindings->create($activityId, $entityId, $entityTypeId);
+                            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activity binding', ['activityBinding' => $activityBinding]);
+                        }
+                    }
+                }
+
                 $result = [
                     'status' => __('Ticket was created successful'), 
                     'ticket' => $activityId,
@@ -206,7 +225,7 @@ class TicketController extends AppController
                 $event = new Event('Ticket.created', $this, [
                     'ticket' => $ticketRecord,
                     'status' => $status->name,
-                    'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity[$activityId])
+                    'ticketAttributes' => $this->Bx24->getOneTicketAttributes($activity)
                 ]);
                 $this->getEventManager()->dispatch($event);
             }

@@ -76,6 +76,7 @@ class BitrixController extends AppController
         $this->Statuses = $this->getTableLocator()->get('TicketStatuses');
         $this->Categories = $this->getTableLocator()->get('TicketCategories');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
+        $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
@@ -509,6 +510,7 @@ class BitrixController extends AppController
                     //$activity = $this->Bx24->getActivityById($activityId);
                     $activityInfo = $this->Bx24->getActivityAndRelatedDataById($activityId);
                     $activity = $activityInfo['activity'];
+                    $bindings = $activityInfo['bindings'];
 
                     $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
                     $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
@@ -519,6 +521,22 @@ class BitrixController extends AppController
                         $status['id'],
                         (int)$prevActivityId
                     );
+                    if($bindings)
+                    {
+                        foreach($bindings as $binding)
+                        {
+                            if($binding['entityTypeId'] != $activity['OWNER_TYPE_ID'] || $binding['entityId'] != $activity['OWNER_ID'])
+                            {
+                                $activityId = $activity['ID'];
+                                $entityId = $binding['entityId'];
+                                $entityTypeId = $binding['entityTypeId'];
+
+                                // write into ticket_bindings table
+                                $activityBinding = $this->TicketBindings->create($activity['ID'], $entityId, $entityTypeId);
+                                $this->BxControllerLogger->debug(__FUNCTION__ . ' - write activity binding into DB', ['activityBinding' => $activityBinding]);
+                            }
+                        }
+                    }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - write ticket record into DB', [
                         'prevActivityId' => $prevActivityId,
                         'errors' => $ticketRecord->getErrors(),
