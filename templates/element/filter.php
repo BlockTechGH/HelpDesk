@@ -15,14 +15,13 @@
                 <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
             </span>
         </div>
-        <span :class="{'m-2': true, 'fade': true, 'show': picker.diapazone}">&mdash;</span>
+        <span :class="{'m-2': true, 'hidden': !picker.diapazone}">&mdash;</span>
         <div 
             id="<?=$toDatePickerId?>Picker"
-            :class='{"datepicker-limit": true, "date": true, "form-input": true, "fade": true, "show": picker.diapazone}' 
+            :class='{"datepicker-limit": true, "date": true, "form-input": true, "hidden": !picker.diapazone}'
         >
             <input
                 id="<?=$toDatePickerId;?>"
-                :disabled="!picker.diapazone"
                 type='text'
                 class="form-control"
                 <?= !!$onDateChange ? "@change='{$onDateChange}'" : "" ?> />
@@ -30,5 +29,6 @@
                 <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
             </span>
         </div>
+        <span v-if="awaiting" role="status" aria-hidden="true" class="spinner-border spinner-border-sm ml-2 mt-2"></span>
     </div>
 </form>

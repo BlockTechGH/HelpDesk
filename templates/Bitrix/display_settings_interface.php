@@ -122,7 +122,7 @@
                 </div>
                 <div class="row">
                     <div class="col-4"></div>
-                    <div class="col-4"><canvas id="summaryChart" class="ml-6"></canvas></div>
+                    <div class="col-4"><canvas id="summaryChart" class="ml-6 mt-4"></canvas></div>
                 </div>
                 <div id="department" class="row" v-if="Object.keys(department.teams).length">
                     <div class="ml-2 col-12">
@@ -412,6 +412,7 @@
             'closed' => __('Closed'),
             'escalated' => __('Escalated')
         ]);?>,
+        awaiting: false
     };
     window.summary = Object.assign(
         {
@@ -697,6 +698,7 @@ $(document).ready(function () {
             data: window.summary,
             methods: {
                 async fetchData() {
+                    period.awaiting = true;
                     var auth = BX24.getAuth();
                     const parameters = {
                         memberId: auth.member_id,
@@ -754,6 +756,7 @@ $(document).ready(function () {
                     chart.data.datasets = [dataset];
                     chart.options.plugins.title.text = '<?=__('Tickets per status summary. Total: ');?>' + statistics.total;
                     chart.update();
+                    period.awaiting = false;
                     drawSegmentValues();
                 },
                 selectFilterEntity(event) {
