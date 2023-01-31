@@ -256,30 +256,11 @@ class TicketController extends AppController
     public function displayCrmEntityTicketsInterface()
     {
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
-        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
-        $this->set('statuses', $statuses);
-        $this->set('domain', $this->domain);
-        $this->set('placementOptions', $this->placementOptions);
-        $this->set('place', $this->place);
-
-        if($this->request->is('ajax'))
+        if(!$this->request->is('ajax'))
         {
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
-            $this->disableAutoRender();
-            $this->viewBuilder()->disableAutoLayout();
-
             $data = $this->request->getData();
-            $currentPage = intval($this->request->getData('current'));
-            $rowCount = intval($this->request->getData('rowCount'));
-            $order = $this->request->getData('sort');
             $entityId = intval($this->placement['ID']);
             $placementType = $data['PLACEMENT'];
-
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - params', [
-                'entityId' => $entityId,
-                'data' => $data
-            ]);
-
             switch($placementType)
             {
                 case 'CRM_CONTACT_DETAIL_TAB':
@@ -307,14 +288,50 @@ class TicketController extends AppController
             $additionalFilter = [
                 'PROVIDER_TYPE_ID' => $arOurTypeActivityData['TYPE_ID']
             ];
+
+            $activityIds =  [];
+            $entityActivityIds = $this->Bx24->getActivityIdsByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $additionalFilter);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entityActivityIds', [
+                'entityActivityIds' => $entityActivityIds
+            ]);
+
+            $entityBindingsActivityIds = [];
+            $entityBindings = $this->TicketBindings->getBindingsByEntityIdAndEntityTypeId($entityId, $entityTypeId);
+            if($entityBindings)
+            {
+                $entityBindingsActivityIds = array_column($entityBindings, 'activity_id');
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - entityBindingsActivityIds', [
+                    'entityBindingsActivityIds' => $entityBindingsActivityIds
+                ]);
+            }
+            $activityIds = array_merge($entityActivityIds, $entityBindingsActivityIds);
+
+            $this->set('domain', $this->domain);
+            $this->set('placementOptions', $this->placementOptions);
+            $this->set('place', $this->place);
+            $this->set('activityIds', $activityIds);
+            $this->set('entityData', $entityData);
+        }
+        else
+        {
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ajax');
+            $this->disableAutoRender();
+            $this->viewBuilder()->disableAutoLayout();
+
+            $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+            $currentPage = intval($this->request->getData('current'));
+            $rowCount = intval($this->request->getData('rowCount'));
+            $order = $this->request->getData('sort');
+            $activityIds = $this->request->getData('activityIds');
+            $entityData = $this->request->getData('entityData');
+
             $start = ($currentPage - 1) * $rowCount;
-
-            $result = $this->Bx24->getActivitiesByOwnerIdAndOwnerTypeId($entityId, $entityTypeId, $order, $start, $additionalFilter);
-            $activities = $result['activities'];
-            $total = $result['total'];
-
+            $activitiesInfo = $this->Bx24->getActivitiesByFilterWithPagination(['ID' => $activityIds], $order, $start);
+            $activities = $activitiesInfo['activities'];
+            $total = $activitiesInfo['total'];
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
-                'activities' => $activities
+                'activities' => $activities,
+                'total' => $total
             ]);
 
             $tickets = [];

@@ -2134,6 +2134,48 @@ class Bx24Component extends Component
         return $arResult;
     }
 
+    public function getActivityIdsByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $additionalFilter = []): array
+    {
+        $activities = [];
+        $arParams = [
+            'filter' => [
+                'OWNER_ID' => $ownerId,
+                'OWNER_TYPE_ID' => $ownerTypeId,
+            ],
+            'select' => [
+                'ID',
+            ],
+            'start' => 0
+        ];
+
+        if($additionalFilter)
+        {
+            $arParams['filter'] = array_merge($arParams['filter'], $additionalFilter);
+        }
+
+        $this->obBx24App->addBatchCall('crm.activity.list', $arParams, function ($result) use (&$arParams, &$activities) {
+            $this->bx24Logger->debug(__FUNCTION__ . " - result", [
+                'result' => $result
+            ]);
+            foreach ($result['result'] as $activity) {
+                $activities[] = (int)$activity['ID'];
+            }
+            for ($i = $result['next']; $i < $result['total']; $i += $result['next']) {
+                $arParams['start'] = $i;
+                $this->obBx24App->addBatchCall('crm.activity.list', $arParams, function ($result) use (&$activities) {
+                    foreach ($result['result'] as $activity) {
+                        $activities[] = (int)$activity['ID'];
+                    }
+                });
+            }
+        });
+        $this->obBx24App->processBatchCalls();
+        $this->bx24Logger->debug(__FUNCTION__ . " - activities", [
+            'activities' => $activities
+        ]);
+        return $activities;
+    }
+
     public function getActivitiesByFilterWithPagination(array $filter = [], array $order = ['created' => 'desc'], int $start = 0): array
     {
         $arResult = [

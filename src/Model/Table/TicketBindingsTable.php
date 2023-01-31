@@ -87,6 +87,6 @@ class TicketBindingsTable extends Table
 
     public function getBindingsByEntityIdAndEntityTypeId($entityId, $entityTypeId)
     {
-        return $this->find()->where(['entity_id' => $entityId, 'entity_type_id' => $entityTypeId])->all();
+        return $this->find()->where(['entity_id' => $entityId, 'entity_type_id' => $entityTypeId])->toArray();
     }
 }

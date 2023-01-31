@@ -26,6 +26,10 @@
     // Grid
 BX24.ready(function()
 {
+    window.data = {
+        activityIds: <?=json_encode($activityIds);?>,
+        entityData: <?=json_encode($entityData);?>
+    };
     var auth = BX24.getAuth();
     if(!auth)
     {
@@ -52,6 +56,8 @@ BX24.ready(function()
                 AUTH_EXPIRES: auth.expires_in,
                 PLACEMENT: '<?= $place ?>',
                 PLACEMENT_OPTIONS: '<?= $placementOptions ?>',
+                activityIds: window.data.activityIds,
+                entityData: window.data.entityData
             };
 
             return request;
