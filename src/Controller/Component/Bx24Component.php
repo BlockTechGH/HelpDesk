@@ -2154,7 +2154,7 @@ class Bx24Component extends Component
         }
 
         $this->obBx24App->addBatchCall('crm.activity.list', $arParams, function ($result) use (&$arParams, &$activities) {
-            $this->bx24Logger->debug(__FUNCTION__ . " - result", [
+            $this->bx24Logger->debug("getActivityIdsByOwnerIdAndOwnerTypeId - first request", [
                 'result' => $result
             ]);
             foreach ($result['result'] as $activity) {
@@ -2163,6 +2163,9 @@ class Bx24Component extends Component
             for ($i = $result['next']; $i < $result['total']; $i += $result['next']) {
                 $arParams['start'] = $i;
                 $this->obBx24App->addBatchCall('crm.activity.list', $arParams, function ($result) use (&$activities) {
+                    $this->bx24Logger->debug("getActivityIdsByOwnerIdAndOwnerTypeId - next request", [
+                        'result' => $result
+                    ]);
                     foreach ($result['result'] as $activity) {
                         $activities[] = (int)$activity['ID'];
                     }
