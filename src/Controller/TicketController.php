@@ -305,6 +305,8 @@ class TicketController extends AppController
                 ]);
             }
             $activityIds = array_merge($entityActivityIds, $entityBindingsActivityIds);
+            rsort($activityIds);
+            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activityIds', ['activityIds' => $activityIds]);
 
             $this->set('domain', $this->domain);
             $this->set('placementOptions', $this->placementOptions);
@@ -325,16 +327,16 @@ class TicketController extends AppController
             $activityIds = $this->request->getData('activityIds');
             $entityData = $this->request->getData('entityData');
 
-            $start = ($currentPage - 1) * $rowCount;
-            $activitiesInfo = $this->Bx24->getActivitiesByFilterWithPagination(['ID' => $activityIds], $order, $start);
-            $activities = $activitiesInfo['activities'];
-            $total = $activitiesInfo['total'];
-            $this->TicketControllerLogger->debug(__FUNCTION__ . ' - activities', [
-                'activities' => $activities,
-                'total' => $total
-            ]);
-
             $tickets = [];
+            $activities = [];
+
+            if($activityIds)
+            {
+                $start = ($currentPage - 1) * $rowCount;
+                $total = count($activityIds);
+                $activityIds = array_slice($activityIds, $start, $rowCount);
+                $activities = $this->Bx24->getActivities($activityIds);
+            }
 
             if($activities)
             {
@@ -399,9 +401,6 @@ class TicketController extends AppController
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - data', [
                 'statuses' => $statuses,
-                'data' => $data,
-                'entityId' => $entityId,
-                'entityTypeId' => $entityTypeId,
                 'entityData' => $entityData,
                 'activities' => $activities,
                 'responsibleIds' => $responsibleIds,
