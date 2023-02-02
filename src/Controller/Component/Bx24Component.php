@@ -2170,6 +2170,12 @@ class Bx24Component extends Component
         }
 
         $callback = function ($result) use (&$activities, &$prevId, &$finish) {
+            $this->bx24Logger->debug("getActivityIdsByOwnerIdAndOwnerTypeId - callback", [
+                'finish' => $finish,
+                'prevId' => $prevId,
+                'result' => $result
+            ]);
+
             if($result['result'])
             {
                 $last = end($result['result']);
