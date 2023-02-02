@@ -2134,6 +2134,84 @@ class Bx24Component extends Component
         return $arResult;
     }
 
+    public function getBatch(int $prevId, string $method, array $params, callable $callback): void
+    {
+        $arParams = $params;
+        $arParams['filter'][] = ['>ID' => $prevId];
+        $arParams['start'] = -1;
+
+        for($i = 0; $i < 50; $i++)
+        {
+            $idx = $this->obBx24App->addBatchCall($method, $arParams, $callback);
+            $arParams['filter']['>ID'] = '$result[' . $idx. '][49][ID]';
+        }
+    }
+
+    public function getActivityIdsByOwnerIdAndOwnerTypeId($ownerId, $ownerTypeId, $additionalFilter = []): array
+    {
+        $prevId = 0;
+        $finish = false;
+        $method = 'crm.activity.list';
+        $activities = [];
+
+        $arParams = [
+            'filter' => [
+                'OWNER_ID' => $ownerId,
+                'OWNER_TYPE_ID' => $ownerTypeId,
+            ],
+            'select' => [
+                'ID',
+            ]
+        ];
+
+        if($additionalFilter)
+        {
+            $arParams['filter'] = array_merge($arParams['filter'], $additionalFilter);
+        }
+
+        $callback = function ($result) use (&$activities, &$prevId, &$finish) {
+            $this->bx24Logger->debug("getActivityIdsByOwnerIdAndOwnerTypeId - callback", [
+                'finish' => $finish,
+                'prevId' => $prevId,
+                'result' => $result
+            ]);
+
+            if($result['result'])
+            {
+                $last = end($result['result']);
+                if($last['ID'] > $prevId)
+                {
+                    $prevId = $last['ID'];
+                    foreach ($result['result'] as $activity) {
+                        $activities[] = (int)$activity['ID'];
+                    }
+                }
+                else
+                {
+                    $finish = true;
+                }
+            }
+            else
+            {
+                $finish = true;
+            }
+        };
+
+        while(!$finish)
+        {
+            $this->getBatch($prevId, $method, $arParams, $callback, $finish);
+            $this->obBx24App->processBatchCalls();
+            $this->bx24Logger->debug("getActivityIdsByOwnerIdAndOwnerTypeId - finish", [
+                'finish' => $finish,
+            ]);
+        }
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - activities", [
+            'activities' => $activities
+        ]);
+        return $activities;
+    }
+
     public function getActivitiesByFilterWithPagination(array $filter = [], array $order = ['created' => 'desc'], int $start = 0): array
     {
         $arResult = [

@@ -12,12 +12,12 @@
 <div>
     <table id="ticketsGrid" class="table table-condensed table-hover table-striped">
         <thead>
-            <th data-column-id="id" data-header-css-class="header-id" data-order="desc"><?=__('ID');?></th>
+            <th data-column-id="id" data-sortable = "false" data-header-css-class="header-id" data-order="desc"><?=__('ID');?></th>
             <th data-column-id="name" data-sortable = "false"><?=__('Name');?></th>
             <th data-column-id="responsible" data-sortable = "false"><?=__('Responsible person');?></th>
             <th data-column-id="status" data-sortable = "false"><?=__('Status');?></th>
             <th data-column-id="client" data-sortable = "false"><?=__('Client');?></th>
-            <th data-column-id="created"><?=__('Created');?></th>
+            <th data-column-id="created" data-sortable = "false"><?=__('Created');?></th>
         </thead>
     </table>
 </div>
@@ -26,6 +26,10 @@
     // Grid
 BX24.ready(function()
 {
+    window.data = {
+        activityIds: <?=json_encode($activityIds);?>,
+        entityData: <?=json_encode($entityData);?>
+    };
     var auth = BX24.getAuth();
     if(!auth)
     {
@@ -52,6 +56,8 @@ BX24.ready(function()
                 AUTH_EXPIRES: auth.expires_in,
                 PLACEMENT: '<?= $place ?>',
                 PLACEMENT_OPTIONS: '<?= $placementOptions ?>',
+                activityIds: window.data.activityIds,
+                entityData: window.data.entityData
             };
 
             return request;

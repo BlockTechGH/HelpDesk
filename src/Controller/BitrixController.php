@@ -383,6 +383,9 @@ class BitrixController extends AppController
                 (int)$data['ticket']['category_id'],
                 $this->memberId
             );
+            if ($ticket) {
+                $ticket['created'] = $ticket['created']->format(Bx24Component::DATE_TIME_FORMAT);
+            }
             $status = $this->Statuses->get($data['ticket']['status_id']);
             $active = false;
             if ($status->mark != $oldMark)
