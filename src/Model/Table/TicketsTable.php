@@ -140,9 +140,14 @@ class TicketsTable extends Table
         $connection = ConnectionManager::get('default');
         $tableName = $this->getTable();
 
-        $result = $connection->execute("SELECT `auto_increment` FROM INFORMATION_SCHEMA.TABLES WHERE table_name = '{$tableName}'")->fetch('assoc');
+        $result = $connection->execute("SELECT `AUTO_INCREMENT` FROM INFORMATION_SCHEMA.TABLES WHERE table_name = '{$tableName}'")->fetch('assoc');
 
-        return intval($result['auto_increment']);
+        if(array_key_exists('AUTO_INCREMENT', $result))
+        {
+            return intval($result['AUTO_INCREMENT']);
+        }
+
+        return $this->getLatestID() + 1;
     }
 
     public function getLatestID()
