@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.0/jquery.bootgrid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.fa.min.js" integrity="sha512-9n0UG6HszJFRxzkSCxUItSZeu48ecVvY95pRVu0GDhRspSavKvKcm04U96VYeNLPSb2lCDOZ5wXCDbowg1gHhg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" integrity="sha256-+8RZJua0aEWg+QVVKg4LEzEEm/8RFez5Tb4JBNiV5xA=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" integrity="sha256-+8RZJua0aEWg+QVVKg4LEzEEm/8RFez5Tb4JBNiV5xA=" crossorigin="anonymous"></script>
 <?php $this->end();?>
 
 <div id="setting_container" class="row mb-3">
@@ -100,7 +100,7 @@
                         >
                             <?=__('ID');?>
                         </th>
-                        <th data-column-id="name" data-sortable="false"><?=__('Name');?></th>
+                        <th data-column-id="name" data-sortable="false" data-formatter="ticket_link"><?=__('Name');?></th>
                         <th data-column-id="responsible" data-sortable="false"><?=__('Responsible person');?></th>
                         <th data-column-id="status_id" data-sortable="false" data-formatter="status"><?=__('Status');?></th>
                         <th data-column-id="client" data-sortable="false" data-formatter="person"><?=__('Client');?></th>
@@ -815,6 +815,10 @@ $(document).ready(function () {
             formatters: {
                 'person': (column, row) => row[column.id]?.title,
                 'status': (column, row) => window.data.statuses[row.status_id].name,
+                'ticket_link': function(column, row)
+                {
+                    return '<a href="#" onclick="BX24.openApplication({action: \'view_activity\', activity_id: ' + row.activity_id + '});">' + row.name + '</a>';
+                }
             },
             templates: {
                 header: "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\"><div class=\"actionBar\"><p class=\"{{css.search}}\"></p><p class=\"{{css.actions}}\"></p></div></div></div>",
@@ -838,7 +842,7 @@ $(document).ready(function () {
                 request['to'] = $('#toDate').val();
                 request['auth'] = window.data.required;
                 return request;
-            },
+            }
         });
         grid.on("load.rs.jquery.bootgrid", function (e)
         {

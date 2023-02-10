@@ -63,7 +63,7 @@ return static function (RouteBuilder $routes) {
             [
                 'controller' => 'Bitrix',
                 'action' => 'displaySettingsInterface'
-            ],
+            ], ['_name' => 'main']
         );
 
         $builder->connect('/install',

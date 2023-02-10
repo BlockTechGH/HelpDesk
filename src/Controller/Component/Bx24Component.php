@@ -178,7 +178,8 @@ class Bx24Component extends Component
             'CRM_DEAL_DETAIL_ACTIVITY',
             'CRM_CONTACT_DETAIL_TAB',
             'CRM_COMPANY_DETAIL_TAB',
-            'CRM_DEAL_DETAIL_TAB'
+            'CRM_DEAL_DETAIL_TAB',
+            'REST_APP_URI'
         ];
 
         $placementList = isset($arInstalledData['placementList']) ? $arInstalledData['placementList'] : [];
@@ -203,6 +204,7 @@ class Bx24Component extends Component
         }
 
         $crmInterfaceHandler = $this->getRouteUrl('crm_interface');
+        $crmTicketCardHandler = $this->getRouteUrl('main');
         $crmEntityTicketsInterfaceHandler = $this->getRouteUrl('crm_entity_tickets_interface');
         foreach($arNeedPlacements as $placement)
         {
@@ -214,6 +216,9 @@ class Bx24Component extends Component
                     break;
                 case 'TAB':
                     $handler = $crmEntityTicketsInterfaceHandler;
+                    break;
+                case 'URI':
+                    $handler = $crmTicketCardHandler;
                     break;
             }
             $arBindParams = [
@@ -2241,5 +2246,10 @@ class Bx24Component extends Component
             $arResult['total'] = $result['total'];
         }
         return $arResult;
+    }
+
+    public function getAppCode()
+    {
+        return $this->obBx24App->getApplicationId();
     }
 }

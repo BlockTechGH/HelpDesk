@@ -546,6 +546,7 @@ class TicketController extends AppController
 
                 $result['rows'][] = [
                     'id' => $ticket['id'],
+                    'activity_id' => $ticket->action_id,
                     'name' => $activities[$ticket->action_id]['SUBJECT'],
                     'responsible' => $responsibleName,
                     'status_id' => $ticket->status_id,
