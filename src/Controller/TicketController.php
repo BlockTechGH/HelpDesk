@@ -883,6 +883,7 @@ class TicketController extends AppController
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationChangeResponsible',
+            'activityId' => $ticket['action_id'],
             'ticketStatus' => $status,
             'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
@@ -950,6 +951,7 @@ class TicketController extends AppController
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationCreateTicket',
+            'activityId' => $ticket['action_id'],
             'ticketStatus' => $status,
             'ticketNumber' => $this->Bx24::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],

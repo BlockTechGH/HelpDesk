@@ -745,6 +745,7 @@ class BitrixController extends AppController
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationChangeTicketStatus',
+            'activityId' => $ticket['action_id'],
             'ticketStatus' => $status,
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $this->ticketAttributes['subject'],
@@ -815,6 +816,7 @@ class BitrixController extends AppController
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationReceivingCustomerResponse',
+            'activityId' => $ticket['action_id'],
             'ticketStatus' => $status,
             'ticketNumber' => 'GS-' . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],
@@ -877,6 +879,7 @@ class BitrixController extends AppController
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationCreateTicket',
+            'activityId' => $ticket['action_id'],
             'ticketStatus' => $status,
             'ticketNumber' => Bx24Component::TICKET_PREFIX . $ticket['id'],
             'ticketSubject' => $ticketAttributes['subject'],

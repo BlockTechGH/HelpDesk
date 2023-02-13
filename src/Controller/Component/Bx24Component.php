@@ -1998,6 +1998,7 @@ class Bx24Component extends Component
                         'ticketNumber' => 'GS-' . $ticket['id'],
                         'ticketSubject' => $activities[$ticket->action_id]['SUBJECT'],
                         'ticketResponsibleId' => 'user_' . $ticket->responsibleId,
+                        'activityId' => $ticket->action_id
                     ]
                 ];
 
@@ -2034,6 +2035,7 @@ class Bx24Component extends Component
             {
                 $templateParameters = [
                     'eventType' => 'notificationChangeTicketStatus',
+                    'activityId' => $ticket->action_id,
                     'ticketStatus' => $status->name,
                     'ticketNumber' => 'GS-' . $ticket['id'],
                     'ticketSubject' => $activities[$ticket->action_id]['SUBJECT'],
