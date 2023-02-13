@@ -8,9 +8,9 @@
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
                 <div class="form-group p-2 mt-2">
-                    <p class="form-input">
-                        <span class="border rounded-circle p-2">{{ ticketAttributes.customer.abr }}</span>
-                        {{ ticketAttributes.customer.title }}
+                    <p class="form-input customer-block">
+                        <span class="border rounded-circle p-2 customer-block-abr">{{ ticketAttributes.customer.abr }}</span>
+                        <span class="ml-2">{{ ticketAttributes.customer.title }}</span>
                     </p>
                     <p>{{ ticketAttributes.customer.phone }}</p>
                     <p>{{ ticketAttributes.customer.email }}</p>
