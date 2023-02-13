@@ -12,8 +12,8 @@
                         <span class="border rounded-circle p-2 customer-block-abr">{{ ticketAttributes.customer.abr }}</span>
                         <span class="ml-2">{{ ticketAttributes.customer.title }}</span>
                     </p>
-                    <p>{{ ticketAttributes.customer.phone }}</p>
-                    <p>{{ ticketAttributes.customer.email }}</p>
+                    <p class="customer-communications">{{ ticketAttributes.customer.phone }}</p>
+                    <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
                 </div>
 
                 <div class="form-group p-2">

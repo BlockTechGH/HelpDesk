@@ -12,8 +12,8 @@
                         <span class="border rounded-circle p-2 customer-block-abr">{{ customer.abr }}</span>
                         <span class="ml-2">{{ customer.title }}</span>
                     </p>
-                    <p>{{ customer.phone }}</p>
-                    <p>{{ customer.email }}</p>
+                    <p class="customer-communications">{{ customer.phone }}</p>
+                    <p class="customer-communications">{{ customer.email }}</p>
                 </div>
 
                 <div class="form-group p-2">
