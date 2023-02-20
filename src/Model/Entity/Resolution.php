@@ -11,6 +11,7 @@ use Cake\ORM\Entity;
  * @property int $id
  * @property string $member_id
  * @property int $author_id
+ * @property int $ticket_id
  * @property string $text
  * @property \Cake\I18n\FrozenTime $created
  * @property \Cake\I18n\FrozenTime $modified
@@ -29,6 +30,7 @@ class Resolution extends Entity
     protected $_accessible = [
         'member_id' => true,
         'author_id' => true,
+        'ticket_id' => true,
         'text' => true,
         'created' => true,
         'modified' => true,

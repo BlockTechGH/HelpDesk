@@ -18,6 +18,11 @@ class CreateResolutions extends AbstractMigration
             'limit' => 11,
             'null' => false,
         ]);
+        $table->addColumn('ticket_id', 'integer', [
+            'default' => null,
+            'limit' => 11,
+            'null' => false,
+        ]);
         $table->addColumn('text', 'text', [
             'default' => null,
             'null' => false,

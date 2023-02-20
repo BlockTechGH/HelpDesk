@@ -60,6 +60,7 @@ class TicketsTable extends Table
             'foreignKey' => 'category_id',
             'joinType' => 'INNER',
         ]);
+        $this->hasMany('Resolutions')->setForeignKey('ticket_id')->setDependent(true);
         $this->addBehavior('Timestamp');
     }
 

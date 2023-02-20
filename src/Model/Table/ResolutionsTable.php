@@ -44,6 +44,11 @@ class ResolutionsTable extends Table
         $this->setPrimaryKey('id');
 
         $this->addBehavior('Timestamp');
+
+        $this->belongsTo('Tickets', [
+            'foreignKey' => 'ticket_id',
+            'joinType' => 'INNER',
+        ]);
     }
 
     /**
@@ -66,10 +71,29 @@ class ResolutionsTable extends Table
             ->notEmptyString('author_id');
 
         $validator
+            ->integer('ticket_id')
+            ->requirePresence('ticket_id', 'create')
+            ->notEmptyString('ticket_id');
+
+        $validator
             ->scalar('text')
             ->requirePresence('text', 'create')
             ->notEmptyString('text');
 
         return $validator;
+    }
+
+    /**
+     * Returns a rules checker object that will be used for validating
+     * application integrity.
+     *
+     * @param \Cake\ORM\RulesChecker $rules The rules object to be modified.
+     * @return \Cake\ORM\RulesChecker
+     */
+    public function buildRules(RulesChecker $rules): RulesChecker
+    {
+        $rules->add($rules->existsIn('ticket_id', 'Tickets'), ['errorField' => 'ticket_id']);
+
+        return $rules;
     }
 }
