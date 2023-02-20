@@ -16,6 +16,8 @@ return [
         // fill for local development, leave empty for production
         'appBaseUrl' => '', // ngrok url
         'itemsPostfix' => '', // unique postfix for app item names
+
+        'timeZone' => ''
     ],
 ];
 
