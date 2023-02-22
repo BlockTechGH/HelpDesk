@@ -12,6 +12,7 @@ use Cake\Event\EventManager;
 use Cake\Event\EventInterface;
 use Cake\Http\Response;
 use Cake\Routing\Router;
+use Cake\I18n\FrozenTime;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Cake\Mailer\Mailer;
@@ -108,6 +109,7 @@ class BitrixController extends AppController
         $eventManager->on('Ticket.statusChanged', [$this, 'handleTicketStatusChange']);
         $eventManager->on('Ticket.receivingCustomerResponse', [$this, 'handleReceivingCustomerResponse']);
         $eventManager->on('Ticket.created', [$this, 'handleTicketCreated']);
+        $eventManager->on('Ticket.resolutionAdded', [$this, 'handleResolutionAdded']);
 
         if ($action == 'displaySettingsInterface')
         {
@@ -122,9 +124,50 @@ class BitrixController extends AppController
             $this->set('tickets', []);
 
             if (isset($this->placement['activity_id'])) {
-                // activity card
+                /*
+                 * activity card
+                 */
                 $currentUser = $this->Bx24->getCurrentUser();
+
+                // handle add resolution
+                $do = $this->request->getData('do');
+                if($do && $do === 'addResolution')
+                {
+                    $data = $this->request->getParsedBody();
+                    return $this->addResolution($data, $currentUser);
+                }
+
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
+
+                if($this->ticket && $this->ticket['resolutions'])
+                {
+                    $resolutions = $this->ticket['resolutions'];
+                    $userIds = array_unique(array_map(function($resolution)
+                    {
+                        return $resolution['author_id'];
+                    }, array_values($resolutions)));
+                    $arRowAuthorData = $this->Bx24->getUserById($userIds);
+                    $arAuthorData = [];
+
+                    foreach($arRowAuthorData as $user)
+                    {
+                        $arAuthorData[$user['ID']] = $user;
+                    }
+
+                    foreach($resolutions as $i => $resolution)
+                    {
+                        $user = $arAuthorData[$resolution['author_id']];
+                        $resolutions[$i]['fullName'] = implode(' ', [$user['NAME'], $user['LAST_NAME']]);
+                        $resolutions[$i]['formattedTime'] = $resolution->created->format(Bx24Component::DATE_TIME_FORMAT);
+                        $resolutions[$i]['formattedText'] = str_replace(PHP_EOL, '<br>', $resolutions[$i]['text']);
+                    }
+
+                    $this->set('resolutions', $resolutions);
+                    unset($this->ticket['resolutions']);
+                } else {
+                    $this->set('resolutions', []);
+                }
+
                 if ($this->ticket) {
                     $this->ticket->created = $this->ticket->created->format(Bx24Component::DATE_TIME_FORMAT);
                 } else {
@@ -867,6 +910,79 @@ class BitrixController extends AppController
         }
     }
 
+    public function handleResolutionAdded($event, $ticketId, $authorId, $resolutionText, $formattedTime)
+    {
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'ticketId' => $ticketId,
+            'authorId' => $authorId,
+            'resolutionText' => $resolutionText,
+            'formattedTime' => $formattedTime
+        ]);
+
+        $ticket = $this->Tickets->get($ticketId);
+        $activities = $this->Bx24->getActivities([$ticket->action_id]);
+        $ticketAttributes = $this->Bx24->getOneTicketAttributes($activities[$ticket->action_id]);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - getted data', [
+            'ticket' => $ticket,
+            'activities' => $activities,
+            'ticketAttributes' => $ticketAttributes
+        ]);
+
+        // we need collect necessary data and the run bp
+        $arTemplateParameters = [
+            'eventType' => 'notificationResolutionAdded',
+            'ticketNumber' => Bx24Component::TICKET_PREFIX . $ticketId,
+            'ticketSubject' => $ticketAttributes['subject'],
+            'activityId' => $ticket->action_id,
+            'authorId' => 'user_' . $authorId,
+            'resolutionText' => $resolutionText,
+            'formattedTime' => $formattedTime
+        ];
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
+            'arTemplateParameters' => $arTemplateParameters
+        ]);
+
+        $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
+        $entityTypeId = intval($ticketAttributes['ENTITY_TYPE_ID']);
+        $arOption = $this->Options->getOption('notificationResolutionAdded' . Bx24Component::MAP_ENTITIES[$entityTypeId], $this->memberId);
+        $templateId = intval($arOption['value']);
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - template', [
+            'templateId' => $templateId
+        ]);
+
+        switch($entityTypeId)
+        {
+            case Bx24Component::OWNER_TYPE_CONTACT:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            case Bx24Component::OWNER_TYPE_COMPANY:
+                $entityId = intval($ticketAttributes['customer']['id']);
+                break;
+
+            default:
+                $entityId = 0;
+        }
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - entity', [
+            'entityId' => $entityId,
+            'entityType' => Bx24Component::MAP_ENTITIES[$entityTypeId]
+        ]);
+
+        if($templateId && $entityId)
+        {
+            $arResultStartWorkflow = $this->Bx24->startWorkflowFor($templateId, $entityId, $entityTypeId, $arTemplateParameters);
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - result', [
+                'arResultStartWorkflow' => $arResultStartWorkflow
+            ]);
+        } else {
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
+        }
+    }
+
     public function handleTicketCreated($event, $ticket, $status, $ticketAttributes)
     {
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
@@ -953,5 +1069,70 @@ class BitrixController extends AppController
         }
 
         return $fileName;
+    }
+
+    private function addResolution($data, $currentUser)
+    {
+        $this->disableAutoRender();
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'data' => $data
+        ]);
+
+        if($data['resolutionText'] && $data['ticketId'] && $data['ticketId'] > 0)
+        {
+            $this->Resolutions = $this->getTableLocator()->get('Resolutions');
+
+            $record = $this->Resolutions->addRecord([
+                'member_id' => $this->memberId,
+                'author_id' => $currentUser['ID'],
+                'ticket_id' => $data['ticketId'],
+                'text' => $data['resolutionText']
+            ]);
+
+            if($record->hasErrors())
+            {
+                $errorLines = [];
+                foreach($record->getErrors() as $prop => $error)
+                {
+                    $bugs = array_map(function($bug) use ($prop)
+                        {
+                            return "{$prop} - {$bug};";
+                        }
+                    , array_values($error));
+                    $errorLines = array_merge($errorLines, $bugs);
+                }
+
+                $errorMessage = implode("\n", $errorLines);
+
+                return new Response(['body' => json_encode([
+                    'success' => false,
+                    'message' => $errorMessage
+                ])]);
+            }
+
+            $record['fullName'] = implode(' ', [$currentUser['NAME'], $currentUser['LAST_NAME']]);
+            $record['formattedTime'] = $record->created->format(Bx24Component::DATE_TIME_FORMAT);
+            $record['formattedText'] = str_replace(PHP_EOL, '<br>', $record['text']);
+
+            // send event Resolution add
+            $event = new Event('Ticket.resolutionAdded', $this, [
+                'ticketId' => $data['ticketId'],
+                'authorId' => $currentUser['ID'],
+                'resolutionText' => $data['resolutionText'],
+                'formattedTime' => $record['formattedTime']
+            ]);
+            $this->getEventManager()->dispatch($event);
+
+            return new Response(['body' => json_encode([
+                'success' => true,
+                'record' => $record
+            ])]);
+        }
+
+        return new Response(['body' => json_encode([
+            'success' => false,
+            'message' => __('Bad request')
+        ])]);
     }
 }

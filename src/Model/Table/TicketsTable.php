@@ -266,6 +266,9 @@ class TicketsTable extends Table
                 'action_id' => $activityId,
                 'member_id' => $memberId
             ])
+            ->contain(['Resolutions' => [
+                'sort' => ['id' => 'DESC']
+            ]])
             ->first();
     }
 

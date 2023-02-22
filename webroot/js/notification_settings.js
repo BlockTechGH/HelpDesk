@@ -9,11 +9,13 @@ $(document).ready(function()
         notificationChangeTicketStatusContact: document.getElementById('notificationChangeTicketStatusContact'),
         notificationReceivingCustomerResponseContact: document.getElementById('notificationReceivingCustomerResponseContact'),
         notificationChangeResponsibleContact: document.getElementById('notificationChangeResponsibleContact'),
+        notificationResolutionAddedContact: document.getElementById('notificationResolutionAddedContact'),
         // company
         notificationCreateTicketCompany: document.getElementById('notificationCreateTicketCompany'),
         notificationChangeTicketStatusCompany: document.getElementById('notificationChangeTicketStatusCompany'),
         notificationReceivingCustomerResponseCompany: document.getElementById('notificationReceivingCustomerResponseCompany'),
         notificationChangeResponsibleCompany: document.getElementById('notificationChangeResponsibleCompany'),
+        notificationResolutionAddedCompany: document.getElementById('notificationResolutionAddedCompany')
     };
 
     saveNotificationButton.on('click', function()

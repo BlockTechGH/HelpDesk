@@ -96,4 +96,12 @@ class ResolutionsTable extends Table
 
         return $rules;
     }
+
+    public function addRecord($data)
+    {
+        $record = $this->newEntity($data);
+        $this->save($record);
+
+        return $record;
+    }
 }

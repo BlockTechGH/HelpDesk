@@ -112,37 +112,70 @@
                     </div>
                 </div>
 
-                <div class="container-fluid pt-4">
-                    <div class="border rounded p-3">
-                        <?php if(!!$source): ?>
-                            <p class="ticket-customer-date"><?="{$source['customer']['title']} {$source['date']}";?></p>
-                            <div class=""><?=$source['text'];?></div>
-                            <!-- display view history button for Open channels -->
-                        <?php else: ?>
-                            <p class="">
-                                <?=__("Source is not found");?>
-                            </p>
-                            <div class="">
-                                <?=__('Sorry, but source activity is closed, not exists, not associated with ticket or it is a wrong ID of activity');?>
+                <!-- Start menu -->
+                <nav class="nav" role="tablist">
+                    <a class="nav-link active" href="#" id="conversation-tab" data-toggle="tab" data-target="#conversation" role="tab" aria-controls="conversation" aria-selected="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left-text" viewBox="0 0 16 16">
+                            <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                            <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+                        </svg>
+                        <?= __('Conversation') ?>
+                    </a>
+                    <a class="nav-link" href="#" id="resolution-tab" data-toggle="tab" data-target="#resolution" role="tab" aria-controls="resolution" aria-selected="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                        <?= __('Resolution') ?>
+                    </a>
+                </nav>
+                <!-- End menu -->
+
+                <!-- Start content -->
+                <div class="tab-content" id="ticketcard">
+                    <div class="tab-pane fade show active" id="conversation" role="tabpanel" aria-labelledby="conversation-tab">
+                        <!-- Start conversation tab -->
+                        <div class="container-fluid pt-4">
+                            <div class="border rounded p-3">
+                                <?php if(!!$source): ?>
+                                    <p class="ticket-customer-date"><?="{$source['customer']['title']} {$source['date']}";?></p>
+                                    <div class=""><?=$source['text'];?></div>
+                                    <!-- display view history button for Open channels -->
+                                <?php else: ?>
+                                    <p class="">
+                                        <?=__("Source is not found");?>
+                                    </p>
+                                    <div class="">
+                                        <?=__('Sorry, but source activity is closed, not exists, not associated with ticket or it is a wrong ID of activity');?>
+                                    </div>
+                                <?php endif;?>
                             </div>
-                        <?php endif;?>
+                        </div>
+                        <hr>
+                        <?php if($ticket['source_type_id'] === 'IMOPENLINES_SESSION'): ?>
+                        <div class="text-center mt-4">
+                            <button type="button" class="btn btn-primary" onclick="BX24.im.openHistory('<?= $dialogId?>')"><?= __('Open history') ?></button>
+                        </div>
+                        <?php endif; ?>
+                        <div class="row mt-2 mb-2" v-bind:class="{'justify-content-end': activity.DIRECTION == 2}" v-for="(activity, index) in arHistoryActivities" v-if="activity.ID != ticketAttributes.id">
+                            <div class="col-10 border rounded ml-3 mr-3">
+                                <div class="">{{ activity.SUBJECT }} {{ activity.CREATED }}</div>
+                                <div v-html="activity.DESCRIPTION"></div>
+                                <div v-if="activity.FILES" class="attachments mb-2">
+                                    <div v-for="file in activity.FILES"><a v-bind:href="file.url">{{file.fileName}}</a></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- End conversation tab -->
                     </div>
-                </div>
-                <hr>
-                <?php if($ticket['source_type_id'] === 'IMOPENLINES_SESSION'): ?>
-                <div class="text-center mt-4">
-                    <button type="button" class="btn btn-primary" onclick="BX24.im.openHistory('<?= $dialogId?>')"><?= __('Open history') ?></button>
-                </div>
-                <?php endif; ?>
-                <div class="row mt-2 mb-2" v-bind:class="{'justify-content-end': activity.DIRECTION == 2}" v-for="(activity, index) in arHistoryActivities" v-if="activity.ID != ticketAttributes.id">
-                    <div class="col-10 border rounded ml-3 mr-3">
-                        <div class="">{{ activity.SUBJECT }} {{ activity.CREATED }}</div>
-                        <div v-html="activity.DESCRIPTION"></div>
-                        <div v-if="activity.FILES" class="attachments mb-2">
-                            <div v-for="file in activity.FILES"><a v-bind:href="file.url">{{file.fileName}}</a></div>
+                    <div class="tab-pane fade" id="resolution" role="tabpanel" aria-labelledby="resolution-tab">
+                        <div class="container-fluid pt-4">
+                            <?= $this->element('resolutions', []); ?>
                         </div>
                     </div>
                 </div>
+                <!-- End content -->
+
             </div>
         </div>
 
@@ -178,6 +211,10 @@
         // Sub issue #3 - statuses
         statuses: <?=json_encode($statuses);?>,
         arHistoryActivities: <?=json_encode($arHistoryActivities);?>,
+        resolutions: <?= json_encode($resolutions) ?>,
+        resolutionAwaiting: false,
+        isResoltionInvalid: false,
+        resolutionText: '',
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Title'),
@@ -195,7 +232,7 @@
             'Wait' => __('Please wait'),
             'Change' => __('Change')
         ]);?>,
-        awaiting: false,
+        awaiting: false
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
 </script>
@@ -204,7 +241,71 @@
     new Vue({
         el: '#ticket',
         data: window.data,
-        methods: {
+        methods:
+        {
+            addResolutions: function()
+            {
+                this.resolutionAwaiting = true;
+
+                if(this.resolutionText.length === 0)
+                {
+                    this.isResoltionInvalid = true;
+                    this.resolutionAwaiting = false;
+                    return;
+                }
+
+                // all ok - processing
+                this.isResoltionInvalid = false;
+
+                const parameters = Object.assign(
+                    {
+                        resolutionText: this.resolutionText,
+                        ticketId: this.ticket.id,
+                        do: 'addResolution'
+                    },
+                    this.required
+                );
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    const resultData = await result.json();
+                    this.resolutionAwaiting = false;
+
+                    console.log(resultData);
+                    if(resultData.success)
+                    {
+                        this.resolutions.unshift(resultData.record);
+                        $('#collapseResolution').collapse('hide');
+                        this.resolutionText = '';
+                    } else {
+                        this.displayResolutionError(resultData.message);
+                    }
+                });
+            },
+            displayResolutionError: function(message)
+            {
+                let flashMessageWrapper = document.getElementById('resolutionFlashMessageWrapper');
+                let hideButton = $('<button>',
+                {
+                    type: 'button',
+                    class: "close",
+                    'data-dismiss': 'alert',
+                    'aria-label': 'Close'
+                });
+                hideButton.html('<span aria-hidden="true">&times;</span>');
+
+                let messageAlert = $('<div>',
+                {
+                    class: "alert alert-danger alert-dismissible fade show notification-message-alert",
+                    role: "alert"
+                });
+
+                messageAlert.text(message);
+                hideButton.appendTo(messageAlert);
+                messageAlert.appendTo($(flashMessageWrapper));
+            },
             setStatus: function (event)
             {
                 this.ticket.status_id = event.target.value;

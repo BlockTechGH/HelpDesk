@@ -41,6 +41,15 @@
                     <?php endforeach; ?>
                 </select>
             </div>
+
+            <div class="form-group">
+                <label for="notificationResolutionAddedContact"><?= __('Business process when resolution added') ?></label>
+                <select class="custom-select" id="notificationResolutionAddedContact">
+                    <?php foreach($arContactWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationResolutionAddedContact']) && $id == $options['notificationResolutionAddedContact']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
         <!-- END CONTACT -->
 
@@ -80,6 +89,15 @@
                 <select class="custom-select" id="notificationChangeResponsibleCompany">
                     <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
                         <option value="<?= $id ?>" <?= (isset($options['notificationChangeResponsibleCompany']) && $id == $options['notificationChangeResponsibleCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notificationResolutionAddedCompany"><?= __('Business process when resolution added') ?></label>
+                <select class="custom-select" id="notificationResolutionAddedCompany">
+                    <?php foreach($arCompanyWorkflowTemplates as $id => $templateName): ?>
+                        <option value="<?= $id ?>" <?= (isset($options['notificationResolutionAddedCompany']) && $id == $options['notificationResolutionAddedCompany']) ? 'selected' : '' ?>><?= $templateName ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
