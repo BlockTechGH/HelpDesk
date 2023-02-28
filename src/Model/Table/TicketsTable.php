@@ -5,12 +5,12 @@ namespace App\Model\Table;
 
 use Cake\Core\Configure;
 use Cake\I18n\FrozenDate;
+use Cake\I18n\FrozenTime;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 use Cake\Datasource\ConnectionManager;
-use DateTime;
 
 /**
  * Tickets Model
@@ -333,5 +333,24 @@ class TicketsTable extends Table
 
         $result = $this->saveMany($tickets);
         return $result ? true : false;
+    }
+
+    public function markAsViolated(\App\Model\Entity\Ticket $ticket)
+    {
+        $ticket->is_violated = 1;
+        $ticket->violated_by = $ticket['responsibleId'];
+        $ticket->violated = FrozenTime::now();
+
+        $this->save($ticket);
+
+        if($ticket->hasErrors())
+        {
+            return [
+                'error' => true,
+                'messages' => $ticket->getErrors()
+            ];
+        }
+
+        return ['error' => false];
     }
 }

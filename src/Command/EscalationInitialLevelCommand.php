@@ -122,6 +122,25 @@ class EscalationInitialLevelCommand extends Command
                 'result' => $resultChangeTicketStatus
             ]);
 
+            // mark tikcet as violated
+            foreach($expiredTickets as $ticket)
+            {
+                $resultViolation = $this->TicketsTable->markAsViolated($ticket);
+
+                if($resultViolation['error'])
+                {
+                    $this->logger->error(__FUNCTION__ . " - result violation ticket: " . $i, [
+                        'id' => $ticket->id,
+                        'result' => $resultViolation
+                    ]);
+                } else {
+                    $this->logger->debug(__FUNCTION__ . " - result violation ticket: " . $i, [
+                        'id' => $ticket->id,
+                        'result' => $resultViolation
+                    ]);
+                }
+            }
+
             // run workflow when changing ticket status
             $resultToChangeStatus = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
 
