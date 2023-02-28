@@ -102,6 +102,14 @@ return static function (RouteBuilder $routes) {
             ], ['_name' => 'get_summary']
         );
 
+        // Handler for summary for tickets
+        $builder->connect('/tickets/violations',
+            [
+                'controller' => 'Ticket',
+                'action' => 'getViolations',
+            ], ['_name' => 'get_violations']
+        );
+
         // Handler for ticket creation interface
         $builder->connect('/ticket',
             [

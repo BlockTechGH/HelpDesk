@@ -100,6 +100,7 @@ class BitrixController extends AppController
         $this->set('domain', $this->domain);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         $this->set('ajax', $this->getUrlOf('crm_settings_interface', $this->domain));
+        $this->set('get_violations_url', $this->getUrlOf('get_violations', $this->domain));
 
         // subscribe on events
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - subscribed', [

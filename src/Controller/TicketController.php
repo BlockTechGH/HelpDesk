@@ -71,6 +71,12 @@ class TicketController extends AppController
         $eventManager->on('Ticket.changeResponsible', [$this, 'handleTicketChangeResponsible']);
     }
 
+    public function getViolations()
+    {
+        $result = [];
+
+        return new Response(['body' => json_encode($result)]);
+    }
 
     public function displayCrmInterface()
     {

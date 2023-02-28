@@ -38,6 +38,16 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        aria-selected="true"
+                        id="violations-tab"
+                        data-target="#violations"
+                        aria-controls="violations"
+                    >
+                        <?=__('Violations');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" data-toggle="tab" type="button" role="tab" 
                         id="sources-tab" 
                         data-target="#sources" 
@@ -182,6 +192,11 @@
                     </div>
                 </div>
             </div>
+
+            <div class="tab-pane fade" id="violations" role="tabpanel" aria-labelledby="violations-tab">
+                <?= $this->element('violations', []); ?>
+            </div>
+
             <div class="tab-pane fade ml-4" id="sources" role="tabpanel" aria-labelledby="sources-tab">
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
                     <div class="form-group">
@@ -692,6 +707,7 @@ $(document).ready(function () {
             $('#fromDate').data("DateTimePicker").maxDate(e.date);
             $('#ticketsGrid').bootgrid('reload');
         });
+
         //   -- On Summary tab
         const period = new Vue({
             el: "#filter-summary",
@@ -919,7 +935,7 @@ $(document).ready(function () {
         // Table of customner statistics
         new Vue({
             el: '#customer',
-            data: window.summary,
+            data: window.summary
         });
     });
 });

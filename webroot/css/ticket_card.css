@@ -47,3 +47,7 @@ blockquote {
     font-size: 0.9rem;
 }
 
+.nav-link.active {
+    border-bottom: 2px solid #007bff;
+}
+
