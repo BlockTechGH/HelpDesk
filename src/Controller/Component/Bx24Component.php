@@ -55,6 +55,7 @@ class Bx24Component extends Component
     ];
 
     public const BITRIX_REST_API_RESULT_LIMIT_COUNT = 50;
+    public const MAX_BATCH_RESULT_COUNT = 2500;
 
     private $controller = null;
     private $BitrixTokens = null;
@@ -299,6 +300,64 @@ class Bx24Component extends Component
 
         $this->obBx24App->processBatchCalls();
     }
+
+    public function getMapResponsibleToTicket($activityIDs)
+    {
+        $arResult = [];
+        $arSelect = ['ID', 'RESPONSIBLE_ID'];
+
+        $chunks = array_chunk($activityIDs, static::MAX_BATCH_RESULT_COUNT);
+        $this->bx24Logger->debug(__FUNCTION__ . ' - chunks', [
+            'count' => count($chunks),
+            'chunks' => $chunks
+        ]);
+
+        foreach($chunks as $j => $chunk)
+        {
+            if(($j % 2 === 0) && $j !== 0)
+            {
+                sleep(1);
+            }
+
+            $batchChunks = array_chunk($chunk, static::BITRIX_REST_API_RESULT_LIMIT_COUNT);
+            $this->bx24Logger->debug(__FUNCTION__ . ' - batchChunks', [
+                'count' => count($batchChunks),
+                'batchChunks' => $batchChunks
+            ]);
+
+            // form request for up to 2500 records
+            foreach($batchChunks as $i => $batchChunk)
+            {
+                $arActivityParams = [
+                    'select' => $arSelect,
+                    'filter' => [
+                        'ID' => $batchChunk
+                    ]
+                ];
+
+                $this->obBx24App->addBatchCall('crm.activity.list', $arActivityParams, function($result) use (&$arResult, $i)
+                {
+                    $this->bx24Logger->debug('getMapResponsibleToTicket - get activity data', [
+                        'chunkID' => $i,
+                        'result' => $result
+                    ]);
+
+                    if($result['result'])
+                    {
+                        foreach($result['result'] as $activity)
+                        {
+                            $arResult[$activity['ID']] = $activity['RESPONSIBLE_ID'];
+                        }
+                    }
+                });
+            }
+
+            $this->obBx24App->processBatchCalls();
+        }
+
+        return $arResult;
+    }
+
 
     #
     #endsection
@@ -1292,7 +1351,7 @@ class Bx24Component extends Component
         ];
     }
 
-    private function makeNameAbbreviature($person)
+    public function makeNameAbbreviature($person)
     {
         $f = mb_substr($person['NAME'] ?? "", 0, 1);
         $s = mb_substr($person['SECOND_NAME'] ?? "", 0, 1);
@@ -1302,7 +1361,7 @@ class Bx24Component extends Component
 
     private function makeFullName(array $arNames)
     {
-        return trim(trim($arNames['NAME'] . ' ' . $arNames['SECOND_NAME']) . ' ' . $arNames['LAST_NAME']);
+        return trim(trim($arNames['NAME']) . ' ' . $arNames['LAST_NAME']);
     }
 
     private function createActivityWith(array $arParameters)

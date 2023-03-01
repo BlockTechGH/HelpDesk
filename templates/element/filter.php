@@ -29,6 +29,6 @@
                 <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
             </span>
         </div>
-        <span v-if="awaiting" role="status" aria-hidden="true" class="spinner-border spinner-border-sm ml-2 mt-2"></span>
+        <span v-if="awaiting" role="status" aria-hidden="true" class="spinner-border status-spiner text-primary ml-2"></span>
     </div>
 </form>

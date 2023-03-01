@@ -5,6 +5,7 @@
         {
             required: <?=json_encode($required)?>,
             ajax: '<?= $get_violations_url ?>',
+            statuses: <?=json_encode($statuses)?>,
             picker:
             {
                 title: 'month',
@@ -44,7 +45,10 @@
                 'SLA Violated Tickets' => __('SLA Violated Tickets'),
                 'Violations by Agent' => __('Violations by Agent'),
                 'Violations by Status' => __('Violations by Status'),
-                'Achieved vs. Violated Count' => __('Achieved vs. Violated Count')
+                'Achieved vs. Violated Count' => __('Achieved vs. Violated Count'),
+                'violatedUserTableHeaders' => [
+                    __('Agent'), __('Applied'), __('Violated'), __('Achieved')
+                ]
             ]);?>,
             awaiting: false,
             violationsData: {}
@@ -72,7 +76,8 @@
 
     <!-- Violations by Agent -->
     <div class="row ml-1 mt-3">
-        Vue app
+        <h3><?= __('Violations by Agent') ?></h3>
+        <div id="violationsByAgent"></div>
     </div>
 
     <div class="row ml-1 mt-3">

@@ -1,25 +1,37 @@
 $(document).ready(function()
 {
-    var drawViolationResult = function(violationsData)
-    {
-        let violationReport = document.getElementById('violationReport');
-        let violationReportEmptyResult = document.getElementById('violationReportEmptyResult');
-
-        if(Object.keys(violationsData).length === 0)
-        {
-            // display empty message
-            $(violationReport).fadeOut('slow');
-            $(violationReportEmptyResult).fadeIn('slow');
-        } else {
-            // display report
-            $(violationReport).fadeIn('slow');
-            $(violationReportEmptyResult).fadeOut('slow');
-            // PUT logick here
-        }
-    };
-
     BX24.init(function()
     {
+        const violationsByAgent = new Vue({
+            el: "#violationsByAgent",
+            data: {
+                records: {},
+                users: {},
+                headers: window.violations.i18n.violatedUserTableHeaders
+            },
+            template: `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="text-uppercase" v-for="header in headers" scope="col">{{header}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(record, userId) in records">
+                            <td>
+                                <img v-if="users[userId].PERSONAL_PHOTO" v-bind:alt="users[userId].FULL_NAME" v-bind:src="users[userId].PERSONAL_PHOTO" class="rounded-circle avatar-img mb-0">
+                                <span v-else class="border rounded-circle p-2">{{users[userId].ABBREVIATION}}</span>
+                                <strong class="ml-2">{{users[userId].FULL_NAME}}</strong>
+                            </td>
+                            <td>{{record.violated + record.achieved}}</td>
+                            <td>{{record.violated}}</td>
+                            <td>{{record.achieved}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `
+        });
+
         const violationsFilter = new Vue({
             el: "#filter-violations",
             data: window.violations,
@@ -27,7 +39,7 @@ $(document).ready(function()
                 async fetchData()
                 {
                     let fromValue = $('#startViolationsDate').val();
-                    let toValue = $('#startViolationsDate').val();
+                    let toValue = $('#finalViolationsDate').val();
 
                     if(!fromValue)
                     {
@@ -114,6 +126,29 @@ $(document).ready(function()
                 violationsFilter.fetchData();
             }
         });
+
+        var drawViolationResult = function(violationsData)
+        {
+            let violationReport = document.getElementById('violationReport');
+            let violationReportEmptyResult = document.getElementById('violationReportEmptyResult');
+
+            if(violationsData.count === 0)
+            {
+                // display empty message
+                $(violationReport).fadeOut('slow');
+                $(violationReportEmptyResult).fadeIn('slow');
+            } else {
+                // display report
+                $(violationReport).fadeIn('slow');
+                $(violationReportEmptyResult).fadeOut('slow');
+
+                // PUT logick here
+                console.log(violationsData);
+                violationsByAgent.records = violationsData.violations_by_agent;
+                violationsByAgent.users = violationsData.users;
+            }
+        };
+
     });
 });
 

@@ -105,3 +105,8 @@ hr.devide-kpi-block {
     right: 0;
     background-color: #FFF;
 }
+
+.avatar-img {
+    width: 39px;
+    height: 39px;
+}

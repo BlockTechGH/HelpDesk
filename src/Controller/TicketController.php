@@ -73,9 +73,136 @@ class TicketController extends AppController
 
     public function getViolations()
     {
-        $result = [];
+        $this->disableAutoRender();
+        $this->viewBuilder()->disableAutoLayout();
 
-        return new Response(['body' => json_encode($result)]);
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'isPost' => $this->request->is('post'),
+            'data' => $this->request->getParsedBody()
+        ]);
+
+        $arResult = [
+            'users' => [],
+            'sla_violated_tickets' => [],
+            'violations_by_agent' => [],
+            'violations_by_status' => [],
+            'achieved_vs_violated_tickets' => [
+                'achieved' => 0,
+                'violated' => 0
+            ],
+            'count' => 0
+        ];
+
+        if($this->request->is('post'))
+        {
+            $period = $this->request->getData('period') ?? "month";
+            $fromDate = $this->request->getData('from');
+            $toDate = $this->request->getData('to');
+            $arUserIDs = [];
+
+            // get list ticket for this period
+            $tickets = $this->Tickets->getTicketsFor(
+                $this->memberId,
+                // Custom filter
+                [],
+                // Order of tickets
+                ['created' => 'desc'],
+                // Pagination: [page, count]
+                [1, 50],
+                // Date diapazone
+                $period,
+                $fromDate,
+                $toDate
+            );
+
+            $arResult['count'] = intval($tickets['total']);
+
+            if($arResult['count'] > 0)
+            {
+                $arViolatedTickets = [];
+                $arAchievedTickets = [];
+
+                foreach($tickets['rows'] as $i => $ticket)
+                {
+                    if($ticket->is_violated)
+                    {
+                        $arViolatedTickets[] = $ticket;
+
+                        // sla by days
+                        // to do here !!!
+
+                        // by status
+                        if(!array_key_exists($ticket->status_id, $arResult['violations_by_status']))
+                        {
+                            $arResult['violations_by_status'][$ticket->status_id] = 0;
+                        }
+                        $arResult['violations_by_status'][$ticket->status_id] = $arResult['violations_by_status'][$ticket->status_id] + 1;
+
+                        // by agent for violated only
+                        if(!array_key_exists($ticket->violated_by, $arResult['violations_by_agent']))
+                        {
+                            $arResult['violations_by_agent'][$ticket->violated_by]['achieved'] = 0;
+                            $arResult['violations_by_agent'][$ticket->violated_by]['violated'] = 0;
+                        }
+                        $arResult['violations_by_agent'][$ticket->violated_by]['violated'] = $arResult['violations_by_agent'][$ticket->violated_by]['violated'] + 1;
+
+                        $arUserIDs[$ticket->violated_by] = $ticket->violated_by;
+                    } else {
+                        $arAchievedTickets[] = $ticket;
+                    }
+
+                    unset($tickets['rows'][$i]);
+                }
+
+                // get userID information for achieved
+                $achievedActivityIDs = array_column($arAchievedTickets, 'action_id');
+                $arMapResponsibleToTicket = $this->Bx24->getMapResponsibleToTicket($achievedActivityIDs);
+
+                foreach($arAchievedTickets as $ticket)
+                {
+                    $userId = $arMapResponsibleToTicket[$ticket->action_id];
+
+                    if(!array_key_exists($userId, $arResult['violations_by_agent']))
+                    {
+                        $arResult['violations_by_agent'][$userId]['achieved'] = 0;
+                    }
+                    $arResult['violations_by_agent'][$userId]['achieved'] = $arResult['violations_by_agent'][$userId]['achieved'] + 1;
+                }
+
+                // Reduction to the same format
+                foreach($arResult['violations_by_agent'] as $userId => $userData)
+                {
+                    if(!array_key_exists('achieved', $userData))
+                    {
+                        $arResult['violations_by_agent'][$userId]['achieved'] = 0;
+                    }
+                    if(!array_key_exists('violated', $userData))
+                    {
+                        $arResult['violations_by_agent'][$userId]['violated'] = 0;
+                    }
+                }
+
+                // get user information
+                $arAchievedUserIds = array_unique($arMapResponsibleToTicket);
+                $arAllUserIds = array_merge($arUserIDs, $arAchievedUserIds);
+                $arRowUsers = $this->Bx24->getUserById($arAllUserIds);
+                foreach($arRowUsers as $user)
+                {
+                    $user['FULL_NAME'] = implode(' ', [
+                        $user['NAME'], $user['LAST_NAME']
+                    ]);
+                    $user['ABBREVIATION'] = $this->Bx24->makeNameAbbreviature($user);
+                    $arResult['users'][$user['ID']] = $user;
+                }
+
+                $arResult['achieved_vs_violated_tickets'] = [
+                    'achieved' => count($arAchievedTickets),
+                    'violated' => count($arViolatedTickets)
+                ];
+            }
+        }
+
+        return new Response(['body' => json_encode($arResult)]);
     }
 
     public function displayCrmInterface()
