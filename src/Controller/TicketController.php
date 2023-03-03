@@ -83,7 +83,10 @@ class TicketController extends AppController
 
         $arResult = [
             'users' => [],
-            'sla_violated_tickets' => [],
+            'sla_violated_tickets' => [
+                'labels' => [],
+                'values' => []
+            ],
             'violations_by_agent' => [],
             'violations_by_status' => [],
             'achieved_vs_violated_tickets' => [
@@ -122,6 +125,14 @@ class TicketController extends AppController
                 $arViolatedTickets = [];
                 $arAchievedTickets = [];
 
+                $arLabels = $this->getDayArray($period, $fromDate, $toDate);
+
+                $arResult['sla_violated_tickets']['labels'] = $arLabels;
+                foreach($arLabels as $formatedDay)
+                {
+                    $arResult['sla_violated_tickets']['values'][$formatedDay] = 0;
+                }
+
                 foreach($tickets['rows'] as $i => $ticket)
                 {
                     if($ticket->is_violated)
@@ -129,7 +140,8 @@ class TicketController extends AppController
                         $arViolatedTickets[] = $ticket;
 
                         // sla by days
-                        // to do here !!!
+                        $formatedTicketDate = $ticket->created->i18nFormat('d-MMM');
+                        $arResult['sla_violated_tickets']['values'][$formatedTicketDate] = $arResult['sla_violated_tickets']['values'][$formatedTicketDate] + 1;
 
                         // by status
                         if(!array_key_exists($ticket->status_id, $arResult['violations_by_status']))
@@ -152,6 +164,15 @@ class TicketController extends AppController
                     }
 
                     unset($tickets['rows'][$i]);
+                }
+
+                $arResult['sla_violated_tickets']['values'] = array_values($arResult['sla_violated_tickets']['values']);
+                foreach($arResult['sla_violated_tickets']['values'] as $i => $value)
+                {
+                    if(!$value)
+                    {
+                        $arResult['sla_violated_tickets']['values'][$i] = '';
+                    }
                 }
 
                 // get userID information for achieved
@@ -199,8 +220,8 @@ class TicketController extends AppController
                 $achievedCount = count($arAchievedTickets);
 
                 $arResult['achieved_vs_violated_tickets'] = [
-                    'achieved' => $achievedCount,
-                    'violated' => $violatedCount,
+                    'achieved' => ($achievedCount) ? $achievedCount : '',
+                    'violated' => ($violatedCount) ? $violatedCount : '',
                     'percentage' => intval($violatedCount * 100 / ($violatedCount + $achievedCount))
                 ];
             }
@@ -1142,5 +1163,69 @@ class TicketController extends AppController
         } else {
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - Missing required data to start workflow');
         }
+    }
+
+    private function getDayArray($period, $fromDate, $toDate)
+    {
+        $start = null;
+        $end = null;
+        $arResult = [];
+
+        if($period == $this->Tickets::PERIOD_MONTH)
+        {
+            $parts = explode('/', $fromDate);
+            if(count($parts) == 2)
+            {
+                $from = implode("/", [$parts[0], "01", $parts[1]]);
+            }
+
+            $start = new FrozenDate($from);
+            $end = $start->lastOfMonth();
+        }
+
+        if($period == $this->Tickets::PERIOD_DAY)
+        {
+            $start = new FrozenDate($fromDate);
+            $end = new FrozenDate($fromDate);
+        }
+
+        if($period == $this->Tickets::PERIOD_BETWEEN)
+        {
+            $start = new FrozenDate($fromDate);
+
+            if($toDate)
+            {
+                $end = new FrozenDate($toDate);
+            } else {
+                $end = new FrozenDate();
+            }
+        }
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - calculated start/end', [
+            'start' => $start,
+            'end' => $end
+        ]);
+
+        $isNeedLoop = true;
+        $endTs = $end->getTimestamp();
+
+        while($isNeedLoop)
+        {
+            $arResult[] = $start->i18nFormat('d-MMM');
+
+            $startTs = $start->getTimestamp();
+            if($startTs == $endTs || $startTs > $endTs)
+            {
+                $isNeedLoop = false;
+            } else {
+                $start = $start->modify('+ 1 day');
+            }
+        }
+
+        $this->TicketControllerLogger->debug(__FUNCTION__ . ' - day range', [
+            'arResult' => $arResult
+        ]);
+
+        return $arResult;
     }
 }

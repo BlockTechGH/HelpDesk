@@ -147,6 +147,17 @@ $(document).ready(function()
                 violationsByAgent.records = violationsData.violations_by_agent;
                 violationsByAgent.users = violationsData.users;
 
+                // update chart for SLA Violated Tickets
+                let newslaViolatedDataset = {
+                    data: violationsData.sla_violated_tickets.values,
+                    backgroundColor: new Array(violationsData.sla_violated_tickets.values.length).fill('#e95564')
+                };
+                let newslaViolatedLabels = violationsData.sla_violated_tickets.labels;
+
+                slaViolatedChart.data.datasets = [newslaViolatedDataset];
+                slaViolatedChart.data.labels = newslaViolatedLabels;
+                slaViolatedChart.update();
+
                 // update chart for Violations By Status
                 let newData = [];
                 for(statusId in statusIds)
@@ -176,11 +187,48 @@ $(document).ready(function()
                 };
 
                 achivedVsViolatedChart.data.datasets = [newAchivedVsViolatedDataset];
-                //
                 achivedVsViolatedChart.options.plugins.title.text = violationsData.achieved_vs_violated_tickets['percentage'] + '% ' + window.violations.i18n.violated;
                 achivedVsViolatedChart.update();
             }
         };
+
+        // chart for SLA Violated Tickets
+        const slaViolatedData = {
+            labels: [],
+            datasets: [
+                {
+                    data: [],
+                    backgroundColor: []
+                }
+            ]
+        };
+
+        const slaViolatedChart = new Chart(
+            document.getElementById('slaViolatedTicket'),
+            {
+                type: 'bar',
+                data: slaViolatedData,
+                plugins: [ChartDataLabels],
+                options: {
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            color: 'black',
+                            clamp: false,
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
 
         // chart for Violations By Status
         const statuses = window.violations.statuses;

@@ -69,13 +69,14 @@
         'value' => ''
     ]);?>
 </div>
-<span class="glyphicon glyphicon-time" aria-hidden="true"></span>
-<span id="violationReport" class="hidden">
+
+<div id="violationReport" class="hidden">
     <!-- SLA Violated Tickets -->
     <div class="row ml-1 mt-3">
-        Chart
+        <h3><?= __('SLA Violated Tickets') ?></h3>
+        <canvas id="slaViolatedTicket"></canvas>
     </div>
-
+    <hr>
     <!-- Violations by Agent -->
     <div class="row ml-1 mt-3">
         <h3><?= __('Violations by Agent') ?></h3>
@@ -95,7 +96,7 @@
             <canvas id="achievedVsViolatedCount"></canvas>
         </div>
     </div>
-</span>
+</div>
 
 <span id="violationReportEmptyResult">
     <div class="row ml-1 mt-3">
