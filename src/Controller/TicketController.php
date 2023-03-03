@@ -195,9 +195,13 @@ class TicketController extends AppController
                     $arResult['users'][$user['ID']] = $user;
                 }
 
+                $violatedCount = count($arViolatedTickets);
+                $achievedCount = count($arAchievedTickets);
+
                 $arResult['achieved_vs_violated_tickets'] = [
-                    'achieved' => count($arAchievedTickets),
-                    'violated' => count($arViolatedTickets)
+                    'achieved' => $achievedCount,
+                    'violated' => $violatedCount,
+                    'percentage' => intval($violatedCount * 100 / ($violatedCount + $achievedCount))
                 ];
             }
         }

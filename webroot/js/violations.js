@@ -146,9 +146,136 @@ $(document).ready(function()
                 console.log(violationsData);
                 violationsByAgent.records = violationsData.violations_by_agent;
                 violationsByAgent.users = violationsData.users;
+
+                // update chart for Violations By Status
+                let newData = [];
+                for(statusId in statusIds)
+                {
+                    if(violationsData.violations_by_status.hasOwnProperty(statusId))
+                    {
+                        newData.push(violationsData.violations_by_status[statusId]);
+                    } else {
+                        newData.push(0);
+                    }
+                }
+                let newDataset = {
+                    data: newData,
+                    backgroundColor: statusColors
+                };
+
+                violationsByStatusChart.data.datasets = [newDataset];
+                violationsByStatusChart.update();
+
+                // update chart for Achieved vs. Violated Count
+                let newAchivedVsViolatedDataset = {
+                    data: [
+                        violationsData.achieved_vs_violated_tickets['achieved'],
+                        violationsData.achieved_vs_violated_tickets['violated']
+                    ],
+                    backgroundColor: achivedVsViolatedColors
+                };
+
+                achivedVsViolatedChart.data.datasets = [newAchivedVsViolatedDataset];
+                //
+                achivedVsViolatedChart.options.plugins.title.text = violationsData.achieved_vs_violated_tickets['percentage'] + '% ' + window.violations.i18n.violated;
+                achivedVsViolatedChart.update();
             }
         };
 
+        // chart for Violations By Status
+        const statuses = window.violations.statuses;
+        const statusLabels = [];
+        const statusColors = [];
+        const statusIds = {};
+        var statusValues = [];
+
+        for(let statusId in statuses)
+        {
+            statusLabels.push(statuses[statusId].name);
+            statusColors.push(statuses[statusId].color);
+            statusIds[statusId] = statusId;
+            // fill default values
+            statusValues.push(0);
+        }
+
+        const statusData = {
+            labels: statusLabels,
+            datasets: [
+                {
+                    data: statusValues,
+                    backgroundColor: statusColors
+                }
+            ]
+        };
+
+        const violationsByStatusChart = new Chart(
+            document.getElementById('violationsByStatus'),
+            {
+                type: 'bar',
+                data: statusData,
+                plugins: [ChartDataLabels],
+                options: {
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'top',
+                            color: 'black',
+                            font: {
+                                weight: 'bold',
+                                size: 16
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // chart for Achieved vs. Violated Count
+        const achivedVsViolatedColors = ['#619cee', '#e95564'];
+        const achivedVsViolatedData = {
+            labels: [window.violations.i18n.achieved, window.violations.i18n.violated],
+            datasets: [
+                {
+                    data: [0, 0],
+                    backgroundColor: achivedVsViolatedColors
+                }
+            ]
+        };
+
+        const achivedVsViolatedChart = new Chart(
+            document.getElementById('achievedVsViolatedCount'),
+            {
+                type: 'doughnut',
+                data: achivedVsViolatedData,
+                plugins: [ChartDataLabels],
+                options: {
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'top',
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 16
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '',
+                            align: 'center',
+                            position: 'top',
+                            color: '#e95564'
+                        }
+                    }
+                }
+            }
+        );
     });
 });
 

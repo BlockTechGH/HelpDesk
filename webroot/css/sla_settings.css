@@ -110,3 +110,8 @@ hr.devide-kpi-block {
     width: 39px;
     height: 39px;
 }
+
+.mdash {
+    display: flex;
+    align-items: center;
+}
