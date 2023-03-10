@@ -502,18 +502,20 @@ class TicketController extends AppController
                     return $activity['RESPONSIBLE_ID'];
                 }, array_values($activities)));
 
-                $responsible = $this->Bx24->getUserById($responsibleIds);
+                $arRowResponsible = $this->Bx24->getUserById($responsibleIds);
 
                 $this->TicketControllerLogger->debug(__FUNCTION__ . ' - users', [
                     'responsibleIds' => $responsibleIds,
-                    'responsible' => $responsible
+                    'arRowResponsible' => $arRowResponsible
                 ]);
 
-                foreach($responsible as $id => $user)
+                $responsible = [];
+                foreach($arRowResponsible as $id => $user)
                 {
                     $responsible[$user['ID']] = $user;
-                    unset($responsible[$id]);
                 }
+
+                unset($arRowResponsible);
 
                 $activitiesIds = array_unique(array_map(function($activity) {
                     return $activity['ID'];
