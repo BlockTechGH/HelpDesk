@@ -8,16 +8,21 @@
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
                 <div class="form-group p-2 mt-2">
+                    <div class="text-muted"><?= __('Customer') ?></div>
                     <p class="form-input customer-block">
                         <span class="border rounded-circle p-2 customer-block-abr">{{ ticketAttributes.customer.abr }}</span>
-                        <span class="ml-2">{{ ticketAttributes.customer.title }}</span>
+                        <span class="ml-2"><a href="#" v-on:click.prevent="openEntityCard">{{ ticketAttributes.customer.title }}</a></span>
                     </p>
                     <p class="customer-communications">{{ ticketAttributes.customer.phone }}</p>
                     <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
+                    <div v-if="dealName">
+                        <div class="text-muted"><?= __('Deal') ?></div>
+                        <a href="#" v-on:click.prevent="openDealCard">{{dealName}}</a>
+                    </div>
                 </div>
 
                 <div class="form-group p-2">
-                    <label class="" for="assigned_to">{{ i18n.Assigned }}</label>
+                    <label class="text-muted" for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <img v-if="ticketAttributes.responsible.photo" class="rounded-circle avatar-img" v-bind:alt="ticketAttributes.responsible.title" v-bind:src="ticketAttributes.responsible.photo" />
                         <span v-else class="border rounded-circle p-2">{{ ticketAttributes.responsible.abr }}</span>
@@ -27,7 +32,7 @@
                 </div>
 
                 <div class="form-group p-2">
-                    <label for="ticket_status">{{ i18n.Status }}</label>
+                    <label for="ticket_status" class="text-muted">{{ i18n.Status }}</label>
                     <div class="input-group">
                         <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
                             <option 
@@ -215,6 +220,8 @@
         resolutionAwaiting: false,
         isResoltionInvalid: false,
         resolutionText: '',
+        dealName: "<?= $dealName ?>",
+        dealId: "<?= $dealId ?>",
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Title'),
@@ -243,6 +250,37 @@
         data: window.data,
         methods:
         {
+            openEntityCard: function()
+            {
+                let entityPath = '';
+
+                if(this.ticketAttributes.ENTITY_TYPE_ID == 3 && this.ticketAttributes.customer.id)
+                {
+                    entityPath = '/crm/contact/details/' + this.ticketAttributes.customer.id + '/';
+                }
+
+                if(this.ticketAttributes.ENTITY_TYPE_ID == 4 && this.ticketAttributes.customer.id)
+                {
+                    entityPath = '/crm/company/details/' + this.ticketAttributes.customer.id + '/';
+                }
+
+                if(entityPath)
+                {
+                    BX24.openPath(entityPath);
+                } else {
+                    return false;
+                }
+            },
+            openDealCard: function()
+            {
+                if(this.dealId)
+                {
+                    let dealPath = '/crm/deal/details/' + this.dealId + '/';
+                    BX24.openPath(dealPath);
+                } else {
+                    return false;
+                }
+            },
             addResolutions: function()
             {
                 this.resolutionAwaiting = true;

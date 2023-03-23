@@ -467,10 +467,29 @@ class BitrixController extends AppController
             }
         }
 
+        // get additional info
+        // deal name and id
+        $arBindings = $this->Bx24->getBindingsForActivity($this->ticket['action_id']);
+        $dealName = '';
+        $dealId = 0;
+
+        foreach($arBindings as $binding)
+        {
+            if($binding['entityTypeId'] == $this->Bx24::OWNER_TYPE_DEAL)
+            {
+                $arDeal =  $this->Bx24->getDeal(intval($binding['entityId']));
+                $dealName = $arDeal['TITLE'];
+                $dealId = $arDeal['ID'];
+                break;
+            }
+        }
+
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         $this->set('onChangeResponsibleUrl', $this->getUrlOf('on_change_responsible', $this->domain));
+        $this->set('dealName', $dealName);
+        $this->set('dealId', $dealId);
         return $this->render('display_ticket_card');
     }
 

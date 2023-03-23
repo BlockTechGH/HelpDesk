@@ -2313,4 +2313,22 @@ class Bx24Component extends Component
     {
         return $this->obBx24App->getApplicationId();
     }
+
+    public function getBindingsForActivity($activityId)
+    {
+        $result = $this->obBx24App->call('crm.activity.binding.list', [
+            'activityId' => $activityId
+        ]);
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - bindings", [
+            'result' => $result
+        ]);
+
+        if($result['result'])
+        {
+            return $result['result'];
+        } else {
+            return [];
+        }
+    }
 }
