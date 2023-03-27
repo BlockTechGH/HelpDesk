@@ -37,6 +37,7 @@ class Bx24Component extends Component
     public const TICKET_PREFIX = 'GS-';
     public const DATE_TIME_FORMAT = "m/d/Y h:i a";
 
+    public const OWNER_TYPE_LEAD = 1;
     public const OWNER_TYPE_DEAL = 2;
     public const OWNER_TYPE_CONTACT = 3;
     public const OWNER_TYPE_COMPANY = 4;
@@ -624,6 +625,19 @@ class Bx24Component extends Component
             $this->bx24Logger->debug(__FUNCTION__ . ' - deal communications', [
                 'communications' => $ownerActivity['COMMUNICATIONS']
             ]);
+
+            if($arDealData['contact'])
+            {
+                $ownerActivity['SUBJECT'] =  implode(' ', [
+                    $arDealData['contact']['NAME'],
+                    $arDealData['contact']['LAST_NAME']
+                ]);
+            }
+
+            if($arDealData['company'])
+            {
+                $ownerActivity['SUBJECT'] =  $arDealData['company']['TITLE'];
+            }
         }
 
         if($ownerActivity['OWNER_TYPE_ID'] == self::OWNER_TYPE_CONTACT && !count($ownerActivity['COMMUNICATIONS']))
@@ -636,6 +650,11 @@ class Bx24Component extends Component
             $ownerActivity['COMMUNICATIONS'] = $this->extractCommunications($arContactData);
             $this->bx24Logger->debug(__FUNCTION__ . ' - contact communications', [
                 'communications' => $ownerActivity['COMMUNICATIONS']
+            ]);
+
+            $ownerActivity['SUBJECT'] =  implode(' ', [
+                $arContactData['contact']['NAME'],
+                $arContactData['contact']['LAST_NAME']
             ]);
         }
 
@@ -650,6 +669,8 @@ class Bx24Component extends Component
             $this->bx24Logger->debug(__FUNCTION__ . ' - company communications', [
                 'communications' => $ownerActivity['COMMUNICATIONS']
             ]);
+
+            $ownerActivity['SUBJECT'] = $arCompanyData['company']['TITLE'];
         }
 
         $parameters = [
@@ -1612,7 +1633,7 @@ class Bx24Component extends Component
             'filter' => [
                 'ID' => '$result[' . $getDealCmd . '][COMPANY_ID]'
             ],
-            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE', 'TITLE']
         ];
         $this->obBx24App->addBatchCall('crm.company.list', $arGetCompanyParams, function($result) use (&$arResult)
         {
@@ -1630,7 +1651,7 @@ class Bx24Component extends Component
             'filter' => [
                 'ID' => '$result[' . $getDealCmd . '][CONTACT_ID]'
             ],
-            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE', 'LAST_NAME']
         ];
         $this->obBx24App->addBatchCall('crm.contact.list', $arGetContactParams, function($result) use (&$arResult)
         {
@@ -1658,7 +1679,7 @@ class Bx24Component extends Component
             'filter' => [
                 'ID' => $contactId
             ],
-            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE', 'LAST_NAME']
         ];
 
         $result = $this->obBx24App->call('crm.contact.list', $arGetContactParams);
@@ -1684,7 +1705,7 @@ class Bx24Component extends Component
             'filter' => [
                 'ID' => $companyId
             ],
-            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE']
+            'SELECT' => ['ID', 'NAME', 'EMAIL', 'PHONE', 'TITLE']
         ];
 
         $result = $this->obBx24App->call('crm.company.list', $arGetCompanyParams);
