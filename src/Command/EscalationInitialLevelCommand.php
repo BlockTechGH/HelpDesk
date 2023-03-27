@@ -115,45 +115,48 @@ class EscalationInitialLevelCommand extends Command
             $expiredTicketIds = array_column($expiredTickets, 'id');
             $escatatedStatus = $this->TicketStatusesTable->getEscalatedStatus($this->memberId);
 
-            // change ticket status in database
-            $resultChangeTicketStatus = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
-
-            $this->logger->debug(__FUNCTION__ . " - result change ticket status: " . $i, [
-                'result' => $resultChangeTicketStatus
-            ]);
-
-            // mark tikcet as violated
-            foreach($expiredTickets as $ticket)
+            if(count($expiredTicketIds))
             {
-                $resultViolation = $this->TicketsTable->markAsViolated($ticket);
+                // change ticket status in database
+                $resultChangeTicketStatus = $this->TicketsTable->changeTicketsStatus($expiredTicketIds, $escatatedStatus->id);
 
-                if($resultViolation['error'])
+                $this->logger->debug(__FUNCTION__ . " - result change ticket status: " . $i, [
+                    'result' => $resultChangeTicketStatus
+                ]);
+
+                // mark tikcet as violated
+                foreach($expiredTickets as $ticket)
                 {
-                    $this->logger->error(__FUNCTION__ . " - result violation ticket: " . $i, [
-                        'id' => $ticket->id,
-                        'result' => $resultViolation
-                    ]);
-                } else {
-                    $this->logger->debug(__FUNCTION__ . " - result violation ticket: " . $i, [
-                        'id' => $ticket->id,
-                        'result' => $resultViolation
-                    ]);
+                    $resultViolation = $this->TicketsTable->markAsViolated($ticket);
+
+                    if($resultViolation['error'])
+                    {
+                        $this->logger->error(__FUNCTION__ . " - result violation ticket: " . $i, [
+                            'id' => $ticket->id,
+                            'result' => $resultViolation
+                        ]);
+                    } else {
+                        $this->logger->debug(__FUNCTION__ . " - result violation ticket: " . $i, [
+                            'id' => $ticket->id,
+                            'result' => $resultViolation
+                        ]);
+                    }
                 }
+
+                // run workflow when changing ticket status
+                $resultToChangeStatus = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
+
+                $this->logger->debug(__FUNCTION__ . " - result start change status workflows: " . $i, [
+                    'result' => $resultToChangeStatus
+                ]);
+
+                // run workflow for sla notifications
+                $resultSlaNotification = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level, $activities);
+
+                $this->logger->debug(__FUNCTION__ . " - result sla notification workflows: " . $i, [
+                    'result' => $resultSlaNotification
+                ]);
             }
-
-            // run workflow when changing ticket status
-            $resultToChangeStatus = $this->Bx24->startWorkflowsToChangeStatuses($expiredTickets, $activities, $escatatedStatus);
-
-            $this->logger->debug(__FUNCTION__ . " - result start change status workflows: " . $i, [
-                'result' => $resultToChangeStatus
-            ]);
-
-            // run workflow for sla notifications
-            $resultSlaNotification = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level, $activities);
-
-            $this->logger->debug(__FUNCTION__ . " - result sla notification workflows: " . $i, [
-                'result' => $resultSlaNotification
-            ]);
 
             sleep(1);
         }

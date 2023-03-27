@@ -115,19 +115,22 @@ class EscalationSubsequentLevelCommand extends Command
 
             $expiredTicketIds = array_column($expiredTickets, 'id');
 
-            // mark as SLA notified
-            $resultMarkAsNotified = $this->TicketsTable->markAsSlaNotified($expiredTicketIds);
+            if(count($expiredTicketIds))
+            {
+                // mark as SLA notified
+                $resultMarkAsNotified = $this->TicketsTable->markAsSlaNotified($expiredTicketIds);
 
-            $this->logger->debug(__FUNCTION__ . " - result mark as SLA notified: " . $i, [
-                'result' => $resultMarkAsNotified
-            ]);
+                $this->logger->debug(__FUNCTION__ . " - result mark as SLA notified: " . $i, [
+                    'result' => $resultMarkAsNotified
+                ]);
 
-            // run workflow for sla notifications
-            $resultSlaNotification = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level, $activities);
+                // run workflow for sla notifications
+                $resultSlaNotification = $this->Bx24->startWorkflowsToExpiredTickets($expiredTickets, $this->level, $activities);
 
-            $this->logger->debug(__FUNCTION__ . " - result sla notification workflows: " . $i, [
-                'result' => $resultSlaNotification
-            ]);
+                $this->logger->debug(__FUNCTION__ . " - result sla notification workflows: " . $i, [
+                    'result' => $resultSlaNotification
+                ]);
+            }
 
             sleep(1);
         }
