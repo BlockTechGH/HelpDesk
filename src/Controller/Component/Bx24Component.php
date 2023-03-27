@@ -686,9 +686,6 @@ class Bx24Component extends Component
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
-                'PROVIDER_PARAMS' => [
-                    'SOURCE_PROVIDER_ID' => $ownerActivity['PROVIDER_ID']
-                ],
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
@@ -1058,7 +1055,7 @@ class Bx24Component extends Component
             'customer' => [
                 'id' => (int)$customerCommunications['ENTITY_ID'],
                 'abr' => $abr,
-                'title' => $title,
+                'title' => (isset($title)) ? $title : '',
                 'email' => $customerCommunications['TYPE'] == 'EMAIL' || strstr($customerCommunications['VALUE'], '@')
                     ? $customerCommunications['VALUE']
                     : ($additionContact && ($additionContact['TYPE'] == 'EMAIL' || strstr($customerCommunications['VALUE'], '@'))
@@ -2311,7 +2308,14 @@ class Bx24Component extends Component
         $arParams = [
             'filter' => $filter,
             'select' => [
-                '*',
+                'ID',
+                'SUBJECT',
+                'RESPONSIBLE_ID',
+                'CREATED',
+                'PROVIDER_PARAMS',
+                'DESCRIPTION',
+                'COMPLETED',
+                'PROVIDER_ID',
                 'COMMUNICATIONS'
             ],
             'order' => $order,

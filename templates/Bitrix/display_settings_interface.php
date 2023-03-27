@@ -109,9 +109,11 @@
                         <th data-column-id="id" 
                             data-identifier="true"
                             data-sortable="true"
+                            data-width="100px"
                         >
                             <?=__('ID');?>
                         </th>
+                        <th data-column-id="name" data-sortable="false" data-formatter="ticket_source"><?=__('Source');?></th>
                         <th data-column-id="name" data-sortable="false" data-formatter="ticket_link"><?=__('Name');?></th>
                         <th data-column-id="responsible" data-sortable="false"><?=__('Responsible person');?></th>
                         <th data-column-id="status_id" data-sortable="false" data-formatter="status"><?=__('Status');?></th>
@@ -831,11 +833,35 @@ $(document).ready(function () {
         var grid = $('#ticketsGrid').bootgrid({
             rowCount: [10, 25, 50],
             formatters: {
-                'person': (column, row) => row[column.id]?.title,
-                'status': (column, row) => window.data.statuses[row.status_id].name,
-                'ticket_link': function(column, row)
+                person: (column, row) => row[column.id]?.title,
+                status: (column, row) => window.data.statuses[row.status_id].name,
+                ticket_link: function(column, row)
                 {
                     return '<a href="#" onclick="BX24.openApplication({action: \'view_activity\', activity_id: ' + row.activity_id + '});">' + row.name + '</a>';
+                },
+                ticket_source: function(column, row)
+                {
+                    if(row.source === '<?= 'CRM_EMAIL' ?>')
+                    {
+                        return '<i class="bi bi-envelope-fill mr-1"></i><?= __('Email') ?>';
+                    }
+
+                    if(row.source === '<?= 'IMOPENLINES_SESSION' ?>')
+                    {
+                        return '<i class="bi bi-chat-fill mr-1"></i><?= __('Open Channel') ?>';
+                    }
+
+                    if(row.source === '<?= 'HELPDESK_TICKETING' ?>')
+                    {
+                        return '<i class="bi bi-pencil-square mr-1"></i><?= __('Manually') ?>';
+                    }
+
+                    if(row.source === '<?= 'VOXIMPLANT_CALL' ?>')
+                    {
+                        return '<i class="bi bi-telephone-fill mr-1"></i><?= __('Phone call') ?>';
+                    }
+
+                    return '';
                 }
             },
             templates: {

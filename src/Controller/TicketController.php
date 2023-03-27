@@ -712,6 +712,7 @@ class TicketController extends AppController
                     'status_id' => $ticket->status_id,
                     'client' => $client['customer'] ?? [],
                     'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
+                    'source' => $ticket->source_type_id ?? ''
                 ];
             }
 
