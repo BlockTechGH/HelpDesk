@@ -933,6 +933,7 @@ class TicketController extends AppController
         // Cals statistics
         foreach($rows as $row)
         {
+            // per agent
             $uid = $row['responsible']['id'];
             $idStatus = $row['status_id'];
             if (!isset($perUser[$uid][$idStatus])) {
@@ -944,12 +945,16 @@ class TicketController extends AppController
             $perUser[$uid][$idStatus]++;
             $perUser[$uid]['total']++;
 
-            $client = $row['customer']['title'];
-            if(!isset($perClient[$client]))
+            // per customer
+            $clientId = $row['customer']['typeId'] . "_" . $row['customer']['typeId'];
+            if(!isset($perClient[$clientId]))
             {
-                $perClient[$client]['total'] = 0;
+                $perClient[$clientId]['total'] = 0;
+                $perClient[$clientId]['title'] = $row['customer']['title'];
+                $perClient[$clientId]['typeId'] = $row['customer']['typeId'];
             }
-            $perClient[$client]['total']++;
+            $perClient[$clientId]['total']++;
+            $perClient[$clientId]['title'] = $row['customer']['title'];
         }
 
         // Make departments statistic

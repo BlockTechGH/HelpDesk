@@ -1054,6 +1054,7 @@ class Bx24Component extends Component
             'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
             'customer' => [
                 'id' => (int)$customerCommunications['ENTITY_ID'],
+                'typeId' => (int)$customerCommunications['ENTITY_TYPE_ID'],
                 'abr' => $abr,
                 'title' => (isset($title)) ? $title : '',
                 'email' => $customerCommunications['TYPE'] == 'EMAIL' || strstr($customerCommunications['VALUE'], '@')

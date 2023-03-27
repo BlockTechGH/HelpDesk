@@ -184,11 +184,13 @@
                         <table class="table table-hover table-bordered table-condensed">
                             <thead>
                                 <th>{{ department.i18n.Customer }}</th>
+                                <th>{{ department.i18n.Company }}</th>
                                 <th>{{ department.i18n.Total }}</th>
                             </thead>
                             <tbody>
                                 <tr v-for="(amount, customer) in perCustomer">
-                                    <td>{{ customer }}</td>
+                                    <td><span v-if="amount.typeId == 3" v-html="amount.title"></span></td>
+                                    <td><span v-if="amount.typeId == 4" v-html="amount.title"></span></td>
                                     <td>{{ amount.total }}</td>
                                 </tr>
                             </tbody>
@@ -444,6 +446,7 @@
                     'Department' => __('Department'),
                     'Agent' => __('Team/Agent'),
                     'Customer' => __('Customer'),
+                    'Company' => __('Company')
                 ]);?>,
                 expose: {
                     team: {},
