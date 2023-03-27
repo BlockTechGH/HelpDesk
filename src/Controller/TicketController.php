@@ -946,7 +946,7 @@ class TicketController extends AppController
             $perUser[$uid]['total']++;
 
             // per customer
-            $clientId = $row['customer']['typeId'] . "_" . $row['customer']['typeId'];
+            $clientId = $row['customer']['typeId'] . "_" . $row['customer']['id'];
             if(!isset($perClient[$clientId]))
             {
                 $perClient[$clientId]['total'] = 0;
@@ -954,7 +954,6 @@ class TicketController extends AppController
                 $perClient[$clientId]['typeId'] = $row['customer']['typeId'];
             }
             $perClient[$clientId]['total']++;
-            $perClient[$clientId]['title'] = $row['customer']['title'];
         }
 
         // Make departments statistic
