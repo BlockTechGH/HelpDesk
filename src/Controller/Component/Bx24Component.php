@@ -686,6 +686,9 @@ class Bx24Component extends Component
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
+                'PROVIDER_PARAMS' => [
+                    'SOURCE_PROVIDER_ID' => $ownerActivity['PROVIDER_ID']
+                ],
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
