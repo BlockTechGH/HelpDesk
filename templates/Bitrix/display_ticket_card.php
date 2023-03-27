@@ -17,7 +17,7 @@
                     <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
                     <div v-if="dealName">
                         <div class="text-muted"><?= __('Deal') ?></div>
-                        <a href="#" v-on:click.prevent="openDealCard">{{dealName}}</a>
+                        <a href="#" v-on:click.prevent="openDealCard" v-html="dealName"></a>
                     </div>
                 </div>
 
@@ -220,7 +220,7 @@
         resolutionAwaiting: false,
         isResoltionInvalid: false,
         resolutionText: '',
-        dealName: "<?= $dealName ?>",
+        dealName: "<?= htmlspecialchars($dealName, ENT_QUOTES); ?>",
         dealId: "<?= $dealId ?>",
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
