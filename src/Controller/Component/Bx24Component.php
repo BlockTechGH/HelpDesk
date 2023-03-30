@@ -2360,4 +2360,62 @@ class Bx24Component extends Component
             return [];
         }
     }
+
+    public function reassignActivityOnNewDeal($activityId, $oldDealId, $newDealId)
+    {
+        $arResult = [
+            'delete' => 0,
+            'add' => 0,
+            'deal' => []
+        ];
+
+        $this->bx24Logger->debug(__FUNCTION__ . " - input data", [
+            'activityId' => $activityId,
+            'oldDealId' => $oldDealId,
+            'newDealId' => $newDealId
+        ]);
+
+        $arDeleteParams = [
+            'activityId' => $activityId,
+            'entityTypeId' => self::OWNER_TYPE_DEAL,
+            'entityId' => $oldDealId
+        ];
+
+        $this->obBx24App->addBatchCall('crm.activity.binding.delete', $arDeleteParams, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['delete'] = $result['result'];
+            }
+        });
+
+        $arAddParams = [
+            'activityId' => $activityId,
+            'entityTypeId' => self::OWNER_TYPE_DEAL,
+            'entityId' => $newDealId
+        ];
+
+        $this->obBx24App->addBatchCall('crm.activity.binding.add', $arAddParams, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['add'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall('crm.deal.get', ['id' => $newDealId], function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['deal'] = [
+                    'id' => $result['result']['ID'],
+                    'title' => $result['result']['TITLE']
+                ];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        return $arResult;
+    }
 }

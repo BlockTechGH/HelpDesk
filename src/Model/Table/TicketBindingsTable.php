@@ -85,6 +85,17 @@ class TicketBindingsTable extends Table
         return $entity;
     }
 
+    public function deleteIfExists($activityId, $entityId, $entityTypeId)
+    {
+        $row = $this->find()->where(['entity_id' => $entityId, 'entity_type_id' => $entityTypeId])->first();
+        if($row)
+        {
+            return $this->delete($row);
+        } else {
+            return false;
+        }
+    }
+
     public function getBindingsByEntityIdAndEntityTypeId($entityId, $entityTypeId)
     {
         return $this->find()->where(['entity_id' => $entityId, 'entity_type_id' => $entityTypeId])->toArray();

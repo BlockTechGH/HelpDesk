@@ -138,6 +138,12 @@ class BitrixController extends AppController
                     return $this->addResolution($data, $currentUser);
                 }
 
+                if($do && $do === 'assignNewDeal')
+                {
+                    $data = $this->request->getParsedBody();
+                    return $this->assignNewDeal($data, $currentUser);
+                }
+
                 $this->ticket = $this->Tickets->getByActivityIdAndMemberId($this->placement['activity_id'], $this->memberId);
 
                 if($this->ticket && $this->ticket['resolutions'])
@@ -1089,6 +1095,50 @@ class BitrixController extends AppController
         }
 
         return $fileName;
+    }
+
+    private function assignNewDeal($data, $currentUser)
+    {
+        $this->disableAutoRender();
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'data' => $data
+        ]);
+
+        if($data['newDealId'] && $data['oldDealId'] && $data['activityId'] > 0)
+        {
+            $arResult = $this->Bx24->reassignActivityOnNewDeal($data['activityId'], $data['oldDealId'], $data['newDealId']);
+
+            $this->BxControllerLogger->debug(__FUNCTION__ . ' - reassign result', [
+                'arResult' => $arResult
+            ]);
+
+            if($arResult)
+            {
+                $delete = $this->TicketBindings->deleteIfExists($data['activityId'], $data['oldDealId'], $this->Bx24::OWNER_TYPE_DEAL);
+                $row = $this->TicketBindings->create($data['activityId'], $data['newDealId'], $this->Bx24::OWNER_TYPE_DEAL);
+
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - tickets binding result', [
+                    'delete' => $delete,
+                    'new_row' => $row
+                ]);
+
+                $arDealData = [
+                    'id' => $arResult['deal']['id'],
+                    'title' => $arResult['deal']['title']
+                ];
+
+                return new Response(['body' => json_encode([
+                    'success' => true,
+                    'data' => $arDealData
+                ])]);
+            }
+        }
+
+        return new Response(['body' => json_encode([
+            'success' => false,
+            'message' => __('Bad request')
+        ])]);
     }
 
     private function addResolution($data, $currentUser)

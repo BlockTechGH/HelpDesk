@@ -16,8 +16,13 @@
                     <p class="customer-communications">{{ ticketAttributes.customer.phone }}</p>
                     <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
                     <div v-if="dealName">
-                        <div class="text-muted"><?= __('Deal') ?></div>
-                        <a href="#" v-on:click.prevent="openDealCard" v-html="dealName"></a>
+                        <span class="text-muted"><?= __('Deal') ?></span>
+                        <a href="#" class="change-responsible float-right" @click="displaySelectDealDialog">
+                            <?= __('Change') ?>
+                        </a>
+                        <div>
+                            <a href="#" @click.prevent="openDealCard" v-html="dealName"></a>
+                        </div>
                     </div>
                 </div>
 
@@ -250,6 +255,54 @@
         data: window.data,
         methods:
         {
+            displaySelectDealDialog: function()
+            {
+                BX24.selectCRM(
+                {
+                    entityType: ['deal'],
+                    multiple: false
+                }, BX24.proxy(this.handleSelectDeal, this));
+            },
+            handleSelectDeal: function(select)
+            {
+                let newDeal = select.deal[0];
+                let newDealId = newDeal.id.replace('D_', '');
+                let oldDealId = this.dealId;
+                console.log('oldDealId: ' + oldDealId);
+                console.log('newDealId: ' + newDealId);
+                if(newDealId === oldDealId)
+                {
+                    return;
+                }
+
+                const parameters = Object.assign(
+                    {
+                        activityId: this.ticketAttributes.id,
+                        newDealId: newDealId,
+                        oldDealId: oldDealId
+                    },
+                    this.required
+                );
+                if(this.ticket.id > 0)
+                {
+                    parameters.do = "assignNewDeal";
+                }
+
+                fetch(this.ajax, {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    const newDealData = await result.json();
+                    console.log('newDealData');
+                    console.log(newDealData);
+                    if(newDealData.success)
+                    {
+                        this.dealName = newDealData.data.title;
+                        this.dealId = newDealData.data.id;
+                    }
+                });
+            },
             openEntityCard: function()
             {
                 let entityPath = '';
