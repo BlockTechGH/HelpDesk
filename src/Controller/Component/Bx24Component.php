@@ -603,6 +603,8 @@ class Bx24Component extends Component
             'activityType' => $activityType
         ]);
 
+        $channelName = '';
+
         $now = FrozenTime::now();
 
         foreach($ownerActivity['COMMUNICATIONS'] as $i => $communication)
@@ -610,6 +612,17 @@ class Bx24Component extends Component
             if(!in_array($communication['TYPE'], ['EMAIL', 'PHONE']))
             {
                 unset($ownerActivity['COMMUNICATIONS'][$i]);
+            }
+        }
+
+        if($ownerActivity['PROVIDER_ID'] == self::PROVIDER_OPEN_LINES)
+        {
+            // get channel name
+            preg_match('|\((.*)\)|', $ownerActivity['SUBJECT'], $matches);
+
+            if(count($matches) > 1)
+            {
+                $channelName = end($matches);
             }
         }
 
@@ -686,6 +699,7 @@ class Bx24Component extends Component
                 'SUBJECT' => $subject . ' ' . $ownerActivity['SUBJECT'],
                 'PROVIDER_ID' => 'REST_APP',
                 'PROVIDER_TYPE_ID' => $activityType['TYPE_ID'],
+                'PROVIDER_DATA' => $channelName,
                 'RESPONSIBLE_ID' => $ownerActivity['RESPONSIBLE_ID'],
                 'START_TIME' => $now->i18nFormat('yyyy-MM-dd HH:mm:ss'),
             ]
@@ -2317,7 +2331,8 @@ class Bx24Component extends Component
                 'DESCRIPTION',
                 'COMPLETED',
                 'PROVIDER_ID',
-                'COMMUNICATIONS'
+                'COMMUNICATIONS',
+                'PROVIDER_DATA'
             ],
             'order' => $order,
             'start' => $start

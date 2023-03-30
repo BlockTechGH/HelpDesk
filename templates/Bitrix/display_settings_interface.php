@@ -851,7 +851,12 @@ $(document).ready(function () {
 
                     if(row.source === '<?= 'IMOPENLINES_SESSION' ?>')
                     {
-                        return '<i class="bi bi-chat-fill mr-1"></i><?= __('Open Channel') ?>';
+                        if(row.channel)
+                        {
+                            return '<i class="bi bi-chat-fill mr-1"></i>' + row.channel;
+                        } else {
+                            return '<i class="bi bi-chat-fill mr-1"></i><?= __('Open Channel') ?>';
+                        }
                     }
 
                     if(row.source === '<?= 'HELPDESK_TICKETING' ?>')
