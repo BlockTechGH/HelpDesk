@@ -18,6 +18,7 @@ class TicketController extends AppController
 {
     private $Tickets;
     private $TicketStatuses;
+    private $TicketCategories;
     private $TicketControllerLogger;
     private $placement;
 
@@ -56,6 +57,8 @@ class TicketController extends AppController
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketStatuses = $this->getTableLocator()->get('TicketStatuses');
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
+        $this->Categories = $this->getTableLocator()->get('TicketCategories');
+        $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_controller.log';
         $this->TicketControllerLogger = new Logger('TicketController');
@@ -235,6 +238,8 @@ class TicketController extends AppController
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
 
         $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $categories = $this->Categories->getCategoriesFor($this->memberId);
+        $incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
         $entityId = intval($this->placement['ID']);
@@ -321,6 +326,8 @@ class TicketController extends AppController
             $subject = $data['subject'];
             $text = $data['description'];
             $statusId = intval($data['status']);
+            $categoryId = intval($data['categoryId']);
+            $incidentCategoryId = intval($data['incidentCategoryId']);
             $status = $statuses[$statusId];
             $responsibleId = $data['responsible'] ?? $currentUser['ID'];
             $ticketId = $this->Tickets->getNextID();
@@ -354,9 +361,10 @@ class TicketController extends AppController
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId, 
                     $activity,
-                    1, 
+                    $categoryId, 
                     $status['id'],
-                    0
+                    0,
+                    $incidentCategoryId
                 );
                 if($bindings)
                 {
@@ -397,6 +405,8 @@ class TicketController extends AppController
         $this->set('customer', $customer);
         $this->set('responsible', $this->Bx24->makeUserAttributes($currentUser));
         $this->set('statuses', $statuses);
+        $this->set('categories', $categories);
+        $this->set('incidentCategories', $incidentCategories);
         $this->set('statusId', $this->TicketStatuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE)['id']);
         $this->set('ajax', $this->getUrlOf('crm_interface', $this->domain));
         $this->set('required', [

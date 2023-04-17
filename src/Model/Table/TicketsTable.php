@@ -120,11 +120,12 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId)
+    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $incidentCategoryId)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
-            'category_id' => null,
+            'category_id' => $categoryId,
+            'incident_category_id' => $incidentCategoryId,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
             'source_type_id' => $activity['PROVIDER_TYPE_ID'],
@@ -240,11 +241,13 @@ class TicketsTable extends Table
         return $summary;
     }
 
-    public function editTicket(int $id, int $statusId, $categoryId, string $memberId)
+    public function editTicket(int $id, int $statusId, $categoryId, string $memberId, $incidentCategoryId)
     {
         $insert = [
             'member_id' => $memberId,
             'status_id' => $statusId,
+            'category_id' => $categoryId,
+            'incident_category_id' => $incidentCategoryId
         ];
         if($id < 1)
         {

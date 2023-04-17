@@ -26,7 +26,7 @@
                     </div>
                 </div>
 
-                <div class="form-group p-2">
+                <div class="form-group p-2 mb-0">
                     <label for="ticket_status">{{ i18n.Status }}</label>
                     <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
                         <option 
@@ -35,6 +35,32 @@
                             :value="status.id"
                         >
                             {{ status.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group p-2 mb-0">
+                    <label for="ticket_category">{{ i18n.Ticket_Category }}</label>
+                    <select id="ticket_category" name="ticket_category" class="form-control" v-on:change="setTicketCategory">
+                        <option 
+                            v-for="(category, index) in categories"
+                            :selected="category.id == ticket.category_id"
+                            :value="category.id"
+                        >
+                            {{ category.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group p-2 mb-0">
+                    <label for="incident_category">{{ i18n.Incident_Category }}</label>
+                    <select id="incident_category" name="incident_category" class="form-control" v-on:change="setIncidentCategory">
+                        <option 
+                            v-for="(category, index) in incidentCategories"
+                            :selected="category.id == ticket.incident_category_id"
+                            :value="category.id"
+                        >
+                            {{ category.name }}
                         </option>
                     </select>
                 </div>
@@ -80,12 +106,15 @@
         customer: <?=json_encode($customer);?>,
         responsible: <?=json_encode($responsible);?>,
         statuses: <?=json_encode($statuses);?>,
-        
+        categories: <?=json_encode($categories);?>,
+        incidentCategories: <?=json_encode($incidentCategories);?>,
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Ticket name'),
             'Description' => __('Description'),
             'Status' => __('Status'),
+            'Ticket_Category' => __('Ticket Category'),
+            'Incident_Category' => __('Incident Category'),
             'Add' => __('Add'),
             'Cancel' => __('Cancel'),
             'Wait' => __('Please wait'),
@@ -116,7 +145,9 @@
                         subject: this.subject,
                         description: this.description,
                         responsible: this.responsible.id,
-                        status: this.statusId
+                        status: this.statusId,
+                        categoryId: this.categoryId,
+                        incidentCategoryId: this.incidentCategoryId
                     }, 
                     this.required
                 );
@@ -211,6 +242,14 @@
                 }
 
                 return abr;
+            },
+            setTicketCategory: function(event)
+            {
+                this.categoryId = event.target.value;
+            },
+            setIncidentCategory: function()
+            {
+                this.incidentCategoryId = event.target.value;
             }
         }
     });

@@ -33,6 +33,7 @@ class Ticket extends Entity
     protected $_accessible = [
         'status_id' => true,
         'category_id' => true,
+        'incident_category_id' => true,
         'member_id' => true,
         'action_id' => true,
         'source_type_id' => true,
