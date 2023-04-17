@@ -76,6 +76,7 @@ class BitrixController extends AppController
         $this->Options = $this->getTableLocator()->get('HelpdeskOptions');
         $this->Statuses = $this->getTableLocator()->get('TicketStatuses');
         $this->Categories = $this->getTableLocator()->get('TicketCategories');
+        $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
@@ -332,6 +333,14 @@ class BitrixController extends AppController
                 (bool)$data['category']['active']
             );
             return new Response(['body' => json_encode($category)]);
+        } elseif(isset($data['incidentCategory'])) {
+            $category = $this->IncidentCategories->editCategory(
+                $data['incidentCategory']['id'] ?? 0,
+                $data['incidentCategory']['name'],
+                $this->memberId,
+                (bool)$data['incidentCategory']['active']
+            );
+            return new Response(['body' => json_encode($category)]);
         }
         elseif(isset($data['saveSLASettings']))
         {
@@ -408,6 +417,12 @@ class BitrixController extends AppController
         }
 
         $this->set('arDepartments', $arDepartments);
+
+        $categories = $this->Categories->getCategoriesFor($this->memberId);
+        $this->set('categories', $categories);
+
+        $incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
+        $this->set('incidentCategories', $incidentCategories);
     }
 
     public function displayTicketCard($currentUser)

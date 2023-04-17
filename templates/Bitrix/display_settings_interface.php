@@ -15,6 +15,119 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <?php $this->end();?>
 
+<script>
+    window.data = {
+        ajax: "<?= $this->Url->build([
+            '_name' => 'crm_settings_interface', 
+            '?' => ['DOMAIN' => $domain]
+        ]); ?>",
+        required: <?=json_encode($required)?>,
+        currentStatus: {
+            id: 0,
+            name: '',
+            active: 1,
+            member_id: "<?=$required['member_id'];?>",
+            mark: 0,
+            color: '#ffffff',
+        },
+        currentCategory: {
+            id: 0,
+            name: '',
+            active: 1,
+            member_id: "<?=$required['member_id'];?>",
+        },
+        currentIncidentCategory: {
+            id: 0,
+            name: '',
+            active: 1,
+            member_id: "<?=$required['member_id'];?>",
+        },
+        memberId: "<?=$required['member_id']?>",
+        categories: <?=json_encode($categories);?>,
+        incidentCategories: <?=json_encode($incidentCategories);?>,
+        statuses: <?=json_encode($statuses);?>,
+        i18n: <?=json_encode([
+            'Name' => 'Name',
+            'Save' => __('Save'),
+            'Active' => __('Active'),
+            'Add' => __('Add'),
+            'Edit' => __('Edit'),
+            'Action' => __('Action'),
+            'Yes' => __('Yes'),
+            'No' => __('No'),
+            'StartStatus' => __('Start'),
+            'FinalStatus' => __('Final'),
+            'EscalatedStatus' => __('Escalated'),
+            'Total' => __('Total'),
+            'Customer' => __('Customer'),
+            'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
+            'successSaveNotificationSettings' => __('Notification settings saved successfully'),
+        ]);?>,
+    };
+    window.tickets = {
+        picker: {
+            title: 'month',
+            format: "MM/YYYY",
+            mode: "months",
+            diapazone: false,
+        },
+        modes: [
+            {
+                title: 'month',
+                mode: "months",
+                format: "MM/YYYY",
+                diapazone: false,
+            },
+            {
+                title: 'date',
+                mode: "days",
+                format: "MM/DD/YYYY",
+                diapazone: false,
+            },
+            {
+                title: 'between',
+                mode: "days",
+                format: "MM/DD/YYYY",
+                diapazone: true,
+            }
+        ],
+        i18n: <?= json_encode([
+            'year' => __("Year"),
+            'month' => __('Month'),
+            'date' => __('Day'),
+            'between' => __('Between'),
+            'total' => __('Total'),
+            'open' => __('Open'),
+            'closed' => __('Closed'),
+            'escalated' => __('Escalated')
+        ]);?>,
+        awaiting: false
+    };
+    window.summary = Object.assign(
+        {
+            required: window.data.required,
+            department: {
+                agents: [],
+                teams: [],
+                i18n: <?=json_encode([
+                    'Total' => __('Total'),
+                    'Department' => __('Department'),
+                    'Agent' => __('Team/Agent'),
+                    'Customer' => __('Customer'),
+                    'Company' => __('Company')
+                ]);?>,
+                expose: {
+                    team: {},
+                    sla: {},
+                },
+            },
+            statuses: window.data.statuses,
+            perCustomer: [],
+            sla: []
+        }, window.tickets
+    );
+</script>
+
 <div id="setting_container" class="row mb-3">
     <div class="col-12">
         <div class="mb-5">
@@ -67,6 +180,26 @@
                         aria-selected="false"
                     >
                         <?=__('Statuses');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="categories-tab" 
+                        data-target="#categories" 
+                        aria-controls="categories"
+                        aria-selected="false"
+                    >
+                        <?=__('Ticket categories');?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
+                        id="incident-categories-tab" 
+                        data-target="#incident_categories" 
+                        aria-controls="incident_categories"
+                        aria-selected="false"
+                    >
+                        <?=__('Incident categories');?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -302,48 +435,11 @@
                     </div>
                 </form>
             </div>
-            <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab"
-                v-show="false">
-                <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
-                    <table class="table table-hover">
-                        <thead><tr>
-                            <th>{{ i18n.Name }}</th>
-                            <th>{{ i18n.Active }}</th>
-                            <th>{{ i18n.Action }}</th>
-                        </tr></thead>
-                        <tbody>
-                            <tr v-for="(category, index) in categories" :key="index">
-                                <td>{{ category.name }}</td>
-                                <td>{{ category.active > 0 ? i18n.Yes : i18n.No }}</td>
-                                <td>
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-primary btn-sm"
-                                        v-on:click="edit(index)"
-                                    >
-                                        {{ i18n.Edit }}
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div class="form-group">
-                        <label for="opt_name">{{ i18n.Option }}</label>
-                        <input class="" id="opt_name" v-model="currentCategory.name">
-                            
-                        <label for="category_active">{{ i18n.Active }}</label>
-                        <input type="checkbox" 
-                            id="category_active"
-                            v-bind:class="{btn: true, 'btn-primary': currentCategory.active}" 
-                            v-model="currentCategory.active"
-                            />
-    
-                            
-                        <button type="button" v-on:click="save" class="btn btn-primary ml-1">
-                            {{ i18n.Save }}
-                        </button>
-                    </div>
-                </form>
+            <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab">
+                <?= $this->element('categories', []); ?>
+            </div>
+            <div class="tab-pane fade" id="incident_categories" role="tabpanel" aria-labelledby="incident-categories-tab">
+                <?= $this->element('incident_categories', []); ?>
             </div>
             <div class="tab-pane fade" id="sla" role="tabpanel" aria-labelledby="sla-tab">
                 <?= $this->element('sla_settings', []); ?>
@@ -354,159 +450,7 @@
         </div>
     </div>
 </div>
-<script>
-    window.data = {
-        ajax: "<?= $this->Url->build([
-            '_name' => 'crm_settings_interface', 
-            '?' => ['DOMAIN' => $domain]
-        ]); ?>",
-        required: <?=json_encode($required)?>,
-        currentStatus: {
-            id: 0,
-            name: '',
-            active: 1,
-            member_id: "<?=$required['member_id'];?>",
-            mark: 0,
-            color: '#ffffff',
-        },
-        currentCategory: {
-            id: 0,
-            name: '',
-            active: 1,
-            member_id: "<?=$required['member_id'];?>",
-        },
-        memberId: "<?=$required['member_id']?>",
-        categories: <?=json_encode($categories);?>,
-        statuses: <?=json_encode($statuses);?>,
-        i18n: <?=json_encode([
-            'Name' => 'Name',
-            'Save' => __('Save'),
-            'Active' => __('Active'),
-            'Add' => __('Add'),
-            'Edit' => __('Edit'),
-            'Action' => __('Action'),
-            'Yes' => __('Yes'),
-            'No' => __('No'),
-            'StartStatus' => __('Start'),
-            'FinalStatus' => __('Final'),
-            'EscalatedStatus' => __('Escalated'),
-            'Total' => __('Total'),
-            'Customer' => __('Customer'),
-            'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
-            'successSaveNotificationSettings' => __('Notification settings saved successfully'),
-        ]);?>,
-    };
-    window.tickets = {
-        picker: {
-            title: 'month',
-            format: "MM/YYYY",
-            mode: "months",
-            diapazone: false,
-        },
-        modes: [
-            {
-                title: 'month',
-                mode: "months",
-                format: "MM/YYYY",
-                diapazone: false,
-            },
-            {
-                title: 'date',
-                mode: "days",
-                format: "MM/DD/YYYY",
-                diapazone: false,
-            },
-            {
-                title: 'between',
-                mode: "days",
-                format: "MM/DD/YYYY",
-                diapazone: true,
-            }
-        ],
-        i18n: <?= json_encode([
-            'year' => __("Year"),
-            'month' => __('Month'),
-            'date' => __('Day'),
-            'between' => __('Between'),
-            'total' => __('Total'),
-            'open' => __('Open'),
-            'closed' => __('Closed'),
-            'escalated' => __('Escalated')
-        ]);?>,
-        awaiting: false
-    };
-    window.summary = Object.assign(
-        {
-            required: window.data.required,
-            department: {
-                agents: [],
-                teams: [],
-                i18n: <?=json_encode([
-                    'Total' => __('Total'),
-                    'Department' => __('Department'),
-                    'Agent' => __('Team/Agent'),
-                    'Customer' => __('Customer'),
-                    'Company' => __('Company')
-                ]);?>,
-                expose: {
-                    team: {},
-                    sla: {},
-                },
-            },
-            statuses: window.data.statuses,
-            perCustomer: [],
-            sla: []
-        }, window.tickets
-    );
-</script>
 
-<script>
-const categories = new Vue({
-    'el': '#categories',
-    'data': window.data,
-    'methods': {
-        save: function ()
-        {
-            const parameters = Object.assign(
-                {
-                    category: this.currentCategory,
-                }, 
-                this.required
-            );
-            fetch(this.ajax, {
-                method: "POST",
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(parameters)
-            }).then(async result => {
-                const stored = await result.json();
-                if (this.currentCategory.id == 0) {
-                    this.categories.push(stored);
-                } else {
-                    this.categories[this.currentCategory.index] = stored;
-                }
-                this.create();
-            });
-        },
-        edit: function (index)
-        {
-            selected = this.categories[index];
-            this.currentCategory.id = selected.id;
-            this.currentCategory.name = selected.name;
-            this.currentCategory.active = selected.active;
-            this.currentCategory.index = index;
-        },
-        create: function()
-        {
-            this.currentCategory = {
-                id: 0,
-                name: "",
-                active: 1,
-                member_id: this.memberId,
-            };
-        }
-    }
-});
-</script>
 <script>
 const statuses = new Vue({
     el: '#statuses',
