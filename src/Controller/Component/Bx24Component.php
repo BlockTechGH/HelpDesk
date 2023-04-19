@@ -2385,6 +2385,31 @@ class Bx24Component extends Component
             }
             $arResult['total'] = $result['total'];
         }
+
+        // we need get all rest activities
+        if($arResult['total'] > self::BITRIX_REST_API_RESULT_LIMIT_COUNT)
+        {
+            $steeps = intval($arResult['total'] / self::BITRIX_REST_API_RESULT_LIMIT_COUNT);
+
+            for($i = 1; $i <= $steeps; $i++)
+            {
+                $arParams['start'] = self::BITRIX_REST_API_RESULT_LIMIT_COUNT * $i;
+                $this->obBx24App->addBatchCall('crm.activity.list', $arParams, function($result) use (&$arResult)
+                {
+                    if($result['result'])
+                    {
+
+                        foreach($result['result'] as $activity)
+                        {
+                            $arResult['activities'][$activity['ID']] = $activity;
+                        }
+                    }
+                });
+            }
+
+            $this->obBx24App->processBatchCalls();
+        }
+
         return $arResult;
     }
 

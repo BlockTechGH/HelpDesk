@@ -62,6 +62,8 @@
             'Customer' => __('Customer'),
             'errorSaveNotificationSettings' => __('An error occurred while saving notification settings'),
             'successSaveNotificationSettings' => __('Notification settings saved successfully'),
+            'category' => __('Ticket category'),
+            'incidentCategory' => __('Incident category'),
         ]);?>,
     };
     window.tickets = {
@@ -250,6 +252,8 @@
                         <th data-column-id="name" data-sortable="false" data-formatter="ticket_link"><?=__('Name');?></th>
                         <th data-column-id="responsible" data-sortable="false"><?=__('Responsible person');?></th>
                         <th data-column-id="status_id" data-sortable="false" data-formatter="status"><?=__('Status');?></th>
+                        <th data-column-id="category_id" data-sortable="false" data-formatter="category"><?=__('Category');?></th>
+                        <th data-column-id="incident_category_id" data-sortable="false" data-formatter="incidentCategory"><?=__('Incident category');?></th>
                         <th data-column-id="client" data-sortable="false" data-formatter="person"><?=__('Client');?></th>
                         <th data-column-id="created" data-order="desc" data-sortable="true"><?=__('Created');?></th>
                     </thead>
@@ -407,13 +411,13 @@
                     <div class="form-group">
                         <label for="status_name">{{ i18n.Option }}</label>
                         <input class="mr-2" id="status_name" v-model="currentStatus.name">
-                            
+
                         <label for="status_active">{{ i18n.Active }}</label>
                         <input type="checkbox" 
                             id="status_active"
                             v-bind:class="{btn: true, 'btn-primary': currentStatus.active}" 
                             v-model="currentStatus.active"/>
-                        
+
                         <label for="started" class="ml-1">{{ i18n.StartStatus }}</label>
                         <input id="started" type="checkbox" :checked="currentStatus.mark==1" @change="markStatus(0, 1)" class="btn btn-primary">
 
@@ -703,7 +707,7 @@ $(document).ready(function () {
                         data: [],
                         backgroundColor: []
                     };
-                
+
                     chart.data.labels = [];
                     for (const label in statistics.summary) {
                         if (Object.hasOwnProperty.call(statistics.summary, label)) {
@@ -782,6 +786,24 @@ $(document).ready(function () {
             formatters: {
                 person: (column, row) => row[column.id]?.title,
                 status: (column, row) => window.data.statuses[row.status_id].name,
+                category: function(column, row)
+                {
+                    if(row.category_id)
+                    {
+                        return window.data.categories[row.category_id].name;
+                    } else {
+                        return '';
+                    }
+                },
+                incidentCategory: function(column, row)
+                {
+                    if(row.incident_category_id)
+                    {
+                        return window.data.incidentCategories[row.incident_category_id].name;
+                    } else {
+                        return '';
+                    }
+                },
                 ticket_link: function(column, row)
                 {
                     return '<a href="#" onclick="BX24.openApplication({action: \'view_activity\', activity_id: ' + row.activity_id + '});">' + row.name + '</a>';
@@ -825,7 +847,7 @@ $(document).ready(function () {
             },
             ajax: true,
             url: '<?=$this->Url->build(['_name' => 'fetch_tickets', '?' => ['DOMAIN' => $domain]]);?>',
-            'post': function (request)
+            post: function (request)
             {
                 var auth = BX24.getAuth();
                 if (typeof(request) == "undefined")
@@ -837,6 +859,8 @@ $(document).ready(function () {
                 request['from'] = $('#fromDate').val();
                 request['to'] = $('#toDate').val();
                 request['auth'] = window.data.required;
+                request['categoryId'] = $('#categoryIdFilter').val();
+                request['incidentCategoryId'] = $('#incidentCategoryIdFilter').val();
                 return request;
             }
         });
@@ -898,6 +922,64 @@ $(document).ready(function () {
                 }
             }
         });
+
+        // display filter
+        let actionBar = $('div.actionBar').get(0);
+
+        if(actionBar)
+        {
+            // categories
+            let categoriesBlockWrapper = $('<div>').addClass('btn-group ml-2');
+            let categoriesInputGroup = $('<div>').addClass('form-inline').appendTo($(categoriesBlockWrapper));
+            $('<label>').addClass('mr-2').appendTo($(categoriesInputGroup)).text(window.data.i18n.category);
+            let categorySelect = $('<select>').attr('id', 'categoryIdFilter').addClass('custom-select').appendTo($(categoriesInputGroup));
+            $(categorySelect).on('change', function()
+            {
+                grid.bootgrid("reload");
+            });
+
+            $(categorySelect).append($('<option>', {
+                value: 0,
+                text: '<?= __('Choose...') ?>'
+            }));
+
+            for(let i in window.data.categories)
+            {
+                let category = window.data.categories[i];
+                $(categorySelect).append($('<option>', {
+                    value: category.id,
+                    text: category.name
+                }));
+            }
+            $(categoriesBlockWrapper).appendTo($(actionBar));
+
+            // incident categories
+            let incidentCategoriesBlockWrapper = $('<div>').addClass('btn-group ml-2');
+            let incidentCategoriesInputGroup = $('<div>').addClass('form-inline').appendTo($(incidentCategoriesBlockWrapper));
+            $('<label>').addClass('mr-2').appendTo($(incidentCategoriesInputGroup)).text(window.data.i18n.incidentCategory);
+            let incidentCategorySelect = $('<select>').attr('id', 'incidentCategoryIdFilter').addClass('custom-select').appendTo($(incidentCategoriesInputGroup));
+            $(incidentCategorySelect).on('change', function()
+            {
+                grid.bootgrid("reload");
+            });
+
+            $(incidentCategorySelect).append($('<option>', {
+                value: 0,
+                text: '<?= __('Choose...') ?>'
+            }));
+
+            for(let i in window.data.incidentCategories)
+            {
+                let category = window.data.incidentCategories[i];
+                $(incidentCategorySelect).append($('<option>', {
+                    value: category.id,
+                    text: category.name
+                }));
+            }
+            $(incidentCategoriesBlockWrapper).appendTo($(actionBar));
+        }
+
+
         $('.fa-search').addClass('btn');
 
         // Table of department statistics

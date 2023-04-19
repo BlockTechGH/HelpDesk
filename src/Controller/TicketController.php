@@ -18,6 +18,7 @@ class TicketController extends AppController
 {
     private $Tickets;
     private $TicketStatuses;
+    private $TicketCategories;
     private $TicketControllerLogger;
     private $placement;
 
@@ -56,6 +57,8 @@ class TicketController extends AppController
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketStatuses = $this->getTableLocator()->get('TicketStatuses');
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
+        $this->Categories = $this->getTableLocator()->get('TicketCategories');
+        $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_controller.log';
         $this->TicketControllerLogger = new Logger('TicketController');
@@ -235,6 +238,8 @@ class TicketController extends AppController
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
 
         $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
+        $categories = $this->Categories->getCategoriesFor($this->memberId);
+        $incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
         $entityId = intval($this->placement['ID']);
@@ -322,6 +327,7 @@ class TicketController extends AppController
             $subject = $data['subject'];
             $text = $data['description'];
             $statusId = intval($data['status']);
+
             $arBitrixUsersIDs = [];
             if ($data['bitrixUsers'])
             {
@@ -331,6 +337,10 @@ class TicketController extends AppController
                 }
             }
             $arBitrixUsersIDs = json_encode($arBitrixUsersIDs);
+
+            $categoryId = intval($data['categoryId']);
+            $incidentCategoryId = intval($data['incidentCategoryId']);
+
             $status = $statuses[$statusId];
             $responsibleId = $data['responsible'] ?? $currentUser['ID'];
             $ticketId = $this->Tickets->getNextID();
@@ -363,10 +373,11 @@ class TicketController extends AppController
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId,
                     $activity,
-                    1,
+                    $arBitrixUsersIDs,
+                    $categoryId,
                     $status['id'],
                     0,
-                    $arBitrixUsersIDs
+                    $incidentCategoryId
                 );
                 if($bindings)
                 {
@@ -408,6 +419,8 @@ class TicketController extends AppController
         $this->set('responsible', $this->Bx24->makeUserAttributes($currentUser));
         $this->set('statuses', $statuses);
         $this->set('bitrixUsers', $bitrixUsers);
+        $this->set('categories', $categories);
+        $this->set('incidentCategories', $incidentCategories);
         $this->set('statusId', $this->TicketStatuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE)['id']);
         $this->set('ajax', $this->getUrlOf('crm_interface', $this->domain));
         $this->set('required', [
@@ -599,6 +612,8 @@ class TicketController extends AppController
             $searchPhrase = $this->request->getData('searchPhrase') ?? "";
             $period = $this->request->getData('period') ?? "month";
             $order = $this->request->getData('sort');
+            $categoryId = $this->request->getData('categoryId') ?? "";
+            $incidentCategoryId = $this->request->getData('incidentCategoryId') ?? "";
             $limitCount = $this->Bx24::BITRIX_REST_API_RESULT_LIMIT_COUNT;
             $arOurTypeActivityData = $this->Bx24->getActivityTypeAndName();
 
@@ -606,7 +621,9 @@ class TicketController extends AppController
                 'period' => $period,
                 'fromDate' => $fromDate,
                 'toDate' => $toDate,
-                'searchPhrase' => $searchPhrase
+                'searchPhrase' => $searchPhrase,
+                'categoryId' => $categoryId,
+                'incidentCategoryId' => $incidentCategoryId
             ]);
 
             $filter = [
@@ -658,7 +675,9 @@ class TicketController extends AppController
                 $sliceStart = $sliceStart - $paginationStart;
             }
 
-            $result = $this->Bx24->getActivitiesByFilterWithPagination($filter, $order, $paginationStart);
+            $result = $this->Bx24->getActivitiesByFilterWithPagination($filter, $order, 0);
+            $result = $this->Tickets->filterActivitiesByCategories($result, $paginationStart, $categoryId, $incidentCategoryId, $order);
+
             $activities = $result['activities'];
             $total = $result['total'];
 
@@ -724,7 +743,9 @@ class TicketController extends AppController
                     'client' => $client['customer'] ?? [],
                     'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
                     'source' => $ticket->source_type_id ?? '',
-                    'channel' => $activities[$ticket->action_id]['PROVIDER_DATA'] ?? ''
+                    'channel' => $activities[$ticket->action_id]['PROVIDER_DATA'] ?? '',
+                    'category_id' => $ticket->category_id,
+                    'incident_category_id' => $ticket->incident_category_id
                 ];
             }
 
@@ -732,7 +753,7 @@ class TicketController extends AppController
                 'total' => $total,
                 'current' => $currentPage,
                 'rowCount' => $rowCount,
-                'rows' => $result['rows']
+                'rows' => $result['rows'] ?? []
             ];
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [

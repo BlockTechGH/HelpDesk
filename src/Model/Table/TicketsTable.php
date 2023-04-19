@@ -120,11 +120,12 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $bitrixUsers)
+    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $bitrixUsers, $incidentCategoryId)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
-            'category_id' => null,
+            'category_id' => $categoryId,
+            'incident_category_id' => $incidentCategoryId,
             'member_id' => $memberId,
             'action_id' => $activity['ID'],
             'source_type_id' => $activity['PROVIDER_TYPE_ID'],
@@ -241,12 +242,14 @@ class TicketsTable extends Table
         return $summary;
     }
 
-    public function editTicket(int $id, int $statusId, $categoryId, string $memberId, $bitrixUsers)
+    public function editTicket(int $id, int $statusId, $categoryId, string $memberId, $bitrixUsers, $incidentCategoryId)
     {
         $insert = [
             'member_id' => $memberId,
             'status_id' => $statusId,
             'bitrix_users' => $bitrixUsers,
+            'category_id' => $categoryId,
+            'incident_category_id' => $incidentCategoryId
         ];
         if($id < 1)
         {
@@ -354,5 +357,49 @@ class TicketsTable extends Table
         }
 
         return ['error' => false];
+    }
+
+    public function filterActivitiesByCategories($result, $paginationStart, $categoryId, $incidentCategoryId, $order)
+    {
+        if($categoryId || $incidentCategoryId)
+        {
+            $activities = [];
+
+            $chunks = array_chunk($result['activities'], 50, true);
+
+            if($categoryId)
+            {
+                $filter['category_id'] = $categoryId;
+            }
+
+            if($incidentCategoryId)
+            {
+                $filter['incident_category_id'] = $incidentCategoryId;
+            }
+
+            foreach($chunks as $chunk)
+            {
+                $filter['action_id IN'] = array_keys($chunk);
+
+                $arResult = $this->find()
+                    ->where($filter)
+                    ->order($order)
+                    ->toArray();
+                foreach($arResult as $item)
+                {
+                    $activities[$item['action_id']] = $result['activities'][$item['action_id']];
+                }
+            }
+            $total = count($activities);
+            $activities = array_slice($activities, $paginationStart, 50, true);
+        } else {
+            $activities = array_slice($result['activities'], $paginationStart, 50, true);
+            $total = $result['total'];
+        }
+
+        return [
+            'activities' => $activities,
+            'total' => $total
+        ];
     }
 }

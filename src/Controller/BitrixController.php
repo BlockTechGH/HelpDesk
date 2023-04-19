@@ -117,12 +117,13 @@ class BitrixController extends AppController
         {
             $this->options = $this->Options->getSettingsFor($this->memberId);
             $this->statuses = $this->Statuses->getStatusesFor($this->memberId);
-            $this->categories = [];
-
+            $this->categories = $this->Categories->getCategoriesFor($this->memberId);
+            $this->incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
 
             $this->set('options', $this->options);
             $this->set('statuses', $this->statuses);
             $this->set('categories', $this->categories);
+            $this->set('incidentCategories', $this->incidentCategories);
             $this->set('tickets', []);
 
             if (isset($this->placement['activity_id'])) {
@@ -290,7 +291,8 @@ class BitrixController extends AppController
                         ]);
                         $this->getEventManager()->dispatch($event);
 
-                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId, $this->ticket['bitrix_users']);
+                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, $ticket['category_id'], $this->memberId, $this->ticket['bitrix_users'], $ticket['incident_category_id']);
+
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
@@ -460,7 +462,8 @@ class BitrixController extends AppController
                 (int)$data['ticket']['status_id'],
                 (int)$data['ticket']['category_id'],
                 $this->memberId,
-                $arBitrixUsersIDs
+                $arBitrixUsersIDs,
+                (int)$data['ticket']['incident_category_id'],
             );
             if ($ticket) {
                 $ticket['created'] = $ticket['created']->format(Bx24Component::DATE_TIME_FORMAT);

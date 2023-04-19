@@ -36,7 +36,7 @@
                     </div>
                 </div>
 
-                <div class="form-group p-2">
+                <div class="form-group p-2 mb-0">
                     <label for="ticket_status" class="text-muted">{{ i18n.Status }}</label>
                     <div class="input-group">
                         <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
@@ -55,6 +55,7 @@
                         </span>
                     </div>
                 </div>
+
                 <div id="bitrix_users" class="form-group p-2">
                     <label class="text-muted" for="assigned_to">{{ i18n.Users }}</label>
                     <div class="bitrix-users-block">
@@ -67,6 +68,46 @@
                         >
                         </bitrix-users>
                         <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                    </div>
+                </div>
+
+                <div class="form-group p-2 mb-0">
+                    <label for="ticket_category" class="text-muted">{{ i18n.Ticket_Category }}</label>
+                    <div class="input-group">
+                        <select id="ticket_category" name="category" class="form-control" v-on:change="setTicketCategory">
+                            <option
+                                v-for="(category, index) in categories"
+                                :selected="category.id == ticket.category_id"
+                                :value="category.id"
+                            >
+                                {{ category.name }}
+                            </option>
+                        </select>
+                        <span class="input-group-addon" v-if="awaitingCategory">
+                            <div class="d-flex align-items-center h-100">
+                                <span role="category" aria-hidden="true" class="spinner-border status-spiner text-primary ml-2"></span>
+                            </div>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group p-2 mb-0">
+                    <label for="incident_category" class="text-muted">{{ i18n.Incident_Category }}</label>
+                    <div class="input-group">
+                        <select id="incident_category" name="incident_category" class="form-control" v-on:change="setIncidentCategory">
+                            <option
+                                v-for="(category, index) in incidentCategories"
+                                :selected="category.id == ticket.incident_category_id"
+                                :value="category.id"
+                            >
+                                {{ category.name }}
+                            </option>
+                        </select>
+                        <span class="input-group-addon" v-if="awaitingIncidentCategory">
+                            <div class="d-flex align-items-center h-100">
+                                <span role="category" aria-hidden="true" class="spinner-border status-spiner text-primary ml-2"></span>
+                            </div>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -235,6 +276,8 @@
         ticketAttributes: <?=json_encode($ticketAttributes);?>,
         // Sub issue #3 - statuses
         statuses: <?=json_encode($statuses);?>,
+        categories: <?=json_encode($categories);?>,
+        incidentCategories: <?=json_encode($incidentCategories);?>,
         arHistoryActivities: <?=json_encode($arHistoryActivities);?>,
         resolutions: <?= json_encode($resolutions) ?>,
         resolutionAwaiting: false,
@@ -247,6 +290,8 @@
             'Name' => __('Title'),
             'Ticket' => $ticketAttributes['subject'],
             'Status' => __('Status'),
+            'Ticket_Category' => __('Ticket Category'),
+            'Incident_Category' => __('Incident Category'),
             'Save' => __('Save'),
             'Add' => __('Add'),
             'Reply' => __('Answer'),
@@ -261,7 +306,9 @@
             'Users' => __('Users'),
         ]);?>,
         awaiting: false,
-        awaitingBitrixUser: false
+        awaitingBitrixUser: false,
+        awaitingCategory: false,
+        awaitingIncidentCategory: false
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
 </script>
@@ -437,13 +484,23 @@
                 this.ticket.status_id = event.target.value;
                 this.save();
             },
-            save: function ()
+            setTicketCategory: function(event)
             {
-                this.awaiting = true;
+                this.ticket.category_id = event.target.value;
+                this.save('awaitingCategory');
+            },
+            setIncidentCategory: function(event)
+            {
+                this.ticket.incident_category_id = event.target.value;
+                this.save('awaitingIncidentCategory');
+            },
+            save: function (awaiting = 'awaiting')
+            {
+                this[awaiting] = true;
                 this.ticket.bitrixUsers = this.bitrixUsers;
                 const parameters = Object.assign(
                     {
-                        ticket: this.ticket,
+                        ticket: this.ticket
                     },
                     this.required
                 );
@@ -459,13 +516,13 @@
                     const stored = await result.json();
                     this.ticket = stored.ticket;
                     this.ticketAttributes.active = stored.active;
-                    this.awaiting = false;
+                    this[awaiting] = false;
                 });
             },
             feedback: function() {
                 const parameters = Object.assign(
                     {
-                        'bx24_label': {
+                        bx24_label: {
                             'bgColor':'blue', // aqua/green/orange/brown/pink/blue/grey/violet
                             'text': this.ticketAttributes.subject,
                             'color': '#07ff0e',
