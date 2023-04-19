@@ -826,6 +826,8 @@ class TicketController extends AppController
                     'responsible' => $attributes['responsible'] ?? [],
                     'customer' => $attributes['customer'] ?? [],
                     'status_id' => $ticket->status_id,
+                    'category_id' => $ticket->category_id,
+                    'incident_category_id' => $ticket->incident_category_id,
                     'client' => $attributes['customer'] ?? [],
                     'created' => (new FrozenTime($attributes['date']))->format(Bx24Component::DATE_TIME_FORMAT),
                 ];
@@ -913,7 +915,9 @@ class TicketController extends AppController
                 'perAgent' => [],
                 'perTeam' => [],
                 'teams' => [],
-                'expose' => []
+                'expose' => [],
+                'ticketCategories' => [],
+                'incidentTicketCategories' => []
             ];
         }
         $summary = [];
@@ -923,6 +927,12 @@ class TicketController extends AppController
         $departments = [];
         $perClient = [];
         $customers = [];
+
+        $ticketPerCategories = [];
+        $categories = $this->Categories->getCategoriesFor($this->memberId);
+
+        $incidentTicketPerCategories = [];
+        $incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
 
         // Select user IDs
         foreach($rows as $row)
@@ -973,6 +983,36 @@ class TicketController extends AppController
                 $perClient[$clientId]['typeId'] = $row['customer']['typeId'];
             }
             $perClient[$clientId]['total']++;
+
+            // per category
+            if($row['category_id'])
+            {
+                $key = $categories[$row['category_id']]['name'];
+            } else {
+                $key = __('Undefined');
+            }
+
+            if(!key_exists($key, $ticketPerCategories))
+            {
+                $ticketPerCategories[$key] = 1;
+            } else {
+                $ticketPerCategories[$key]++;
+            }
+
+            // per incident category
+            if($row['incident_category_id'])
+            {
+                $key = $incidentCategories[$row['incident_category_id']]['name'];
+            } else {
+                $key = __('Undefined');
+            }
+
+            if(!key_exists($key, $incidentTicketPerCategories))
+            {
+                $incidentTicketPerCategories[$key] = 1;
+            } else {
+                $incidentTicketPerCategories[$key]++;
+            }
         }
 
         // Make departments statistic
@@ -1030,6 +1070,8 @@ class TicketController extends AppController
         $summary['perTeam'] = $this->leftNumericKeys($perTeam);
         $summary['teams'] = $this->leftNumericKeys($departments);
         $summary['perCustomer'] = $perClient;
+        $summary['perCategories'] = $ticketPerCategories;
+        $summary['perIncidentCategories'] = $incidentTicketPerCategories;
         $summary['expose'] = array_reduce(array_keys($summary['teams']), function(array $carry, $teamName) {
             $carry['team'][$teamName] = true;
             $carry['sla'][$teamName] = true;

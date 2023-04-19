@@ -125,7 +125,9 @@
             },
             statuses: window.data.statuses,
             perCustomer: [],
-            sla: []
+            sla: [],
+            perCategories: {},
+            perIncidentCategories: {}
         }, window.tickets
     );
 </script>
@@ -332,6 +334,14 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+                <div id="perCategoriesCharts" class="row">
+                    <div class="col-6" v-if="Object.keys(perCategories).length">
+                        <canvas id="perCategoriesCanvas"></canvas>
+                    </div>
+                    <div class="col-6" v-if="Object.keys(perIncidentCategories).length">
+                        <canvas id="perIncidentCategoriesCanvas"></canvas>
                     </div>
                 </div>
             </div>
@@ -541,6 +551,62 @@ const statuses = new Vue({
 <script>
 $(document).ready(function () {
     BX24.init(function(){
+
+        // per categories chart
+        let perCategoriesLabels = <?= json_encode(array_column($categories, 'name')); ?>;
+        let initialPerCategoriesLabelsValues = new Array(perCategoriesLabels.length).fill(10);
+        const chartPerCategoriesData = {
+            labels:  perCategoriesLabels,
+            datasets: [
+                {
+                    data: initialPerCategoriesLabelsValues
+                }
+            ]
+        };
+        const chartPerCategories = new Chart($("#perCategoriesCanvas"),{
+            type: 'pie',
+            data: chartPerCategoriesData,
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 20
+                            },
+                            generateLabels: (chart) => {
+                                const { data } = chart;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const meta = chart.getDatasetMeta(0);
+                                        const style = meta.controller.getStyle(i);
+                                        const value = chart.config.data.datasets[0].data[i];
+
+                                        return {
+                                            text: `${label}: ${value}`,
+                                            fillStyle: style.backgroundColor,
+                                            strokeStyle: style.borderColor,
+                                            lineWidth: style.borderWidth,
+                                            hidden: !chart.getDataVisibility(i),
+                                            index: i,
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: '<?=__('Tickets per categories');?>',
+                        font: {
+                            size: 20
+                        }
+                    }
+                }
+            }
+        });
+
         // Chart
         let labels = <?= json_encode(array_column($statuses, 'name')); ?>;
         let initialLabelsValues = new Array(labels.length).fill(0);
@@ -702,7 +768,7 @@ $(document).ready(function () {
                     this.perCustomer = statistics.perCustomer;
                     console.log('Teams data', this.department);
 
-                    // make dota for chart
+                    // make data for chart
                     const dataset = {
                         data: [],
                         backgroundColor: []
@@ -729,6 +795,10 @@ $(document).ready(function () {
                     chart.update();
                     period.awaiting = false;
                     drawSegmentValues();
+
+                    //chartPerCategories
+                    perCategoriesApp.perCategories = statistics.perCategories;
+                    console.log(statistics.perCategories);
                 },
                 selectFilterEntity(event) {
                     this.picker = this.modes[event.target.value];
@@ -997,6 +1067,11 @@ $(document).ready(function () {
         // Table of customner statistics
         new Vue({
             el: '#customer',
+            data: window.summary
+        });
+
+        const perCategoriesApp = new Vue({
+            el: '#perCategoriesCharts',
             data: window.summary
         });
     });
