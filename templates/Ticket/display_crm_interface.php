@@ -1,8 +1,8 @@
 <?= $this->Html->css('ticket_card', ['block' => true]); ?>
 
 <div id="ticket">
-    <form 
-        method="POST" 
+    <form
+        method="POST"
         action="<?= $ajax ?>"
     >
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
@@ -29,7 +29,7 @@
                 <div class="form-group p-2">
                     <label for="ticket_status">{{ i18n.Status }}</label>
                     <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
-                        <option 
+                        <option
                             v-for="(status, index) in statuses"
                             :selected="status.id == ticket.status_id"
                             :value="status.id"
@@ -37,6 +37,19 @@
                             {{ status.name }}
                         </option>
                     </select>
+                </div>
+                <div id="bitrix_users" class="form-group p-2">
+                        <div class="bitrix-items-block-items">
+                            <bitrix-users
+                                v-for="bitrixUser, index in bitrixUsers"
+                                v-bind:key="'bitrixUser' + index"
+                                v-bind:bitrixUser="bitrixUser"
+                                v-bind:index="index"
+                                v-on:delete-bitrix-user="deleteBitrixUser"
+                            >
+                            </bitrix-users>
+                            <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                        </div>
                 </div>
             </div>
             <div class="col-9 border">
@@ -73,14 +86,15 @@
     </form>
 </div>
 
-<script>
+<script type="text/javascript">
     window.data = {
         ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
         customer: <?=json_encode($customer);?>,
         responsible: <?=json_encode($responsible);?>,
         statuses: <?=json_encode($statuses);?>,
-        
+        bitrixUsers: <?=json_encode($bitrixUsers);?>,
+
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Ticket name'),
@@ -89,7 +103,8 @@
             'Add' => __('Add'),
             'Cancel' => __('Cancel'),
             'Wait' => __('Please wait'),
-            'Change' => __('Change')
+            'Change' => __('Change'),
+            'Users' => __('Users'),
         ]);?>,
         awaiting: false,
 
@@ -99,7 +114,23 @@
     };
 </script>
 
-<script>
+<script type="text/javascript">
+    Vue.component('bitrix-users', {
+        template: `
+                <div class="bitrix-item-block">
+                    <input type="hidden" :name="nameIdField" v-model="bitrixUser.ID">
+                    <div class="bitrix-item-name">{{bitrixUser.NAME}}</div>
+                    <div v-on:click.prevent="$emit('delete-bitrix-user', index)" class="btn-remove-item"><?=__('x');?></div>
+                </div>
+        `,
+        props: ['bitrixUser', 'index'],
+        computed: {
+            nameIdField: function() {
+                return 'BITRIX_USERS[' + this.index + ']';
+            }
+        },
+    });
+
     new Vue({
         el: '#ticket',
         data: window.data,
@@ -116,8 +147,9 @@
                         subject: this.subject,
                         description: this.description,
                         responsible: this.responsible.id,
-                        status: this.statusId
-                    }, 
+                        status: this.statusId,
+                        bitrixUsers: this.bitrixUsers,
+                    },
                     this.required
                 );
                 fetch(this.ajax, {
@@ -197,6 +229,51 @@
                     this.responsible.abr = this.getAbbreviation(select.name);
                 } else {
                     return false;
+                }
+            },
+            deleteBitrixUser: function(index)
+            {
+                this.bitrixUsers.splice(index, 1);
+            },
+            addBitrixUsers: function()
+            {
+                BX24.selectUsers(this.addBitrixUsersCallback);
+            },
+            addBitrixUsersCallback(result)
+            {
+                if (result)
+                {
+                    result.forEach(function(item, index)
+                    {
+                        let row = {
+                            ID: result[index].id,
+                            NAME: result[index].name,
+                            // ROLE: '',
+                            // PHOTO: result[index].photo
+                        };
+                        let needToPush = true;
+                        if (this.bitrixUsers.length > 0)
+                        {
+                            this.bitrixUsers.forEach(function (bitrixUser)
+                            {
+                                if (bitrixUser.ID === result[index].id)
+                                {
+                                    needToPush = false;
+                                    return false;
+                                }
+                            });
+                            if (needToPush)
+                            {
+                                this.$set(this.bitrixUsers, index, row)
+                                // this.bitrixUsers.push(row);
+                            }
+                        }
+                        else
+                        {
+                            this.$set(this.bitrixUsers, index, row)
+                            // this.bitrixUsers.push(row);
+                        }
+                    }, this);
                 }
             },
             getAbbreviation: function(name)

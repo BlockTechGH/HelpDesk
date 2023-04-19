@@ -240,6 +240,7 @@ class TicketController extends AppController
         $entityId = intval($this->placement['ID']);
         $placementType = $data['PLACEMENT'];
         $contactTypes = ['PHONE', 'EMAIL'];
+        $bitrixUsers = [];
 
         switch($placementType)
         {
@@ -283,7 +284,7 @@ class TicketController extends AppController
             }
             $customer = $this->Bx24->makeCompanyAttributes($company);
         }
-        
+
         if($entityType == 'CRM_DEAL')
         {
             $dealData = $this->Bx24->getDealData($entityId);
@@ -302,7 +303,7 @@ class TicketController extends AppController
 
         // why is this necessary?
         // $entity['TITLE'] = $this->Bx24->getEntityTitle($entity);
-        
+
         if(!empty($customer['phone']) && !empty($customer['phone']['VALUE']))
         {
             $customer['phone'] = $customer['phone']['VALUE'];
@@ -321,11 +322,12 @@ class TicketController extends AppController
             $subject = $data['subject'];
             $text = $data['description'];
             $statusId = intval($data['status']);
+            $bitrixUsers = json_encode($data['bitrixUsers']);
             $status = $statuses[$statusId];
             $responsibleId = $data['responsible'] ?? $currentUser['ID'];
             $ticketId = $this->Tickets->getNextID();
             $postfix = $this->Bx24->getTicketSubject($ticketId);
-
+            $this->TicketControllerLogger->debug('displayCrmInterface - bitrixusers', [$bitrixUsers]);
             // Create ticket activity
             $source = $this->Bx24->prepareNewActivitySource($entityId, $entityType, $subject, $text, (int)$responsibleId, $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
@@ -352,11 +354,12 @@ class TicketController extends AppController
 
                 // Write into DB
                 $ticketRecord = $this->Tickets->create(
-                    $this->memberId, 
+                    $this->memberId,
                     $activity,
-                    1, 
+                    1,
                     $status['id'],
-                    0
+                    0,
+                    $bitrixUsers
                 );
                 if($bindings)
                 {
@@ -375,7 +378,7 @@ class TicketController extends AppController
                 }
 
                 $result = [
-                    'status' => __('Ticket was created successful'), 
+                    'status' => __('Ticket was created successful'),
                     'ticket' => $activityId,
                 ];
 
@@ -397,6 +400,7 @@ class TicketController extends AppController
         $this->set('customer', $customer);
         $this->set('responsible', $this->Bx24->makeUserAttributes($currentUser));
         $this->set('statuses', $statuses);
+        $this->set('bitrixUsers', $bitrixUsers);
         $this->set('statusId', $this->TicketStatuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE)['id']);
         $this->set('ajax', $this->getUrlOf('crm_interface', $this->domain));
         $this->set('required', [
@@ -748,18 +752,18 @@ class TicketController extends AppController
 
             $tickets = $this->Tickets->getTicketsFor(
                 $this->memberId,
-                // Custom filter 
-                [], 
+                // Custom filter
+                [],
                 // Order of tickets
                 ['created' => 'desc'],
                 // Pagination: [page, count]
                 [$current, $rowCount],
-                // Date diapazone 
+                // Date diapazone
                 $period,
-                $fromDate, 
+                $fromDate,
                 $toDate
             );
-            
+
             $total = intval($tickets['total']);
             $ticketActivityIDs = array_column($tickets['rows'], 'action_id');
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - ticket activities', [
@@ -791,7 +795,7 @@ class TicketController extends AppController
             foreach($extendInformation as $id => $attributes)
             {
                 if(
-                    !$attributes 
+                    !$attributes
                     || !isset($ticketMap[$id])
                 )
                 {
@@ -909,16 +913,16 @@ class TicketController extends AppController
         // Select user IDs
         foreach($rows as $row)
         {
-            $user = $row['responsible']; 
+            $user = $row['responsible'];
             $uid = $user['id'];
             $agents[$uid] = $user;
             $customers[] = $row['customer']['id'];
         }
-        
+
         if(!$agents){
             return null;
         }
-        
+
         // Get departments and make maps
         foreach($agents as $id => $user)
         {
@@ -972,7 +976,7 @@ class TicketController extends AppController
                                 'status' => $statusId
                             ]);
                             return isset($perUser[$uid][$statusId]) ? $perUser[$uid][$statusId] : 0;
-                        }, 
+                        },
                         $persons
                     )
                 );
@@ -999,9 +1003,9 @@ class TicketController extends AppController
         foreach($departmentInformation as $department)
         {
             $departments[$department['NAME']] = array_map(
-                function ($uid) use ($agents) { 
+                function ($uid) use ($agents) {
                     return $agents[$uid]['title'];
-                }, 
+                },
                 $departments[$department['ID']]
             );
             $perTeam[$department['NAME']] = $perTeam[$department['ID']];
@@ -1030,7 +1034,7 @@ class TicketController extends AppController
             if(intval($key) === 0)
             {
                 $result[$key] = $value;
-            } 
+            }
         }
 
         return $result;

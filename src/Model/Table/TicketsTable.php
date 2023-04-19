@@ -120,7 +120,7 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId)
+    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $bitrixUsers)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
@@ -129,6 +129,7 @@ class TicketsTable extends Table
             'action_id' => $activity['ID'],
             'source_type_id' => $activity['PROVIDER_TYPE_ID'],
             'source_id' => $prevActivityId,
+            'bitrix_users' => $bitrixUsers,
         ]);
         if (!$entity->hasErrors()) {
             $this->save($entity);
@@ -189,7 +190,7 @@ class TicketsTable extends Table
                 if(count($parts) == 2)
                 {
                     $from = implode("/", [$parts[0], "01", $parts[1]]);
-                }                
+                }
             }
             $from = new FrozenDate($from);
             $where['created >='] = $from;
@@ -199,7 +200,7 @@ class TicketsTable extends Table
             if(count($parts) == 2)
             {
                 $to = implode("/", [$parts[0], "01", $parts[1]]);
-            }  
+            }
             $to = new FrozenDate("{$to}");
             $to = $to->modify('+ 1 day');
             $where['created <='] = $to;
@@ -215,8 +216,8 @@ class TicketsTable extends Table
         }
         $query->where($where);
         $full = $query->all();
-        $items = $full;        
-            
+        $items = $full;
+
         return [
             'rows' => $items->toArray(),
             'total' => $full->count(),
