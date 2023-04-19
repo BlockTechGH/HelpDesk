@@ -598,6 +598,8 @@ class TicketController extends AppController
             $searchPhrase = $this->request->getData('searchPhrase') ?? "";
             $period = $this->request->getData('period') ?? "month";
             $order = $this->request->getData('sort');
+            $categoryId = $this->request->getData('categoryId') ?? "";
+            $incidentCategoryId = $this->request->getData('incidentCategoryId') ?? "";
             $limitCount = $this->Bx24::BITRIX_REST_API_RESULT_LIMIT_COUNT;
             $arOurTypeActivityData = $this->Bx24->getActivityTypeAndName();
 
@@ -605,7 +607,9 @@ class TicketController extends AppController
                 'period' => $period,
                 'fromDate' => $fromDate,
                 'toDate' => $toDate,
-                'searchPhrase' => $searchPhrase
+                'searchPhrase' => $searchPhrase,
+                'categoryId' => $categoryId,
+                'incidentCategoryId' => $incidentCategoryId
             ]);
 
             $filter = [
@@ -657,7 +661,9 @@ class TicketController extends AppController
                 $sliceStart = $sliceStart - $paginationStart;
             }
 
-            $result = $this->Bx24->getActivitiesByFilterWithPagination($filter, $order, $paginationStart);
+            $result = $this->Bx24->getActivitiesByFilterWithPagination($filter, $order, 0);
+            $result = $this->Tickets->filterActivitiesByCategories($result, $paginationStart, $categoryId, $incidentCategoryId, $order);
+
             $activities = $result['activities'];
             $total = $result['total'];
 
@@ -723,7 +729,9 @@ class TicketController extends AppController
                     'client' => $client['customer'] ?? [],
                     'created' => (new  FrozenTime($activities[$ticket->action_id]['CREATED']))->format(Bx24Component::DATE_TIME_FORMAT),
                     'source' => $ticket->source_type_id ?? '',
-                    'channel' => $activities[$ticket->action_id]['PROVIDER_DATA'] ?? ''
+                    'channel' => $activities[$ticket->action_id]['PROVIDER_DATA'] ?? '',
+                    'category_id' => $ticket->category_id,
+                    'incident_category_id' => $ticket->incident_category_id
                 ];
             }
 
@@ -731,7 +739,7 @@ class TicketController extends AppController
                 'total' => $total,
                 'current' => $currentPage,
                 'rowCount' => $rowCount,
-                'rows' => $result['rows']
+                'rows' => $result['rows'] ?? []
             ];
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - result', [
