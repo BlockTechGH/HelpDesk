@@ -39,20 +39,6 @@
                     </select>
                 </div>
 
-                <div id="bitrix_users" class="form-group p-2">
-                    <label for="bitrix_users">{{ i18n.Users }}</label>
-                    <div class="bitrix-users-block">
-                        <bitrix-users
-                            v-for="(bitrixUser, index) in bitrixUsers"
-                            v-bind:key="'bitrixUser' + index"
-                            v-bind:index="index"
-                            v-bind:user="bitrixUser"
-                            v-on:delete-bitrix-user="deleteBitrixUser"
-                        >
-                        </bitrix-users>
-                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
-                    </div>
-
                 <div class="form-group p-2 mb-0">
                     <label for="ticket_category">{{ i18n.Ticket_Category }}</label>
                     <select id="ticket_category" name="ticket_category" class="form-control" v-on:change="setTicketCategory">
@@ -77,6 +63,21 @@
                             {{ category.name }}
                         </option>
                     </select>
+                </div>
+
+                <div id="bitrix_users" class="form-group p-2">
+                    <label for="bitrix_users">{{ i18n.Users }}</label>
+                    <div class="bitrix-users-block">
+                        <bitrix-users
+                            v-for="(bitrixUser, index) in bitrixUsers"
+                            v-bind:key="'bitrixUser' + index"
+                            v-bind:index="index"
+                            v-bind:user="bitrixUser"
+                            v-on:delete-bitrix-user="deleteBitrixUser"
+                        >
+                        </bitrix-users>
+                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                    </div>
                 </div>
             </div>
             <div class="col-9 border">
