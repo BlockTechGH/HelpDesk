@@ -1,8 +1,8 @@
 <?= $this->Html->css('ticket_card', ['block' => true]); ?>
 
 <div id="ticket">
-    <form 
-        method="POST" 
+    <form
+        method="POST"
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
     >
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
@@ -40,7 +40,7 @@
                     <label for="ticket_status" class="text-muted">{{ i18n.Status }}</label>
                     <div class="input-group">
                         <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
-                            <option 
+                            <option
                                 v-for="(status, index) in statuses"
                                 :selected="status.id == ticket.status_id"
                                 :value="status.id"
@@ -55,47 +55,61 @@
                         </span>
                     </div>
                 </div>
+                <div id="bitrix_users" class="form-group p-2">
+                    <label class="text-muted" for="assigned_to">{{ i18n.Users }}</label>
+                    <div class="bitrix-users-block">
+                        <bitrix-users
+                            v-for="(bitrixUser, index) in bitrixUsers"
+                            v-bind:key="'bitrixUser' + index"
+                            v-bind:index="index"
+                            v-bind:user="bitrixUser"
+                            v-on:delete-bitrix-user="deleteBitrixUser"
+                        >
+                        </bitrix-users>
+                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                    </div>
+                </div>
             </div>
             <div class="col-9 border">
                 <div class="row">
                     <div class="input-group ml-4">
                         <h3 class="m-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" 
-                                width="16" height="16" 
-                                fill="currentColor" 
-                                class="bi bi-envelope" 
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                width="16" height="16"
+                                fill="currentColor"
+                                class="bi bi-envelope"
                                 viewBox="0 0 16 16"
                                 v-if="ticket.source_type_id == 'CRM_EMAIL'"
                             >
                                 <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/>
                             </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" 
-                                width="16" height="16" 
-                                fill="currentColor" 
-                                class="bi bi-chat" 
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                width="16" height="16"
+                                fill="currentColor"
+                                class="bi bi-chat"
                                 viewBox="0 0 16 16"
                                 v-else-if="ticket.source_type_id == 'IMOPENLINES_SESSION'"
                             >
                                 <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
                             </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" 
-                                width="16" height="16" 
-                                fill="currentColor" 
-                                class="bi bi-telephone" 
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                width="16" height="16"
+                                fill="currentColor"
+                                class="bi bi-telephone"
                                 viewBox="0 0 16 16"
                                 v-else-if="ticket.source_type_id == 'CRM_SMS' || ticket.source_type_id == 'VOXIMPLANT_CALL'"
                             >
                                 <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
                             </svg>
-                            <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                width="16" height="16" fill="currentColor" 
-                                class="bi bi-pencil-square" 
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16" height="16" fill="currentColor"
+                                class="bi bi-pencil-square"
                                 viewBox="0 0 16 16"
                                 v-else-if="ticket.source_type_id == ticketActivityType">
                                 <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                 <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
-                            </svg>   
+                            </svg>
                             {{ i18n.Ticket }}<br/>
                             <sup>{{ ticket.created }}</sup>
                         </h3>
@@ -103,15 +117,15 @@
                             <button
                                 type="button"
                                 v-on:click="feedback"
-                                class="btn 
-                                    <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL')) 
+                                class="btn
+                                    <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL'))
                                         && (!$ticketAttributes['customer']['email'])
-                                        ? 'btn-secondary' 
-                                        : 'btn-primary';?> 
+                                        ? 'btn-secondary'
+                                        : 'btn-primary';?>
                                     rounded-circle m-3"
-                                <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL')) 
-                                    && (!$ticketAttributes['customer']['email']) 
-                                    ? 'disabled' 
+                                <?=(($ticket['source_type_id'] == $ticketActivityType) || ($ticket['source_type_id'] == 'VOXIMPLANT_CALL'))
+                                    && (!$ticketAttributes['customer']['email'])
+                                    ? 'disabled'
                                     : ''?>
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-reply" viewBox="0 0 16 16">
@@ -214,6 +228,7 @@
         ticket: <?=json_encode($ticket)?>,
         dialogId: "<?= $dialogId ?>",
         memberId: "<?=$memberId?>",
+        bitrixUsers: <?=json_encode($bitrixUsers)?>,
         // Sub-issue #1 - 'customer' (ID in Bitrix, title (full name), e-mail address and phone number)
         // Sub-issue #2 - 'responsible' person (ID in Bitrix, full name (title), e-mail address and phone number)
         // Sub issues #5-7: Ticket auto-genered ID and subject of original message
@@ -242,14 +257,34 @@
             'Close' => __('Close ticket'),
             'Reopen' => __('Reopen ticket'),
             'Wait' => __('Please wait'),
-            'Change' => __('Change')
+            'Change' => __('Change'),
+            'Users' => __('Users'),
         ]);?>,
-        awaiting: false
+        awaiting: false,
+        awaitingBitrixUser: false
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
 </script>
 
 <script>
+    Vue.component('bitrix-users', {
+        template: `
+                <div class="mt-1">
+                    <input type="hidden" :name="nameIdField" v-model="user.ID">
+                    <img v-if="user.PHOTO" class="rounded-circle avatar-img" v-bind:alt="user.NAME" v-bind:src="user.PHOTO" />
+                    <span v-else class="border rounded-circle p-2 bitrix-user-block-abr">{{ user.ABR }}</span>
+                    {{user.NAME}}
+                    <a href="#" v-on:click.prevent="$emit('delete-bitrix-user', index)" class="change-responsible float-right pt-1"><?=__('x');?>
+                </div>
+        `,
+        props: ['user', 'index'],
+        computed: {
+            nameIdField: function() {
+                return 'BITRIX_USERS[' + this.index + ']';
+            }
+        },
+    });
+
     new Vue({
         el: '#ticket',
         data: window.data,
@@ -405,15 +440,16 @@
             save: function ()
             {
                 this.awaiting = true;
+                this.ticket.bitrixUsers = this.bitrixUsers;
                 const parameters = Object.assign(
                     {
                         ticket: this.ticket,
-                    }, 
+                    },
                     this.required
                 );
                 if (this.ticket.id > 0)
                 {
-                    parameters.do = "edit"; 
+                    parameters.do = "edit";
                 }
                 fetch(this.ajax, {
                     method: "POST",
@@ -577,7 +613,52 @@
                     }
                 });
 
-            }
+            },
+            deleteBitrixUser: function(index)
+            {
+                this.bitrixUsers.splice(index, 1);
+                this.save('awaitingBitrixUser');
+            },
+            addBitrixUsers: function()
+            {
+                BX24.selectUsers(this.addBitrixUsersCallback);
+            },
+            addBitrixUsersCallback(result)
+            {
+                if (result)
+                {
+                    result.forEach(function(item, index)
+                    {
+                        let row = {
+                            ID: result[index].id,
+                            NAME: result[index].name,
+                            PHOTO: result[index].photo,
+                            ABR: this.getAbbreviation(result[index].name)
+                        };
+                        let needToPush = true;
+                        if (this.bitrixUsers.length > 0)
+                        {
+                            this.bitrixUsers.forEach(function (bitrixUser)
+                            {
+                                if (bitrixUser.ID === result[index].id)
+                                {
+                                    needToPush = false;
+                                    return false;
+                                }
+                            });
+                            if (needToPush)
+                            {
+                                this.bitrixUsers.push(row);
+                            }
+                        }
+                        else
+                        {
+                            this.bitrixUsers.push(row);
+                        }
+                    }, this);
+                    this.save('awaitingBitrixUser');
+                }
+            },
         }
     });
 </script>

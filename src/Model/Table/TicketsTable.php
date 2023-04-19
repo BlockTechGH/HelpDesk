@@ -241,11 +241,12 @@ class TicketsTable extends Table
         return $summary;
     }
 
-    public function editTicket(int $id, int $statusId, $categoryId, string $memberId)
+    public function editTicket(int $id, int $statusId, $categoryId, string $memberId, $bitrixUsers)
     {
         $insert = [
             'member_id' => $memberId,
             'status_id' => $statusId,
+            'bitrix_users' => $bitrixUsers,
         ];
         if($id < 1)
         {

@@ -43,6 +43,14 @@ blockquote {
     justify-content: space-around
 }
 
+.bitrix-user-block-abr {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-around
+}
+
 .customer-communications {
     font-size: 0.9rem;
 }

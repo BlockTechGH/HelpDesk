@@ -224,6 +224,8 @@ class BitrixController extends AppController
                     }
                 }
 
+                $bitrixUsers = $this->Bx24->getBitrixUsersForTicket(json_decode($this->ticket['bitrix_users']));
+
                 $this->set('dialogId', '');
                 if($this->ticket && $this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
                 {
@@ -288,10 +290,11 @@ class BitrixController extends AppController
                         ]);
                         $this->getEventManager()->dispatch($event);
 
-                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId);
+                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, null, $this->memberId, $this->ticket['bitrix_users']);
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }
                     $this->BxControllerLogger->debug(__FUNCTION__ . ' - customer', $ticketAttributes['customer']);
+                    $this->set('bitrixUsers', $bitrixUsers);
                     $this->set('ticketAttributes', $ticketAttributes);
                     $this->set('source', $source);
                     return $this->displayTicketCard($currentUser);
@@ -440,13 +443,24 @@ class BitrixController extends AppController
                 'data' => $data
             ]);
 
+            $arBitrixUsersIDs = [];
+            if ($data['ticket']['bitrixUsers'])
+            {
+                foreach ($data['ticket']['bitrixUsers'] as $bitrixUser)
+                {
+                    $arBitrixUsersIDs[] = $bitrixUser['ID'];
+                }
+            }
+            $arBitrixUsersIDs = json_encode($arBitrixUsersIDs);
+
             $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
                 (int)$data['ticket']['status_id'],
                 (int)$data['ticket']['category_id'],
-                $this->memberId
+                $this->memberId,
+                $arBitrixUsersIDs
             );
             if ($ticket) {
                 $ticket['created'] = $ticket['created']->format(Bx24Component::DATE_TIME_FORMAT);
@@ -826,6 +840,15 @@ class BitrixController extends AppController
             'ticketAttributes' => $this->ticketAttributes
         ]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationChangeTicketStatus',
@@ -835,7 +858,8 @@ class BitrixController extends AppController
             'ticketSubject' => $this->ticketAttributes['subject'],
             'ticketResponsibleId' => 'user_' . ($this->ticketAttributes['responsible']['id'] ?? $this->ticketAttributes['responsible']),
             'answerType' => '',
-            'sourceType' => $ticket['source_type_id']
+            'sourceType' => $ticket['source_type_id'],
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
@@ -888,6 +912,15 @@ class BitrixController extends AppController
             'memberId' => $this->memberId,
         ]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         $arActivityData = $this->Bx24->getActivityAndRelatedDataById($ticket['action_id']);
         $activity = $arActivityData['activity'];
         $ticketAttributes = $this->Bx24->getOneTicketAttributes($activity);
@@ -906,7 +939,8 @@ class BitrixController extends AppController
             'ticketSubject' => $ticketAttributes['subject'],
             'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => 'Reply',
-            'sourceType' => $ticket['source_type_id']
+            'sourceType' => $ticket['source_type_id'],
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
@@ -964,6 +998,15 @@ class BitrixController extends AppController
         $activities = $this->Bx24->getActivities([$ticket->action_id]);
         $ticketAttributes = $this->Bx24->getOneTicketAttributes($activities[$ticket->action_id]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - getted data', [
             'ticket' => $ticket,
             'activities' => $activities,
@@ -978,7 +1021,8 @@ class BitrixController extends AppController
             'activityId' => $ticket->action_id,
             'authorId' => 'user_' . $authorId,
             'resolutionText' => $resolutionText,
-            'formattedTime' => $formattedTime
+            'formattedTime' => $formattedTime,
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
@@ -1033,6 +1077,15 @@ class BitrixController extends AppController
             'ticketAttributes' => $ticketAttributes
         ]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationCreateTicket',
@@ -1042,7 +1095,8 @@ class BitrixController extends AppController
             'ticketSubject' => $ticketAttributes['subject'],
             'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => '',
-            'sourceType' => $ticket['source_type_id']
+            'sourceType' => $ticket['source_type_id'],
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->BxControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [

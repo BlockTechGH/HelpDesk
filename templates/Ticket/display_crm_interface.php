@@ -39,17 +39,18 @@
                     </select>
                 </div>
                 <div id="bitrix_users" class="form-group p-2">
-                        <div class="bitrix-items-block-items">
-                            <bitrix-users
-                                v-for="bitrixUser, index in bitrixUsers"
-                                v-bind:key="'bitrixUser' + index"
-                                v-bind:bitrixUser="bitrixUser"
-                                v-bind:index="index"
-                                v-on:delete-bitrix-user="deleteBitrixUser"
-                            >
-                            </bitrix-users>
-                            <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
-                        </div>
+                    <label for="bitrix_users">{{ i18n.Users }}</label>
+                    <div class="bitrix-users-block">
+                        <bitrix-users
+                            v-for="(bitrixUser, index) in bitrixUsers"
+                            v-bind:key="'bitrixUser' + index"
+                            v-bind:index="index"
+                            v-bind:user="bitrixUser"
+                            v-on:delete-bitrix-user="deleteBitrixUser"
+                        >
+                        </bitrix-users>
+                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                    </div>
                 </div>
             </div>
             <div class="col-9 border">
@@ -105,6 +106,7 @@
             'Wait' => __('Please wait'),
             'Change' => __('Change'),
             'Users' => __('Users'),
+            'Remove' => __('x')
         ]);?>,
         awaiting: false,
 
@@ -115,15 +117,18 @@
 </script>
 
 <script type="text/javascript">
+
     Vue.component('bitrix-users', {
         template: `
-                <div class="bitrix-item-block">
-                    <input type="hidden" :name="nameIdField" v-model="bitrixUser.ID">
-                    <div class="bitrix-item-name">{{bitrixUser.NAME}}</div>
-                    <div v-on:click.prevent="$emit('delete-bitrix-user', index)" class="btn-remove-item"><?=__('x');?></div>
+                <div class="mt-1">
+                    <input type="hidden" :name="nameIdField" v-model="user.ID">
+                    <img v-if="user.PHOTO" class="rounded-circle avatar-img" v-bind:alt="user.NAME" v-bind:src="user.PHOTO" />
+                    <span v-else class="border rounded-circle p-2 bitrix-user-block-abr">{{ user.ABR }}</span>
+                    {{user.NAME}}
+                    <a href="#" v-on:click.prevent="$emit('delete-bitrix-user', index)" class="change-responsible float-right pt-1"><?=__('x');?></div>
                 </div>
         `,
-        props: ['bitrixUser', 'index'],
+        props: ['user', 'index'],
         computed: {
             nameIdField: function() {
                 return 'BITRIX_USERS[' + this.index + ']';
@@ -248,8 +253,8 @@
                         let row = {
                             ID: result[index].id,
                             NAME: result[index].name,
-                            // ROLE: '',
-                            // PHOTO: result[index].photo
+                            PHOTO: result[index].photo,
+                            ABR: this.getAbbreviation(result[index].name)
                         };
                         let needToPush = true;
                         if (this.bitrixUsers.length > 0)
@@ -264,14 +269,12 @@
                             });
                             if (needToPush)
                             {
-                                this.$set(this.bitrixUsers, index, row)
-                                // this.bitrixUsers.push(row);
+                                this.bitrixUsers.push(row);
                             }
                         }
                         else
                         {
-                            this.$set(this.bitrixUsers, index, row)
-                            // this.bitrixUsers.push(row);
+                            this.bitrixUsers.push(row);
                         }
                     }, this);
                 }

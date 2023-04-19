@@ -322,12 +322,19 @@ class TicketController extends AppController
             $subject = $data['subject'];
             $text = $data['description'];
             $statusId = intval($data['status']);
-            $bitrixUsers = json_encode($data['bitrixUsers']);
+            $arBitrixUsersIDs = [];
+            if ($data['bitrixUsers'])
+            {
+                foreach ($data['bitrixUsers'] as $bitrixUser)
+                {
+                    $arBitrixUsersIDs[] = $bitrixUser['ID'];
+                }
+            }
+            $arBitrixUsersIDs = json_encode($arBitrixUsersIDs);
             $status = $statuses[$statusId];
             $responsibleId = $data['responsible'] ?? $currentUser['ID'];
             $ticketId = $this->Tickets->getNextID();
             $postfix = $this->Bx24->getTicketSubject($ticketId);
-            $this->TicketControllerLogger->debug('displayCrmInterface - bitrixusers', [$bitrixUsers]);
             // Create ticket activity
             $source = $this->Bx24->prepareNewActivitySource($entityId, $entityType, $subject, $text, (int)$responsibleId, $contacts);
             $this->TicketControllerLogger->debug('displayCrmInterface - crm.activity.add - zero source', $source);
@@ -359,7 +366,7 @@ class TicketController extends AppController
                     1,
                     $status['id'],
                     0,
-                    $bitrixUsers
+                    $arBitrixUsersIDs
                 );
                 if($bindings)
                 {
@@ -1050,6 +1057,15 @@ class TicketController extends AppController
             'newResponsible' => $newResponsible
         ]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationChangeResponsible',
@@ -1059,7 +1075,8 @@ class TicketController extends AppController
             'ticketSubject' => $ticketAttributes['subject'],
             'ticketResponsibleId' => 'user_' . $newResponsible,
             'answerType' => '',
-            'sourceType' => $ticket['source_type_id']
+            'sourceType' => $ticket['source_type_id'],
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
@@ -1118,6 +1135,15 @@ class TicketController extends AppController
             'ticketAttributes' => $ticketAttributes
         ]);
 
+        $arBitrixUsersIDs = [];
+        if ($ticket['bitrix_users'])
+        {
+            foreach (json_decode($ticket['bitrix_users']) as $bitrixUser)
+            {
+                $arBitrixUsersIDs[] = 'user_' . $bitrixUser;
+            }
+        }
+
         // we need collect necessary data and the run bp
         $arTemplateParameters = [
             'eventType' => 'notificationCreateTicket',
@@ -1127,7 +1153,8 @@ class TicketController extends AppController
             'ticketSubject' => $ticketAttributes['subject'],
             'ticketResponsibleId' => 'user_' . $ticketAttributes['responsible'],
             'answerType' => '',
-            'sourceType' => $ticket['source_type_id']
+            'sourceType' => $ticket['source_type_id'],
+            'ticketUsers' => $arBitrixUsersIDs
         ];
 
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - workflow parameters', [
