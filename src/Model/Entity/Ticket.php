@@ -41,5 +41,6 @@ class Ticket extends Entity
         'ticket_status' => true,
         'ticket_category' => true,
         'sla_notified' => true,
+        'bitrix_users' => true,
     ];
 }

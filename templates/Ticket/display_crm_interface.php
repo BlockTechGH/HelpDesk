@@ -1,8 +1,8 @@
 <?= $this->Html->css('ticket_card', ['block' => true]); ?>
 
 <div id="ticket">
-    <form 
-        method="POST" 
+    <form
+        method="POST"
         action="<?= $ajax ?>"
     >
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
@@ -29,7 +29,7 @@
                 <div class="form-group p-2 mb-0">
                     <label for="ticket_status">{{ i18n.Status }}</label>
                     <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
-                        <option 
+                        <option
                             v-for="(status, index) in statuses"
                             :selected="status.id == ticket.status_id"
                             :value="status.id"
@@ -39,10 +39,24 @@
                     </select>
                 </div>
 
+                <div id="bitrix_users" class="form-group p-2">
+                    <label for="bitrix_users">{{ i18n.Users }}</label>
+                    <div class="bitrix-users-block">
+                        <bitrix-users
+                            v-for="(bitrixUser, index) in bitrixUsers"
+                            v-bind:key="'bitrixUser' + index"
+                            v-bind:index="index"
+                            v-bind:user="bitrixUser"
+                            v-on:delete-bitrix-user="deleteBitrixUser"
+                        >
+                        </bitrix-users>
+                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
+                    </div>
+
                 <div class="form-group p-2 mb-0">
                     <label for="ticket_category">{{ i18n.Ticket_Category }}</label>
                     <select id="ticket_category" name="ticket_category" class="form-control" v-on:change="setTicketCategory">
-                        <option 
+                        <option
                             v-for="(category, index) in categories"
                             :selected="category.id == ticket.category_id"
                             :value="category.id"
@@ -55,7 +69,7 @@
                 <div class="form-group p-2 mb-0">
                     <label for="incident_category">{{ i18n.Incident_Category }}</label>
                     <select id="incident_category" name="incident_category" class="form-control" v-on:change="setIncidentCategory">
-                        <option 
+                        <option
                             v-for="(category, index) in incidentCategories"
                             :selected="category.id == ticket.incident_category_id"
                             :value="category.id"
@@ -99,15 +113,17 @@
     </form>
 </div>
 
-<script>
+<script type="text/javascript">
     window.data = {
         ajax: "<?=$ajax;?>",
         required: <?=json_encode($required)?>,
         customer: <?=json_encode($customer);?>,
         responsible: <?=json_encode($responsible);?>,
         statuses: <?=json_encode($statuses);?>,
+        bitrixUsers: <?=json_encode($bitrixUsers);?>,
         categories: <?=json_encode($categories);?>,
         incidentCategories: <?=json_encode($incidentCategories);?>,
+
         i18n: <?=json_encode([
             'Assigned' => __('Responsible'),
             'Name' => __('Ticket name'),
@@ -118,7 +134,9 @@
             'Add' => __('Add'),
             'Cancel' => __('Cancel'),
             'Wait' => __('Please wait'),
-            'Change' => __('Change')
+            'Change' => __('Change'),
+            'Users' => __('Users'),
+            'Remove' => __('x')
         ]);?>,
         awaiting: false,
 
@@ -128,7 +146,26 @@
     };
 </script>
 
-<script>
+<script type="text/javascript">
+
+    Vue.component('bitrix-users', {
+        template: `
+                <div class="mt-1">
+                    <input type="hidden" :name="nameIdField" v-model="user.ID">
+                    <img v-if="user.PHOTO" class="rounded-circle avatar-img" v-bind:alt="user.NAME" v-bind:src="user.PHOTO" />
+                    <span v-else class="border rounded-circle p-2 bitrix-user-block-abr">{{ user.ABR }}</span>
+                    {{user.NAME}}
+                    <a href="#" v-on:click.prevent="$emit('delete-bitrix-user', index)" class="change-responsible float-right pt-1"><?=__('x');?></div>
+                </div>
+        `,
+        props: ['user', 'index'],
+        computed: {
+            nameIdField: function() {
+                return 'BITRIX_USERS[' + this.index + ']';
+            }
+        },
+    });
+
     new Vue({
         el: '#ticket',
         data: window.data,
@@ -146,9 +183,10 @@
                         description: this.description,
                         responsible: this.responsible.id,
                         status: this.statusId,
+                        bitrixUsers: this.bitrixUsers,
                         categoryId: this.categoryId,
                         incidentCategoryId: this.incidentCategoryId
-                    }, 
+                    },
                     this.required
                 );
                 fetch(this.ajax, {
@@ -228,6 +266,49 @@
                     this.responsible.abr = this.getAbbreviation(select.name);
                 } else {
                     return false;
+                }
+            },
+            deleteBitrixUser: function(index)
+            {
+                this.bitrixUsers.splice(index, 1);
+            },
+            addBitrixUsers: function()
+            {
+                BX24.selectUsers(this.addBitrixUsersCallback);
+            },
+            addBitrixUsersCallback(result)
+            {
+                if (result)
+                {
+                    result.forEach(function(item, index)
+                    {
+                        let row = {
+                            ID: result[index].id,
+                            NAME: result[index].name,
+                            PHOTO: result[index].photo,
+                            ABR: this.getAbbreviation(result[index].name)
+                        };
+                        let needToPush = true;
+                        if (this.bitrixUsers.length > 0)
+                        {
+                            this.bitrixUsers.forEach(function (bitrixUser)
+                            {
+                                if (bitrixUser.ID === result[index].id)
+                                {
+                                    needToPush = false;
+                                    return false;
+                                }
+                            });
+                            if (needToPush)
+                            {
+                                this.bitrixUsers.push(row);
+                            }
+                        }
+                        else
+                        {
+                            this.bitrixUsers.push(row);
+                        }
+                    }, this);
                 }
             },
             getAbbreviation: function(name)

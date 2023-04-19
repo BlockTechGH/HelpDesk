@@ -540,7 +540,7 @@ class Bx24Component extends Component
     /*
      * $arData[company] - company data and it communications
      * $arData[contact] - contact data and it communications
-     * 
+     *
      */
     private function extractCommunications($arData)
     {
@@ -1135,6 +1135,41 @@ class Bx24Component extends Component
         return $result;
     }
 
+    public function getBitrixUsersForTicket(array $uids)
+    {
+        $result = [];
+        if (count($uids) > 0)
+        {
+            $resords = $this->getUserById($uids);
+            foreach($resords as $record)
+            {
+                $result[] = $this->makeBitrixUserTicketAttributes($record ?? []);
+            }
+        }
+
+        return $result;
+    }
+
+    public function makeBitrixUserTicketAttributes(array $record) : array
+    {
+        if(count($record) == 0)
+        {
+            return [
+                'ID' => 0,
+                'ABR' => 'A N Onim',
+                'NAME' => 'Client undefined',
+                'PHOTO' => '',
+            ];
+        }
+
+        return [
+            'ID' => (int)$record["ID"],
+            'ABR' => $this->makeNameAbbreviature($record),
+            'NAME' => $this->makeFullName($record),
+            'PHOTO' => $record['PERSONAL_PHOTO'] ?? '',
+        ];
+    }
+
     public function makeUserAttributes(array $record) : array
     {
         if(count($record) == 0)
@@ -1216,7 +1251,7 @@ class Bx24Component extends Component
         // Messages is sorted by creation date descending
         $arResult['message'] = array_pop($noSystemMessages);
 
-        return $arResult; 
+        return $arResult;
     }
 
     public function getOCMessages(int $chatId, int $ticketId) : array
