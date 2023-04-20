@@ -89,6 +89,17 @@ class IncidentCategoriesTable extends Table
         return $result;
     }
 
+    public function getDefaultFor(string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'active' => true,
+            ])
+            ->order(['id' => 'asc'])
+            ->first();
+    }
+
     public function editCategory($id, string $name, string $memberId, $active)
     {
         $insert = [

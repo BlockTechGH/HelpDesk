@@ -74,6 +74,17 @@ class TicketCategoriesTable extends Table
             ->first();
     }
 
+    public function getDefaultFor(string $memberId)
+    {
+        return $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'active' => true,
+            ])
+            ->order(['id' => 'asc'])
+            ->first();
+    }
+
     public function getCategoriesFor(string $memberId)
     {
         $rawList = $this->find()

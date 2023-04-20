@@ -623,12 +623,18 @@ class BitrixController extends AppController
 
                     $activity['PROVIDER_TYPE_ID'] = $sourceProviderType;
                     $status = $this->Statuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE);
+
+                    $defaultCategory = $this->Categories->getDefaultFor($this->memberId);
+                    $defaultIncidentCategory = $this->IncidentCategories->getDefaultFor($this->memberId);
+
                     $ticketRecord = $this->Tickets->create(
                         $this->memberId,
                         $activity,
-                        1,
+                        $defaultCategory->id,
                         $status['id'],
-                        (int)$prevActivityId
+                        (int)$prevActivityId,
+                        $defaultIncidentCategory->id,
+                        ''
                     );
                     if($bindings)
                     {

@@ -373,11 +373,11 @@ class TicketController extends AppController
                 $ticketRecord = $this->Tickets->create(
                     $this->memberId,
                     $activity,
-                    $arBitrixUsersIDs,
                     $categoryId,
                     $status['id'],
                     0,
-                    $incidentCategoryId
+                    $incidentCategoryId,
+                    $arBitrixUsersIDs
                 );
                 if($bindings)
                 {
@@ -580,7 +580,7 @@ class TicketController extends AppController
                 'total' => $total,
                 'current' => $currentPage,
                 'rowCount' => $rowCount,
-                'rows' => $result['rows']
+                'rows' => $result['rows'] ?? []
             ];
 
             $this->TicketControllerLogger->debug(__FUNCTION__ . ' - data', [

@@ -120,7 +120,7 @@ class TicketsTable extends Table
         return $rules;
     }
 
-    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $bitrixUsers, $incidentCategoryId)
+    public function create(string $memberId, array $activity, $categoryId, int $statusId, $prevActivityId, $incidentCategoryId, $bitrixUsers)
     {
         $entity = $this->newEntity([
             'status_id' => $statusId,
