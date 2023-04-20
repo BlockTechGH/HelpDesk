@@ -225,7 +225,12 @@ class BitrixController extends AppController
                     }
                 }
 
-                $bitrixUsers = $this->Bx24->getBitrixUsersForTicket(json_decode($this->ticket['bitrix_users']));
+                if($this->ticket['bitrix_users'])
+                {
+                    $bitrixUsers = $this->Bx24->getBitrixUsersForTicket(json_decode($this->ticket['bitrix_users']));
+                } else {
+                    $bitrixUsers = [];
+                }
 
                 $this->set('dialogId', '');
                 if($this->ticket && $this->ticket->source_type_id == Bx24Component::PROVIDER_OPEN_LINES && !$source['text'])
@@ -291,7 +296,7 @@ class BitrixController extends AppController
                         ]);
                         $this->getEventManager()->dispatch($event);
 
-                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, $ticket['category_id'], $this->memberId, $this->ticket['bitrix_users'], $ticket['incident_category_id']);
+                        $ticket = $this->Tickets->editTicket($ticket['id'], $status->id, $ticket['category_id'], $this->memberId, $ticket['bitrix_users'], $ticket['incident_category_id']);
 
                         return new Response(['body' => json_encode(['status' => $ticket['status_id']])]);
                     }

@@ -56,21 +56,6 @@
                     </div>
                 </div>
 
-                <div id="bitrix_users" class="form-group p-2">
-                    <label class="text-muted" for="assigned_to">{{ i18n.Users }}</label>
-                    <div class="bitrix-users-block">
-                        <bitrix-users
-                            v-for="(bitrixUser, index) in bitrixUsers"
-                            v-bind:key="'bitrixUser' + index"
-                            v-bind:index="index"
-                            v-bind:user="bitrixUser"
-                            v-on:delete-bitrix-user="deleteBitrixUser"
-                        >
-                        </bitrix-users>
-                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
-                    </div>
-                </div>
-
                 <div class="form-group p-2 mb-0">
                     <label for="ticket_category" class="text-muted">{{ i18n.Ticket_Category }}</label>
                     <div class="input-group">
@@ -108,6 +93,21 @@
                                 <span role="category" aria-hidden="true" class="spinner-border status-spiner text-primary ml-2"></span>
                             </div>
                         </span>
+                    </div>
+                </div>
+
+                <div id="bitrix_users" class="form-group p-2">
+                    <label class="text-muted" for="assigned_to">{{ i18n.Users }}</label>
+                    <div class="bitrix-users-block">
+                        <bitrix-users
+                            v-for="(bitrixUser, index) in bitrixUsers"
+                            v-bind:key="'bitrixUser' + index"
+                            v-bind:index="index"
+                            v-bind:user="bitrixUser"
+                            v-on:delete-bitrix-user="deleteBitrixUser"
+                        >
+                        </bitrix-users>
+                        <div v-on:click.prevent="addBitrixUsers" class="btn btn-link create-even-add-entity">{{ i18n.Add }}</div>
                     </div>
                 </div>
             </div>

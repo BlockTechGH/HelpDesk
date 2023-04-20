@@ -36,6 +36,30 @@
             active: 1,
             member_id: "<?=$required['member_id'];?>",
         },
+        colors: [
+            '#105E62',
+            '#9A0680',
+            '#911F27',
+            '#2E279D',
+            '#5A37C3',
+            '#FFCCCC',
+            '#512E5E',
+            '#B8E4C9',
+            '#34B3F1',
+            '#F54748',
+            '#76BA99',
+            '#78DEC9',
+            '#FFFDE1',
+            '#FCCDE2',
+            '#9F8772'
+        ],
+        datalabels: {
+            color: '#ffffff',
+            font: {
+                size: 16,
+                weight: 'bold'
+            }
+        },
         currentIncidentCategory: {
             id: 0,
             name: '',
@@ -336,11 +360,11 @@
                         </table>
                     </div>
                 </div>
-                <div id="perCategoriesCharts" class="row">
-                    <div class="col-6" v-if="Object.keys(perCategories).length">
+                <div class="row">
+                    <div id="perCategoriesWrapper" class="col-6 invisible">
                         <canvas id="perCategoriesCanvas"></canvas>
                     </div>
-                    <div class="col-6" v-if="Object.keys(perIncidentCategories).length">
+                    <div id="perIncidentCategoriesWrapper" class="col-6 invisible">
                         <canvas id="perIncidentCategoriesCanvas"></canvas>
                     </div>
                 </div>
@@ -554,18 +578,27 @@ $(document).ready(function () {
 
         // per categories chart
         let perCategoriesLabels = <?= json_encode(array_column($categories, 'name')); ?>;
-        let initialPerCategoriesLabelsValues = new Array(perCategoriesLabels.length).fill(10);
+        let initialPerCategoriesLabelsValues = new Array(perCategoriesLabels.length).fill(0);
+        let perCategoriesBgColors = [];
+        for(let i in initialPerCategoriesLabelsValues)
+        {
+            perCategoriesBgColors.push(window.data.colors[i]);
+        }
+
         const chartPerCategoriesData = {
             labels:  perCategoriesLabels,
             datasets: [
                 {
-                    data: initialPerCategoriesLabelsValues
+                    data: initialPerCategoriesLabelsValues,
+                    backgroundColor: perCategoriesBgColors,
+                    datalabels: window.data.datalabels
                 }
             ]
         };
         const chartPerCategories = new Chart($("#perCategoriesCanvas"),{
             type: 'pie',
             data: chartPerCategoriesData,
+            plugins: [ChartDataLabels],
             options: {
                 plugins: {
                     legend: {
@@ -599,6 +632,70 @@ $(document).ready(function () {
                     title: {
                         display: true,
                         text: '<?=__('Tickets per categories');?>',
+                        font: {
+                            size: 20
+                        }
+                    }
+                }
+            }
+        });
+
+        // per incident categories chart
+        let perIncidentCategoriesLabels = <?= json_encode(array_column($incidentCategories, 'name')); ?>;
+        let initialPerIncidentCategoriesLabelsValues = new Array(perIncidentCategoriesLabels.length).fill(0);
+        let perIncidentCategoriesBgColors = [];
+        for(let i in initialPerIncidentCategoriesLabelsValues)
+        {
+            perIncidentCategoriesBgColors.push(window.data.colors[i]);
+        }
+
+        const chartPerIncidentCategoriesData = {
+            labels:  perIncidentCategoriesLabels,
+            datasets: [
+                {
+                    data: initialPerIncidentCategoriesLabelsValues,
+                    backgroundColor: perIncidentCategoriesBgColors,
+                    datalabels: window.data.datalabels
+                }
+            ]
+        };
+        const chartPerIncidentCategories = new Chart($("#perIncidentCategoriesCanvas"),{
+            type: 'pie',
+            data: chartPerIncidentCategoriesData,
+            plugins: [ChartDataLabels],
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 20
+                            },
+                            generateLabels: (chart) => {
+                                const { data } = chart;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const meta = chart.getDatasetMeta(0);
+                                        const style = meta.controller.getStyle(i);
+                                        const value = chart.config.data.datasets[0].data[i];
+
+                                        return {
+                                            text: `${label}: ${value}`,
+                                            fillStyle: style.backgroundColor,
+                                            strokeStyle: style.borderColor,
+                                            lineWidth: style.borderWidth,
+                                            hidden: !chart.getDataVisibility(i),
+                                            index: i,
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: '<?=__('Tickets per incident categories');?>',
                         font: {
                             size: 20
                         }
@@ -764,6 +861,16 @@ $(document).ready(function () {
                         statistics.perCustomer = {};
                     }
 
+                    if(typeof statistics.perCategories === 'undefined')
+                    {
+                        statistics.perCategories = {};
+                    }
+
+                    if(typeof statistics.perIncidentCategories === 'undefined')
+                    {
+                        statistics.perIncidentCategories = {};
+                    }
+
                     this.department = Object.assign(this.department, statistics);
                     this.perCustomer = statistics.perCustomer;
                     console.log('Teams data', this.department);
@@ -797,8 +904,58 @@ $(document).ready(function () {
                     drawSegmentValues();
 
                     //chartPerCategories
-                    perCategoriesApp.perCategories = statistics.perCategories;
-                    console.log(statistics.perCategories);
+                    if(Object.keys(statistics.perCategories).length)
+                    {
+                        $('#perCategoriesWrapper').removeClass('invisible');
+
+                        const perCategoriesDataset = {
+                            data: [],
+                            backgroundColor: [],
+                            datalabels: window.data.datalabels
+                        };
+                        chartPerCategories.data.labels = [];
+                        let idPC = 0;
+                        for(let name in statistics.perCategories)
+                        {
+                            chartPerCategories.data.labels.push(name);
+                            let value = statistics.perCategories[name];
+                            perCategoriesDataset.data.push(value);
+                            perCategoriesDataset.backgroundColor.push(window.data.colors[idPC]);
+                            idPC++;
+                        }
+                        chartPerCategories.data.datasets = [perCategoriesDataset];
+                        chartPerCategories.options.plugins.title.text = '<?=__('Tickets per categories');?>';
+                        chartPerCategories.update();
+                    } else {
+                        $('#perCategoriesWrapper').addClass('invisible');
+                    }
+
+                    //chartPerIncidentCategories
+                    if(Object.keys(statistics.perIncidentCategories).length)
+                    {
+                        $('#perIncidentCategoriesWrapper').removeClass('invisible');
+
+                        const perIncidentCategoriesDataset = {
+                            data: [],
+                            backgroundColor: [],
+                            datalabels: window.data.datalabels
+                        };
+                        chartPerIncidentCategories.data.labels = [];
+                        let idIC = 0;
+                        for(let name in statistics.perIncidentCategories)
+                        {
+                            chartPerIncidentCategories.data.labels.push(name);
+                            let value = statistics.perIncidentCategories[name];
+                            perIncidentCategoriesDataset.data.push(value);
+                            perIncidentCategoriesDataset.backgroundColor.push(window.data.colors[idIC]);
+                            idIC++;
+                        }
+                        chartPerIncidentCategories.data.datasets = [perIncidentCategoriesDataset];
+                        chartPerIncidentCategories.options.plugins.title.text = '<?=__('Tickets per incident categories');?>';
+                        chartPerIncidentCategories.update();
+                    } else {
+                        $('#perIncidentCategoriesWrapper').addClass('invisible');
+                    }
                 },
                 selectFilterEntity(event) {
                     this.picker = this.modes[event.target.value];
@@ -1064,14 +1221,9 @@ $(document).ready(function () {
             }
         });
 
-        // Table of customner statistics
+        // Table of customer statistics
         new Vue({
             el: '#customer',
-            data: window.summary
-        });
-
-        const perCategoriesApp = new Vue({
-            el: '#perCategoriesCharts',
             data: window.summary
         });
     });
