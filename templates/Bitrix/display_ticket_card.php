@@ -259,7 +259,25 @@
         </footer>
     </form>
 </div>
+<?php
+if(!$ticket['category_id'])
+{
+    $ticket['category_id'] = 0;
+    $categories[0] = [
+        'id' => 0,
+        'name' => __('Choose...')
+    ];
+}
 
+if(!$ticket['incident_category_id'])
+{
+    $ticket['incident_category_id'] = 0;
+    $incidentCategories[0] = [
+        'id' => 0,
+        'name' => __('Choose...')
+    ];
+}
+?>
 <script>
     window.data = {
         ajax: "<?=$ajax;?>",
@@ -311,6 +329,7 @@
         awaitingIncidentCategory: false
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
+    console.log(window.data);
 </script>
 
 <script>
@@ -517,6 +536,16 @@
                     this.ticket = stored.ticket;
                     this.ticketAttributes.active = stored.active;
                     this[awaiting] = false;
+
+                    if(awaiting === 'awaitingCategory' && typeof this.categories[0] !== 'undefined')
+                    {
+                        delete this.categories[0];
+                    }
+
+                    if(awaiting === 'awaitingIncidentCategory' && typeof this.incidentCategories[0] !== 'undefined')
+                    {
+                        delete this.incidentCategories[0];
+                    }
                 });
             },
             feedback: function() {
