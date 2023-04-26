@@ -420,7 +420,9 @@ class TicketController extends AppController
         $this->set('statuses', $statuses);
         $this->set('bitrixUsers', $bitrixUsers);
         $this->set('categories', $categories);
+        $this->set('categoryId', $categories[1]->id);
         $this->set('incidentCategories', $incidentCategories);
+        $this->set('incidentCategoryId', $incidentCategories[1]->id);
         $this->set('statusId', $this->TicketStatuses->getFirstStatusForMemberTickets($this->memberId, TicketStatusesTable::MARK_STARTABLE)['id']);
         $this->set('ajax', $this->getUrlOf('crm_interface', $this->domain));
         $this->set('required', [

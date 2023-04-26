@@ -144,6 +144,8 @@
         subject: "",
         description: "",
         statusId: <?=$statusId?>,
+        categoryId: <?=$categoryId?>,
+        incidentCategoryId: <?=$incidentCategoryId?>,
     };
 </script>
 
@@ -329,7 +331,7 @@
             {
                 this.categoryId = event.target.value;
             },
-            setIncidentCategory: function()
+            setIncidentCategory: function(event)
             {
                 this.incidentCategoryId = event.target.value;
             }
