@@ -1,6 +1,6 @@
 <?php $this->start('css');?>
     <?=$this->Html->css('home');?>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet">    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bootgrid/1.3.1/jquery.bootgrid.min.css" integrity="sha512-WBBdLBZSQGm9JN1Yut45Y9ijfFANbcOX3G+/A5+oO8W2ZWASp3NkPrG8mgr8QvGviyLoAz8y09l7SJ1dt0as7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
@@ -18,7 +18,7 @@
 <script>
     window.data = {
         ajax: "<?= $this->Url->build([
-            '_name' => 'crm_settings_interface', 
+            '_name' => 'crm_settings_interface',
             '?' => ['DOMAIN' => $domain]
         ]); ?>",
         required: <?=json_encode($required)?>,
@@ -191,9 +191,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="sources-tab" 
-                        data-target="#sources" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="sources-tab"
+                        data-target="#sources"
                         aria-controls="sources"
                         aria-selected="false"
                     >
@@ -201,9 +201,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="statuses-tab" 
-                        data-target="#statuses" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="statuses-tab"
+                        data-target="#statuses"
                         aria-controls="statuses"
                         aria-selected="false"
                     >
@@ -211,9 +211,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="categories-tab" 
-                        data-target="#categories" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="categories-tab"
+                        data-target="#categories"
                         aria-controls="categories"
                         aria-selected="false"
                     >
@@ -221,9 +221,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="incident-categories-tab" 
-                        data-target="#incident_categories" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="incident-categories-tab"
+                        data-target="#incident_categories"
                         aria-controls="incident_categories"
                         aria-selected="false"
                     >
@@ -231,9 +231,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="sla-tab" 
-                        data-target="#sla" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="sla-tab"
+                        data-target="#sla"
                         aria-controls="sla"
                         aria-selected="false"
                     >
@@ -241,9 +241,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-toggle="tab" type="button" role="tab" 
-                        id="notification-tab" 
-                        data-target="#notification" 
+                    <button class="nav-link" data-toggle="tab" type="button" role="tab"
+                        id="notification-tab"
+                        data-target="#notification"
                         aria-controls="notification"
                         aria-selected="false"
                     >
@@ -263,11 +263,11 @@
                     'onDateChange' => null,
                     'value' => date('m/y')
                 ]);?>
-                <table id="ticketsGrid" 
+                <table id="ticketsGrid"
                     class="table table-condensed table-hover table-striped"
                 >
                     <thead>
-                        <th data-column-id="id" 
+                        <th data-column-id="id"
                             data-identifier="true"
                             data-sortable="true"
                             data-width="100px"
@@ -314,12 +314,12 @@
                                 <tr class="table-info clickable">
                                     <td class="form-input">
                                         <span>{{ team }}</label>
-                                        <i v-if="department.expose.team[team]" 
+                                        <i v-if="department.expose.team[team]"
                                             class="fa fa-minus-square-o small-icon"
                                             aria-hidden="true"
                                             @click="accordion(team)"
                                             style="float: right;"></i>
-                                        <i v-else 
+                                        <i v-else
                                             class="fa fa-plus-square-o small-icon"
                                             aria-hidden="true"
                                             @click="accordion(team)"
@@ -379,21 +379,21 @@
                     <div class="form-group">
                         <label for="sources_on_email"><?=__('Create ticket by e-mail');?></label>
                         <input type="checkbox"
-                            id="sources_on_email" 
+                            id="sources_on_email"
                             name="sources_on_email"
                             <?= ($options['sources_on_email'] == 'on') ? 'checked' : '';?>/>
                     </div>
                     <div class="form-group">
                         <label for="sources_on_open_channel"><?=__('Create ticket by chat via Open Channel');?></label>
                         <input type="checkbox"
-                            id="sources_on_open_channel" 
+                            id="sources_on_open_channel"
                             name="sources_on_open_channel"
                             <?= ($options['sources_on_open_channel'] == 'on') ? 'checked' : '';?>/>
                     </div>
                     <div class="form-group">
                         <label for="sources_on_phone_calls"><?=__('Create ticket by phone call');?></label>
                         <input type="checkbox"
-                            id="sources_on_phone_calls" 
+                            id="sources_on_phone_calls"
                             name="sources_on_phone_calls"
                             <?= ($options['sources_on_phone_calls'] == 'on') ? 'checked' : '';?>/>
                     </div>
@@ -406,9 +406,9 @@
                     <button type="submit" name="saveSettings" class="btn btn-primary"><?= __('Save') ?></button>
                 </form>
             </div>
-            <div class="tab-pane fade" 
-                id="statuses" 
-                role="tabpanel" 
+            <div class="tab-pane fade"
+                id="statuses"
+                role="tabpanel"
                 aria-labelledby="statuses-tab"
             >
                 <form method="POST" action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>">
@@ -431,8 +431,8 @@
                                 <td>{{ status.mark == 3 ? i18n.Yes : i18n.No }}</td>
                                 <td :style="'color: ' + status.color">{{ status.color }}</td>
                                 <td>
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         class="btn btn-primary btn-sm"
                                         v-on:click="edit(index)"
                                     >
@@ -447,9 +447,9 @@
                         <input class="mr-2" id="status_name" v-model="currentStatus.name">
 
                         <label for="status_active">{{ i18n.Active }}</label>
-                        <input type="checkbox" 
+                        <input type="checkbox"
                             id="status_active"
-                            v-bind:class="{btn: true, 'btn-primary': currentStatus.active}" 
+                            v-bind:class="{btn: true, 'btn-primary': currentStatus.active}"
                             v-model="currentStatus.active"/>
 
                         <label for="started" class="ml-1">{{ i18n.StartStatus }}</label>
@@ -464,9 +464,9 @@
                         <label for="color" class="ml-1">{{ i18n.Color }}</label>
                         <input type="color" id="color" v-model="currentStatus.color">
 
-                        <button 
-                            type="button" 
-                            v-on:click="save" 
+                        <button
+                            type="button"
+                            v-on:click="save"
                             class="btn btn-primary ml-1">
                             {{ i18n.Save }}
                         </button>
@@ -507,12 +507,12 @@ const statuses = new Vue({
             const parameters = Object.assign(
                 {
                     ticket_status: this.currentStatus,
-                }, 
+                },
                 this.required
             );
             if (this.currentStatus.id > 0)
             {
-               parameters.do = "edit"; 
+               parameters.do = "edit";
             }
             fetch(this.ajax, {
                 method: "POST",
@@ -1173,10 +1173,13 @@ $(document).ready(function () {
             for(let i in window.data.categories)
             {
                 let category = window.data.categories[i];
-                $(categorySelect).append($('<option>', {
-                    value: category.id,
-                    text: category.name
-                }));
+                if (category.active === '1')
+                {
+                    $(categorySelect).append($('<option>', {
+                        value: category.id,
+                        text: category.name
+                    }));
+                }
             }
             $(categoriesBlockWrapper).appendTo($(actionBar));
 
@@ -1198,10 +1201,13 @@ $(document).ready(function () {
             for(let i in window.data.incidentCategories)
             {
                 let category = window.data.incidentCategories[i];
-                $(incidentCategorySelect).append($('<option>', {
-                    value: category.id,
-                    text: category.name
-                }));
+                if (category.active === '1')
+                {
+                    $(incidentCategorySelect).append($('<option>', {
+                        value: category.id,
+                        text: category.name
+                    }));
+                }
             }
             $(incidentCategoriesBlockWrapper).appendTo($(actionBar));
         }
