@@ -2418,11 +2418,56 @@ class Bx24Component extends Component
         return $this->obBx24App->getApplicationId();
     }
 
+    // get bindings and list of files
+    public function getAdditionalInfoForActivity($activityId)
+    {
+        $arResult = [
+            'bindings' => [],
+            'storage' => [],
+            'folder' => []
+        ];
+
+        $arBindingsParams = [
+            'activityId' => $activityId
+        ];
+        $this->obBx24App->addBatchCall('crm.activity.binding.list', $arBindingsParams, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['bindings'] = $result['result'];
+            }
+        });
+
+        $getStorageCmd = $this->obBx24App->addBatchCall('disk.storage.getforapp', [], function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['storage'] = $result['result'];
+            }
+        });
+
+        $arGetListFoldersParams = [
+            'id' => '$result[' . $getStorageCmd . '][ROOT_OBJECT_ID]',
+            'filter' => [
+                'NAME' => $activityId
+            ]
+        ];
+        $this->obBx24App->addBatchCall('disk.folder.getchildren', $arGetListFoldersParams, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['folder'] = $result['result'];
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+
+        return $arResult;
+    }
+
     public function getBindingsForActivity($activityId)
     {
-        $result = $this->obBx24App->call('crm.activity.binding.list', [
-            'activityId' => $activityId
-        ]);
+        $result = $this->obBx24App->call('crm.activity.binding.list', );
 
         $this->bx24Logger->debug(__FUNCTION__ . " - bindings", [
             'result' => $result

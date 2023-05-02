@@ -512,7 +512,8 @@ class BitrixController extends AppController
 
         // get additional info
         // deal name and id
-        $arBindings = $this->Bx24->getBindingsForActivity($this->ticket['action_id']);
+        $arActivityAdditionalInfo = $this->Bx24->getAdditionalInfoForActivity($this->ticket['action_id']);
+        $arBindings = $arActivityAdditionalInfo['bindings'];
         $dealName = '';
         $dealId = 0;
 
