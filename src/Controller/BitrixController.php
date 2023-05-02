@@ -474,10 +474,10 @@ class BitrixController extends AppController
                 $ticket['created'] = $ticket['created']->format(Bx24Component::DATE_TIME_FORMAT);
             }
             $status = $this->Statuses->get($data['ticket']['status_id']);
-            $active = false;
-            if ($status->mark != $oldMark)
+            $active = true;
+            if ($status->mark == 2)
             {
-                $active = $status->mark != 2;
+                $active = false;
                 $this->Bx24->setCompleteStatus($ticket['action_id'], $active);
             }
 
