@@ -44,8 +44,9 @@
                                 v-for="(status, index) in statuses"
                                 :selected="status.id == ticket.status_id"
                                 :value="status.id"
+                                v-if="isNeedDisplayStatus(status)"
+                                v-text="getStatusName(status)"
                             >
-                                {{ status.name }}
                             </option>
                         </select>
                         <span class="input-group-addon" v-if="awaiting">
@@ -64,8 +65,9 @@
                                 v-for="(category, index) in categories"
                                 :selected="category.id == ticket.category_id"
                                 :value="category.id"
+                                v-if="isNeedDisplayCategory(category)"
+                                v-text="getCategoryName(category)"
                             >
-                                {{ category.name }}
                             </option>
                         </select>
                         <span class="input-group-addon" v-if="awaitingCategory">
@@ -84,8 +86,9 @@
                                 v-for="(category, index) in incidentCategories"
                                 :selected="category.id == ticket.incident_category_id"
                                 :value="category.id"
+                                v-if="isNeedDisplayIncidentCategory(category)"
+                                v-text="getIncidentCategoryName(category)"
                             >
-                                {{ category.name }}
                             </option>
                         </select>
                         <span class="input-group-addon" v-if="awaitingIncidentCategory">
@@ -193,6 +196,12 @@
                         </svg>
                         <?= __('Resolution') ?>
                     </a>
+                    <a class="nav-link" href="#" id="files-tab" data-toggle="tab" data-target="#files" role="tab" aria-controls="files" aria-selected="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-folder" viewBox="0 0 16 16">
+                            <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707z"/>
+                        </svg>
+                        <?= __('Files') ?>
+                    </a>
                 </nav>
                 <!-- End menu -->
 
@@ -238,18 +247,23 @@
                             <?= $this->element('resolutions', []); ?>
                         </div>
                     </div>
+                    <div class="tab-pane fade" id="files" role="tabpanel" aria-labelledby="files-tab">
+                        <div class="container-fluid pt-4">
+                            <?= $this->element('files', []); ?>
+                        </div>
+                    </div>
                 </div>
                 <!-- End content -->
 
             </div>
         </div>
 
-        <footer class="d-flex justify-content-end pt-4">
+        <footer class="d-flex justify-content-end pt-4 w-100">
             <div class="form-button">
                 <button
                     type="button"
                     @click="completeToggle"
-                    class="btn btn-secondary"
+                    class="btn btn-secondary mr-4"
                     :disabled="awaiting"
                 >
                     {{ ticketAttributes.active ? i18n.Close : i18n.Reopen }}
@@ -322,11 +336,23 @@ if(!$ticket['incident_category_id'])
             'Wait' => __('Please wait'),
             'Change' => __('Change'),
             'Users' => __('Users'),
+            'Inactive' => __('Inactive'),
+            'files_added' => __('File(s) have been added successfully'),
+            'files_deleted' => __('The file was deleted successfully'),
+            'files_delete_error' => __('An error occurred while deleting a file: '),
+            'upload_files_error' => __('An error occurred while uploading file(s): '),
         ]);?>,
         awaiting: false,
         awaitingBitrixUser: false,
         awaitingCategory: false,
-        awaitingIncidentCategory: false
+        awaitingIncidentCategory: false,
+        isFileUploadButtonDisaled: true,
+        fileList: [],
+        storage: <?= json_encode($storage) ?>,
+        folder: <?= json_encode($folder) ?>,
+        files: <?= json_encode($files) ?>,
+        filesUploadedCount: 0,
+        isUploadProcess: false
     };
     console.log('Ticket attributes', window.data.ticketAttributes);
     console.log(window.data);
@@ -354,8 +380,119 @@ if(!$ticket['incident_category_id'])
     new Vue({
         el: '#ticket',
         data: window.data,
+        computed:
+        {
+            isCurrentInactiveStatus: function()
+            {
+                for(let i in this.statuses)
+                {
+                    let status = this.statuses[i];
+                    if(status.id == this.ticket.status_id && status.active == 0)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+            isCurrentInactiveCategory: function()
+            {
+                for(let i in this.categories)
+                {
+                    let category = this.categories[i];
+                    if(category.id == this.ticket.category_id && category.active == 0)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+            isCurrentInactiveIncidentCategory: function()
+            {
+                for(let i in this.incidentCategories)
+                {
+                    let category = this.incidentCategories[i];
+                    if(category.id == this.ticket.incident_category_id && category.active == 0)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        },
         methods:
         {
+            isNeedDisplayStatus: function(status)
+            {
+                if(!this.isCurrentInactiveStatus)
+                {
+                    if(status.active == 1)
+                    {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+            getStatusName: function(status)
+            {
+                if(status.active == 1)
+                {
+                    return status.name;
+                } else {
+                    return status.name + " (" + this.i18n.Inactive + ")";
+                }
+            },
+            isNeedDisplayCategory: function(category)
+            {
+                if(!this.isCurrentInactiveCategory)
+                {
+                    if(category.active == 1)
+                    {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+            getCategoryName: function(category)
+            {
+                if(category.active == 1)
+                {
+                    return category.name;
+                } else {
+                    return category.name + " (" + this.i18n.Inactive + ")";
+                }
+            },
+            isNeedDisplayIncidentCategory: function(category)
+            {
+                if(!this.isCurrentInactiveIncidentCategory)
+                {
+                    if(category.active == 1)
+                    {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+            getIncidentCategoryName: function(category)
+            {
+                if(category.active == 1)
+                {
+                    return category.name;
+                } else {
+                    return category.name + " (" + this.i18n.Inactive + ")";
+                }
+            },
             displaySelectDealDialog: function()
             {
                 BX24.selectCRM(
@@ -745,6 +882,164 @@ if(!$ticket['incident_category_id'])
                     this.save('awaitingBitrixUser');
                 }
             },
+            selectedFiles: function()
+            {
+                var fileInput = document.getElementById('fileUpload');
+                this.fileList = fileInput.files;
+                let numFiles = this.fileList.length;
+                if(numFiles > 0)
+                {
+                    this.isFileUploadButtonDisaled = false;
+                }
+            },
+            uploadFiles: function()
+            {
+                const origin = this;
+                this.isFileUploadButtonDisaled = true;
+                this.isUploadProcess = true;
+
+                if(this.fileList)
+                {
+                    if(!this.folder.ID)
+                    {
+                        BX24.callMethod('disk.storage.addfolder',
+                            {
+                                id: this.storage.ID,
+                                data:
+                                {
+                                    NAME: this.ticketAttributes.id
+                                }
+                            },
+                            function(result)
+                            {
+                                if(result.error())
+                                {
+                                    console.log(result.error());
+                                    origin.isFileUploadButtonDisaled = false;
+                                    origin.isUploadProcess = false;
+                                    origin.displayToast(origin.i18n.upload_files_error + result.error().ex.error_description, 'error');
+                                } else {
+                                    let folderData = result.data();
+                                    origin.folder.ID = folderData.ID;
+                                    origin.folder.NAME = folderData.NAME;
+                                    origin.readFiles();
+                                }
+                            }
+                        );
+                    } else {
+                        this.readFiles();
+                    }
+                }
+            },
+            readFiles: function()
+            {
+                const origin = this;
+
+                Array.prototype.forEach.call(this.fileList, function(file)
+                {
+                    let oFReader = new FileReader();
+                    oFReader.readAsDataURL(file);
+                    oFReader.onload = function(event)
+                    {
+                        origin.saveFileInB24(event, file.name);
+                    };
+                });
+            },
+            saveFileInB24(event, fileName)
+            {
+                const numFiles = this.fileList.length;
+                const origin = this;
+
+                var fileData = event.target.result;
+                var header = ";base64,";
+                var base64FileData = fileData.substr(fileData.indexOf(header) + header.length);
+
+                BX24.callMethod('disk.folder.uploadfile',
+                    {
+                        id: this.folder.ID,
+                        data:
+                        {
+                            NAME: fileName
+                        },
+                        fileContent: base64FileData,
+                        generateUniqueName: true
+                    },
+                    function(result)
+                    {
+                        if(result.error())
+                        {
+                            console.log(result.error());
+                            origin.isFileUploadButtonDisaled = false;
+                            origin.isUploadProcess = false;
+                            origin.displayToast(origin.i18n.upload_files_error + result.error().ex.error_description, 'error');
+                        } else {
+                            // 1) add file to list
+                            let fileInfo = result.data();
+                            origin.files.push({
+                                ID: fileInfo.ID,
+                                NAME: fileInfo.NAME,
+                                URL: fileInfo.DOWNLOAD_URL
+                            });
+
+                            // 2) increase counter
+                            origin.filesUploadedCount++;
+                            if(origin.filesUploadedCount === numFiles)
+                            {
+                                origin.filesUploadedCount = 0;
+                                origin.isFileUploadButtonDisaled = false;
+                                origin.isUploadProcess = false;
+                                // clear form
+                                origin.clearForm();
+                                origin.displayToast(origin.i18n.files_added, 'success');
+                            }
+                        }
+                    }
+                );
+            },
+            clearForm: function()
+            {
+                var form = document.getElementById('fileUploadForm');
+                form.reset();
+                this.isFileUploadButtonDisaled = true;
+            },
+            deleteFile: function(file, index)
+            {
+                const origin = this;
+
+                BX24.callMethod('disk.file.delete',
+                    {
+                        id: file.ID
+                    },
+                    function(result)
+                    {
+                        if(result.error())
+                        {
+                            console.log(result.error());
+                            origin.displayToast(origin.i18n.files_delete_error + result.error().ex.error_description, 'error');
+                        } else {
+                            origin.files.splice(index, 1);
+                            origin.displayToast(origin.i18n.files_deleted, 'success');
+                        }
+                    }
+                );
+            },
+            displayToast(message, type = 'success')
+            {
+                let notificationTextElement = document.getElementById('toastText');
+                let notificationIcon = document.getElementById('notificationIcon');
+
+                if(type == 'success')
+                {
+                    $(notificationIcon).addClass('bi-check-square-fill').addClass('text-success');
+                    $(notificationIcon).removeClass('bi-x-square-fill').removeClass('text-danger');
+                } else {
+                    $(notificationIcon).addClass('bi-x-square-fill').addClass('text-danger');
+                    $(notificationIcon).removeClass('bi-check-square-fill').removeClass('text-success');
+                }
+
+                notificationTextElement.innerHTML = message;
+                $('#notification').toast('show');
+            }
         }
     });
 </script>

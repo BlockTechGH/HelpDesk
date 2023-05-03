@@ -85,6 +85,22 @@ class TicketCategoriesTable extends Table
             ->first();
     }
 
+    public function getActiveCategoriesFor(string $memberId)
+    {
+        $rawList = $this->find()
+            ->where([
+                'member_id' => $memberId,
+                'active' => 1
+            ])
+            ->all()
+            ->toList();
+        $result = [];
+        foreach ($rawList as $category) {
+            $result[$category->id] = $category;
+        }
+        return $result;
+    }
+
     public function getCategoriesFor(string $memberId)
     {
         $rawList = $this->find()

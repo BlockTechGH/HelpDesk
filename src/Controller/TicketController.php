@@ -237,9 +237,9 @@ class TicketController extends AppController
     {
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - started');
 
-        $statuses = $this->TicketStatuses->getStatusesFor($this->memberId);
-        $categories = $this->Categories->getCategoriesFor($this->memberId);
-        $incidentCategories = $this->IncidentCategories->getCategoriesFor($this->memberId);
+        $statuses = $this->TicketStatuses->getActiveStatusesFor($this->memberId);
+        $categories = $this->Categories->getActiveCategoriesFor($this->memberId);
+        $incidentCategories = $this->IncidentCategories->getActiveCategoriesFor($this->memberId);
         $currentUser = $this->Bx24->getCurrentUser();
         $data = $this->request->getData();
         $entityId = intval($this->placement['ID']);

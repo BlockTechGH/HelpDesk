@@ -528,12 +528,22 @@ class BitrixController extends AppController
             }
         }
 
+        if($arActivityAdditionalInfo['folder']['ID'])
+        {
+            $files = $this->Bx24->getFilesForFolder($arActivityAdditionalInfo['folder']['ID']);
+        } else {
+            $files = [];
+        }
+
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
         $this->set('onChangeResponsibleUrl', $this->getUrlOf('on_change_responsible', $this->domain));
         $this->set('dealName', $dealName);
         $this->set('dealId', $dealId);
+        $this->set('storage', $arActivityAdditionalInfo['storage']);
+        $this->set('folder', $arActivityAdditionalInfo['folder']);
+        $this->set('files', $files);
         return $this->render('display_ticket_card');
     }
 

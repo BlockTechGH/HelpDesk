@@ -2442,7 +2442,10 @@ class Bx24Component extends Component
         {
             if($result['result'])
             {
-                $arResult['storage'] = $result['result'];
+                $arResult['storage'] = [
+                    'ID' => $result['result']['ID'],
+                    'ROOT_OBJECT_ID' => $result['result']['ROOT_OBJECT_ID']
+                ];
             }
         });
 
@@ -2452,15 +2455,57 @@ class Bx24Component extends Component
                 'NAME' => $activityId
             ]
         ];
-        $this->obBx24App->addBatchCall('disk.folder.getchildren', $arGetListFoldersParams, function($result) use (&$arResult)
+        $this->obBx24App->addBatchCall('disk.folder.getchildren', $arGetListFoldersParams, function($result) use (&$arResult, $activityId)
         {
             if($result['result'])
             {
-                $arResult['folder'] = $result['result'];
+                foreach($result['result'] as $folder)
+                {
+                    if($folder['NAME'] == $activityId)
+                    {
+                        $arResult['folder'] = [
+                            'ID' => $folder['ID'],
+                            'NAME' => $folder['NAME'],
+                        ];
+                        break;
+                    }
+                }
+            } else {
+                $arResult['folder'] = [
+                    'ID' => 0
+                ];
             }
         });
 
         $this->obBx24App->processBatchCalls();
+
+        return $arResult;
+    }
+
+    public function getFilesForFolder($folderId)
+    {
+        $arResult = [];
+
+        $arParams = [
+            'id' => $folderId
+        ];
+
+        $result = $this->obBx24App->call('disk.folder.getchildren', $arParams);
+
+        if($result['result'])
+        {
+            foreach($result['result'] as $file)
+            {
+                if($file['TYPE'] === 'file')
+                {
+                    $arResult[] = [
+                        'ID' => $file['ID'],
+                        'NAME' => $file['NAME'],
+                        'URL' => $file['DOWNLOAD_URL']
+                    ];
+                }
+            }
+        }
 
         return $arResult;
     }
