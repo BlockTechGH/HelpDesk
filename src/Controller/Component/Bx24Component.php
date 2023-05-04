@@ -2484,26 +2484,51 @@ class Bx24Component extends Component
 
     public function getFilesForFolder($folderId)
     {
+        $this->bx24Logger->debug(__FUNCTION__ . " - folderId", [
+            'folderId' => $folderId
+        ]);
+
         $arResult = [];
+        $start = 0;
 
-        $arParams = [
-            'id' => $folderId
-        ];
+        $endOf = false;
 
-        $result = $this->obBx24App->call('disk.folder.getchildren', $arParams);
-
-        if($result['result'])
+        while(!$endOf)
         {
-            foreach($result['result'] as $file)
+            $arParams = [
+                'id' => $folderId,
+                'start' => $start
+            ];
+
+            $result = $this->obBx24App->call('disk.folder.getchildren', $arParams);
+
+            if($result['result'])
             {
-                if($file['TYPE'] === 'file')
+                foreach($result['result'] as $file)
                 {
-                    $arResult[] = [
-                        'ID' => $file['ID'],
-                        'NAME' => $file['NAME'],
-                        'URL' => $file['DOWNLOAD_URL']
-                    ];
+                    if($file['TYPE'] === 'file')
+                    {
+                        $arResult[] = [
+                            'ID' => $file['ID'],
+                            'NAME' => $file['NAME'],
+                            'URL' => $file['DOWNLOAD_URL']
+                        ];
+                    }
                 }
+            }
+
+            if(!array_key_exists('next', $result))
+            {
+                $endOf = true;
+                $this->bx24Logger->debug(__FUNCTION__ . " - end", [
+                    'total' => $result['total']
+                ]);
+            } else {
+                $this->bx24Logger->debug(__FUNCTION__ . " - steep", [
+                    'start' => $result['next'],
+                    'total' => $result['total']
+                ]);
+                $start = $result['next'];
             }
         }
 
