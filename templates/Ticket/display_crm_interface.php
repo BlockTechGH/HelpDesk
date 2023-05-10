@@ -7,17 +7,27 @@
     >
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
+
                 <div class="form-group p-2 mt-2">
+                    <div class="text-muted"><?= __('Customer Name') ?></div>
                     <p class="form-input customer-block">
                         <span class="border rounded-circle p-2 customer-block-abr">{{ customer.abr }}</span>
                         <span class="ml-2">{{ customer.title }}</span>
                     </p>
-                    <p class="customer-communications">{{ customer.phone }}</p>
-                    <p class="customer-communications">{{ customer.email }}</p>
+
+                    <span v-if="customer.phone">
+                        <div class="text-muted"><?= __('Customer Phone Number') ?></div>
+                        <p class="customer-communications">{{ customer.phone }}</p>
+                    </span>
+
+                    <span v-if="customer.email">
+                        <div class="text-muted"><?= __('Customer Email ID') ?></div>
+                        <p class="customer-communications">{{ customer.email }}</p>
+                    </span>
                 </div>
 
                 <div class="form-group p-2">
-                    <label for="assigned_to">{{ i18n.Assigned }}</label>
+                    <label for="assigned_to" class="text-muted">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <img v-if="responsible.photo" class="rounded-circle avatar-img" v-bind:alt="responsible.title" v-bind:src="responsible.photo" />
                         <span v-else class="border rounded-circle p-2">{{ responsible.abr }}</span>
@@ -27,7 +37,7 @@
                 </div>
 
                 <div class="form-group p-2 mb-0">
-                    <label for="ticket_status">{{ i18n.Status }}</label>
+                    <label for="ticket_status" class="text-muted">{{ i18n.Status }}</label>
                     <select id="ticket_status" name="status" class="form-control" v-on:change="setStatus">
                         <option
                             v-for="(status, index) in statuses"
@@ -40,7 +50,7 @@
                 </div>
 
                 <div class="form-group p-2 mb-0">
-                    <label for="ticket_category">{{ i18n.Ticket_Category }}</label>
+                    <label for="ticket_category" class="text-muted">{{ i18n.Ticket_Category }}</label>
                     <select id="ticket_category" name="ticket_category" class="form-control" v-on:change="setTicketCategory">
                         <option
                             v-for="(category, index) in categories"
@@ -53,7 +63,7 @@
                 </div>
 
                 <div class="form-group p-2 mb-0">
-                    <label for="incident_category">{{ i18n.Incident_Category }}</label>
+                    <label for="incident_category" class="text-muted">{{ i18n.Incident_Category }}</label>
                     <select id="incident_category" name="incident_category" class="form-control" v-on:change="setIncidentCategory">
                         <option
                             v-for="(category, index) in incidentCategories"
@@ -66,7 +76,7 @@
                 </div>
 
                 <div id="bitrix_users" class="form-group p-2">
-                    <label for="bitrix_users">{{ i18n.Users }}</label>
+                    <label for="bitrix_users" class="text-muted">{{ i18n.Users }}</label>
                     <div class="bitrix-users-block">
                         <bitrix-users
                             v-for="(bitrixUser, index) in bitrixUsers"
@@ -126,18 +136,21 @@
         incidentCategories: <?=json_encode($incidentCategories);?>,
 
         i18n: <?=json_encode([
-            'Assigned' => __('Responsible'),
+            'Assigned' => __('Responsible Person'),
             'Name' => __('Ticket name'),
-            'Description' => __('Description'),
-            'Status' => __('Status'),
+            'Description' => __('Ticket Description'),
+            'Status' => __('Ticket Status'),
             'Ticket_Category' => __('Ticket Category'),
             'Incident_Category' => __('Incident Category'),
-            'Add' => __('Add'),
+            'Add' => __('Create'),
             'Cancel' => __('Cancel'),
             'Wait' => __('Please wait'),
             'Change' => __('Change'),
-            'Users' => __('Users'),
-            'Remove' => __('x')
+            'Users' => __('Send Notifications to:'),
+            'Remove' => __('x'),
+            'Customer_name' => __('Customer Name'),
+            'Customer_phone' => __('Customer Phone Number'),
+            'Customer_email' => __('Customer Email ID'),
         ]);?>,
         awaiting: false,
 

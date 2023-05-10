@@ -7,18 +7,28 @@
     >
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
+
                 <div class="form-group p-2 mt-2">
-                    <div class="text-muted"><?= __('Customer') ?></div>
+                    <div class="text-muted"><?= __('Customer Name') ?></div>
                     <p class="form-input customer-block">
                         <span class="border rounded-circle p-2 customer-block-abr">{{ ticketAttributes.customer.abr }}</span>
                         <span class="ml-2"><a href="#" v-on:click.prevent="openEntityCard">{{ ticketAttributes.customer.title }}</a></span>
                     </p>
-                    <p class="customer-communications">{{ ticketAttributes.customer.phone }}</p>
-                    <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
+
+                    <span v-if="ticketAttributes.customer.phone">
+                        <div class="text-muted"><?= __('Customer Phone Number') ?></div>
+                        <p class="customer-communications">{{ ticketAttributes.customer.phone }}</p>
+                    </span>
+
+                    <span v-if="ticketAttributes.customer.email">
+                        <div class="text-muted"><?= __('Customer Email ID') ?></div>
+                        <p class="customer-communications">{{ ticketAttributes.customer.email }}</p>
+                    </span>
+
                     <div v-if="dealName">
                         <span class="text-muted"><?= __('Deal') ?></span>
                         <a href="#" class="change-responsible float-right" @click="displaySelectDealDialog">
-                            <?= __('Change') ?>
+                            <?= __('Change Deal') ?>
                         </a>
                         <div>
                             <a href="#" @click.prevent="openDealCard" v-html="dealName"></a>
@@ -200,7 +210,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-folder" viewBox="0 0 16 16">
                             <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707z"/>
                         </svg>
-                        <?= __('Files') ?>
+                        <?= __('File Attachments') ?>
                     </a>
                 </nav>
                 <!-- End menu -->
@@ -318,10 +328,10 @@ if(!$ticket['incident_category_id'])
         dealName: "<?= htmlspecialchars($dealName, ENT_QUOTES); ?>",
         dealId: "<?= $dealId ?>",
         i18n: <?=json_encode([
-            'Assigned' => __('Responsible'),
+            'Assigned' => __('Responsible Person'),
             'Name' => __('Title'),
             'Ticket' => $ticketAttributes['subject'],
-            'Status' => __('Status'),
+            'Status' => __('Ticket Status'),
             'Ticket_Category' => __('Ticket Category'),
             'Incident_Category' => __('Incident Category'),
             'Save' => __('Save'),
@@ -334,13 +344,16 @@ if(!$ticket['incident_category_id'])
             'Close' => __('Close ticket'),
             'Reopen' => __('Reopen ticket'),
             'Wait' => __('Please wait'),
-            'Change' => __('Change'),
-            'Users' => __('Users'),
+            'Change' => __('Change Responsible Person'),
+            'Users' => __('Send Notifications to'),
             'Inactive' => __('Inactive'),
             'files_added' => __('File(s) have been added successfully'),
             'files_deleted' => __('The file was deleted successfully'),
             'files_delete_error' => __('An error occurred while deleting a file: '),
             'upload_files_error' => __('An error occurred while uploading file(s): '),
+            'Customer_name' => __('Customer Name'),
+            'Customer_phone' => __('Customer Phone Number'),
+            'Customer_email' => __('Customer Email ID'),
         ]);?>,
         awaiting: false,
         awaitingBitrixUser: false,
