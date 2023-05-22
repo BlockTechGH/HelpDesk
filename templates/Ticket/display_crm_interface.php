@@ -27,6 +27,15 @@
                 </div>
 
                 <div class="form-group p-2">
+                    <label for="created_by" class="text-muted">{{ i18n.Created_by }}</label>
+                    <div id="created_by">
+                        <img v-if="createdBy.photo" class="rounded-circle avatar-img" v-bind:alt="createdBy.title" v-bind:src="createdBy.photo" />
+                        <span v-else class="border rounded-circle p-2">{{ createdBy.abr }}</span>
+                        {{ createdBy.title }}
+                    </div>
+                </div>
+
+                <div class="form-group p-2">
                     <label for="assigned_to" class="text-muted">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <img v-if="responsible.photo" class="rounded-circle avatar-img" v-bind:alt="responsible.title" v-bind:src="responsible.photo" />
@@ -130,6 +139,7 @@
         required: <?=json_encode($required)?>,
         customer: <?=json_encode($customer);?>,
         responsible: <?=json_encode($responsible);?>,
+        createdBy: <?=json_encode($createdBy)?>,
         statuses: <?=json_encode($statuses);?>,
         bitrixUsers: <?=json_encode($bitrixUsers);?>,
         categories: <?=json_encode($categories);?>,
@@ -151,6 +161,7 @@
             'Customer_name' => __('Customer Name'),
             'Customer_phone' => __('Customer Phone Number'),
             'Customer_email' => __('Customer Email ID'),
+            'Created_by' => __('Ticket Created by'),
         ]);?>,
         awaiting: false,
 

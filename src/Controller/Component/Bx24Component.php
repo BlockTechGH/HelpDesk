@@ -392,7 +392,8 @@ class Bx24Component extends Component
                 'ORIGIN_ID',
                 'PROVIDER_PARAMS',
                 'CREATED',
-                'COMPLETED'
+                'COMPLETED',
+                'AUTHOR_ID'
             ]
         ];
         if(!is_array($ids))
@@ -1066,6 +1067,7 @@ class Bx24Component extends Component
             'id' => intval($ticketActivity['ID']),
             'ENTITY_TYPE_ID' => $entityTypeId,
             'responsible' => intval($ticketActivity['RESPONSIBLE_ID']),
+            'createdBy' => intval($ticketActivity['AUTHOR_ID']),
             'customer' => [
                 'id' => (int)$customerCommunications['ENTITY_ID'],
                 'typeId' => (int)$customerCommunications['ENTITY_TYPE_ID'],

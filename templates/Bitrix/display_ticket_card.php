@@ -37,6 +37,15 @@
                 </div>
 
                 <div class="form-group p-2">
+                    <label for="created_by" class="text-muted">{{ i18n.Created_by }}</label>
+                    <div id="created_by">
+                        <img v-if="ticketAttributes.createdBy.photo" class="rounded-circle avatar-img" v-bind:alt="ticketAttributes.createdBy.title" v-bind:src="ticketAttributes.createdBy.photo" />
+                        <span v-else class="border rounded-circle p-2">{{ ticketAttributes.createdBy.abr }}</span>
+                        {{ ticketAttributes.createdBy.title }}
+                    </div>
+                </div>
+
+                <div class="form-group p-2">
                     <label class="text-muted" for="assigned_to">{{ i18n.Assigned }}</label>
                     <div id="assigned_to">
                         <img v-if="ticketAttributes.responsible.photo" class="rounded-circle avatar-img" v-bind:alt="ticketAttributes.responsible.title" v-bind:src="ticketAttributes.responsible.photo" />
@@ -354,6 +363,7 @@ if(!$ticket['incident_category_id'])
             'Customer_name' => __('Customer Name'),
             'Customer_phone' => __('Customer Phone Number'),
             'Customer_email' => __('Customer Email ID'),
+            'Created_by' => __('Ticket Created by'),
         ]);?>,
         awaiting: false,
         awaitingBitrixUser: false,

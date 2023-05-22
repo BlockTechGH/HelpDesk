@@ -211,7 +211,10 @@ class BitrixController extends AppController
                     if($ticketAttributes)
                     {
                         $uid = $ticketAttributes['responsible'];
-                        $ticketAttributes['responsible'] = $this->Bx24->getUsersAttributes([$uid])[$uid];
+                        $createdBy = $ticketAttributes['createdBy'];
+                        $usersAttributes = $this->Bx24->getUsersAttributes([$uid, $createdBy]);
+                        $ticketAttributes['responsible'] = $usersAttributes[$uid];
+                        $ticketAttributes['createdBy'] = $usersAttributes[$createdBy];
                     }
                 }
 

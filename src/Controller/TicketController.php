@@ -416,6 +416,7 @@ class TicketController extends AppController
         }
 
         $this->set('customer', $customer);
+        $this->set('createdBy', $this->Bx24->makeUserAttributes($currentUser));
         $this->set('responsible', $this->Bx24->makeUserAttributes($currentUser));
         $this->set('statuses', $statuses);
         $this->set('bitrixUsers', $bitrixUsers);
