@@ -464,7 +464,8 @@ class Bx24Component extends Component
                 'OWNER_ID',
                 'OWNER_TYPE_ID',
                 'RESPONSIBLE_ID',
-                'COMMUNICATIONS'
+                'COMMUNICATIONS',
+                'AUTHOR_ID'
             ]
         ];
 
@@ -2369,7 +2370,8 @@ class Bx24Component extends Component
                 'COMPLETED',
                 'PROVIDER_ID',
                 'COMMUNICATIONS',
-                'PROVIDER_DATA'
+                'PROVIDER_DATA',
+                'AUTHOR_ID'
             ],
             'order' => $order,
             'start' => $start
