@@ -2612,4 +2612,13 @@ class Bx24Component extends Component
 
         return $arResult;
     }
+
+    public function sendBitrixNotification($userID)
+    {
+        $arParameters = [
+            'USER_ID' => $userID,
+            'MESSAGE' => __('Ticket can not be closed without Resolution'),
+        ];
+        $response = $this->obBx24App->call('im.notify.personal.add', $arParameters);
+    }
 }

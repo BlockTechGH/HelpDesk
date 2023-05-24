@@ -6,7 +6,7 @@
 
 <form id="fileUploadForm">
     <div class="row">
-    
+
         <div class="custom-file col-10">
             <label class="custom-file-label" for="fileUpload"><?= __('Select file(s)') ?></label>
             <input type="file" class="custom-file-input" multiple id="fileUpload" v-on:change.prevent="selectedFiles">
@@ -46,14 +46,3 @@
         bsCustomFileInput.init();
     });
 </script>
-
-<div id="notification" class="toast mt-3 mr-3" role="alert" aria-live="assertive" aria-atomic="true" data-delay="4000" style="position: absolute; top: 0; right: 0;">
-    <div class="toast-header">
-        <i id="notificationIcon" class="bi bi-check-square-fill text-success"></i>
-        <strong class="mr-auto ml-2"><?= __('Helpdesk') ?></strong>
-        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    <div id="toastText" class="toast-body"></div>
-</div>
