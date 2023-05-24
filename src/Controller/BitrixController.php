@@ -737,11 +737,10 @@ class BitrixController extends AppController
 
                 if($activity['COMPLETED'] == "Y" && $ticket->status_id != $finalStatus->id)
                 {
-                    if (!$ticket['Resolutions'])
+                    if (!$ticket->resolutions)
                     {
-                        $currentUser = $this->Bx24->getCurrentUser();
-                        $this->Bx24->sendBitrixNotification($currentUser['ID']);
-                        $this->Bx24->setCompleteStatus($idActivity, false);
+                        $resultNoResolution = $this->Bx24->reopenActivitySendBitrixNotificationNoResolution($idActivity);
+                        $this->BxControllerLogger->debug(__FUNCTION__ . ' - reopenActivitySendBitrixNotificationNoResolution', [$resultNoResolution]);
                         return;
                     }
                     $resultUpdate = $this->Tickets->editTicket($ticket->id, $finalStatus->id, null, $this->memberId);
