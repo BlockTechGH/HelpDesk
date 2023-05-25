@@ -43,7 +43,7 @@ class EventTypesSeed extends AbstractSeed
             ],
             [
                 'name' => 'Adding resolution',
-                'template' => 'Resolution {NEW} has been added.',
+                'template' => 'Resolution has been added.',
                 'created' => date('Y-m-d H:i:s'),
                 'modified' => date('Y-m-d H:i:s')
             ],
