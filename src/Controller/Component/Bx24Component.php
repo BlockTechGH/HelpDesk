@@ -2612,4 +2612,51 @@ class Bx24Component extends Component
 
         return $arResult;
     }
+
+    public function reopenActivitySendBitrixNotificationNoResolution($activityID)
+    {
+        $arResult = [
+            'reopenActivity' => false,
+            'currentUser' => false,
+            'notificationSent' => false
+        ];
+        $arParameters = [
+            'id' => $activityID,
+            'fields' => [
+                'COMPLETED' => 'N',
+            ]
+        ];
+
+        $this->obBx24App->addBatchCall('crm.activity.update', $arParameters, function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['reopenActivity'] = true;
+            }
+        });
+
+        $getCurrentUserCmd = $this->obBx24App->addBatchCall('user.current', [], function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['currentUser'] = $result['result']['ID'];
+            }
+        });
+
+        $this->obBx24App->addBatchCall(
+            'im.notify.system.add',
+            [
+                'USER_ID' => '$result[' . $getCurrentUserCmd . '][ID]',
+                'MESSAGE' => __('Ticket can not be closed without Resolution'),
+            ], function($result) use (&$arResult)
+        {
+            if($result['result'])
+            {
+                $arResult['notificationSent'] = true;
+            }
+        });
+
+        $this->obBx24App->processBatchCalls();
+        return $arResult;
+    }
 }
