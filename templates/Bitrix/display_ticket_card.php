@@ -661,25 +661,26 @@ if(!$ticket['incident_category_id'])
             setStatus: function (event)
             {
                 this.ticket.status_id = event.target.value;
-                this.save();
+                this.save('awaiting', 'changeStatus');
             },
             setTicketCategory: function(event)
             {
                 this.ticket.category_id = event.target.value;
-                this.save('awaitingCategory');
+                this.save('awaitingCategory', 'changeCategory');
             },
             setIncidentCategory: function(event)
             {
                 this.ticket.incident_category_id = event.target.value;
-                this.save('awaitingIncidentCategory');
+                this.save('awaitingIncidentCategory', 'changeIncidentCategory');
             },
-            save: function (awaiting = 'awaiting')
+            save: function (awaiting = 'awaiting', eventTypeCode = null)
             {
                 this[awaiting] = true;
                 this.ticket.bitrixUsers = this.bitrixUsers;
                 const parameters = Object.assign(
                     {
-                        ticket: this.ticket
+                        ticket: this.ticket,
+                        code: eventTypeCode
                     },
                     this.required
                 );
@@ -870,7 +871,7 @@ if(!$ticket['incident_category_id'])
             deleteBitrixUser: function(index)
             {
                 this.bitrixUsers.splice(index, 1);
-                this.save('awaitingBitrixUser');
+                this.save('awaitingBitrixUser', 'changeUsersForNotifications');
             },
             addBitrixUsers: function()
             {
@@ -909,7 +910,7 @@ if(!$ticket['incident_category_id'])
                             this.bitrixUsers.push(row);
                         }
                     }, this);
-                    this.save('awaitingBitrixUser');
+                    this.save('awaitingBitrixUser', 'changeUsersForNotifications');
                 }
             },
             selectedFiles: function()

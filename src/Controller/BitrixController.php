@@ -79,6 +79,8 @@ class BitrixController extends AppController
         $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
+        $this->TicketHistory = $this->getTableLocator()->get('TicketHistory');
+        $this->EventTypes = $this->getTableLocator()->get('EventTypes');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
@@ -465,6 +467,39 @@ class BitrixController extends AppController
 
             $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
+
+            // write to ticket_history table
+            if(isset($data['code']))
+            {
+                $code = $data['code'];
+                $eventType = $this->EventTypes->getEventTypeByCode($code);
+                $arTicketFieldsByCode = [
+                    'changeStatus' => 'status_id',
+                    'changeCategory' => 'category_id',
+                    'changeIncidentCategory' => 'incident_category_id',
+                    'changeUsersForNotifications' => 'bitrix_users'
+                ];
+                $oldValue = $oldTicket->{$arTicketFieldsByCode[$code]};
+                $newValue = $data['ticket'][$arTicketFieldsByCode[$code]];
+                if($code === 'changeUsersForNotifications') {
+                    $newValue = $arBitrixUsersIDs;
+                }
+
+                $ticketHistory = $this->TicketHistory->create(
+                    $oldTicket->id,
+                    $currentUser['ID'],
+                    $eventType->id,
+                    $oldValue,
+                    $newValue
+                );
+                if ($ticketHistory)
+                {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+                } else {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+                }
+            }
+
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
                 (int)$data['ticket']['status_id'],
