@@ -59,6 +59,8 @@ class TicketController extends AppController
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
         $this->Categories = $this->getTableLocator()->get('TicketCategories');
         $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
+        $this->TicketHistory = $this->getTableLocator()->get('TicketHistory');
+        $this->EventTypes = $this->getTableLocator()->get('EventTypes');
 
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'tickets_controller.log';
         $this->TicketControllerLogger = new Logger('TicketController');
@@ -875,11 +877,14 @@ class TicketController extends AppController
 
         $activityId = intval($this->request->getData('activityId'));
         $responsibleData = $this->request->getData('newResponsible');
+        $oldResponsibleData = $this->request->getData('oldResponsible');
+        $currentUser = $this->Bx24->getCurrentUser();
 
         $this->TicketControllerLogger->debug(__FUNCTION__ . ' - input parameters', [
             'isPost' => $this->request->is('post'),
             'activityId' => $activityId,
             'responsibleData' => $responsibleData,
+            'oldResponsibleData' => $oldResponsibleData
         ]);
 
         if($this->request->is('post') && $activityId && $responsibleData)
@@ -904,6 +909,22 @@ class TicketController extends AppController
                 'newResponsible' => $responsibleData['id']
             ]);
             $this->getEventManager()->dispatch($event);
+
+            // write to ticket_history table
+            $eventType = $this->EventTypes->getEventTypeByCode('changeResponsible');
+            $ticketHistory = $this->TicketHistory->create(
+                $ticketRecord->id,
+                $currentUser['ID'],
+                $eventType->id,
+                $oldResponsibleData['id'],
+                $responsibleData['id']
+            );
+            if ($ticketHistory)
+            {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+            } else {
+                $this->TicketControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+            }
 
             $result = [
                 'error' => false,

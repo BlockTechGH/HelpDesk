@@ -823,12 +823,18 @@ if(!$ticket['incident_category_id'])
             },
             changeresponsibleInView: function(data)
             {
+                // save data about the old and new responsible in the object
+                let rData = {};
+                rData.oldResponsible = { ...this.ticketAttributes.responsible };
+                rData.newResponsible = data;
+
+                // change responsible in view
                 this.ticketAttributes.responsible.id = data.id;
                 this.ticketAttributes.responsible.title = data.name;
                 this.ticketAttributes.responsible.photo = data.photo;
                 this.ticketAttributes.responsible.abr = this.getAbbreviation(data.name);
 
-                this.runOnChangeResponsible(data);
+                this.runOnChangeResponsible(rData);
             },
             runOnChangeResponsible: function(data)
             {
@@ -838,7 +844,8 @@ if(!$ticket['incident_category_id'])
                 const parameters = Object.assign(
                     {
                         activityId: this.ticketAttributes.id,
-                        newResponsible: data
+                        newResponsible: data.newResponsible,
+                        oldResponsible: data.oldResponsible
                     },
                     this.required
                 );
