@@ -613,7 +613,8 @@ if(!$ticket['incident_category_id'])
                     {
                         resolutionText: this.resolutionText,
                         ticketId: this.ticket.id,
-                        do: 'addResolution'
+                        do: 'addResolution',
+                        code: 'addResolution'
                     },
                     this.required
                 );

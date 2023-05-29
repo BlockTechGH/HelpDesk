@@ -1313,6 +1313,27 @@ class BitrixController extends AppController
                 ])]);
             }
 
+            // write to ticket_history table
+            if(isset($data['code']))
+            {
+                $code = $data['code'];
+                $eventType = $this->EventTypes->getEventTypeByCode($code);
+
+                $ticketHistory = $this->TicketHistory->create(
+                    $data['ticketId'],
+                    $currentUser['ID'],
+                    $eventType->id,
+                    null,
+                    $record->id
+                );
+                if ($ticketHistory)
+                {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+                } else {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+                }
+            }
+
             $record['fullName'] = implode(' ', [$currentUser['NAME'], $currentUser['LAST_NAME']]);
             $record['formattedTime'] = $record->created->format(Bx24Component::DATE_TIME_FORMAT);
             $record['formattedText'] = str_replace(PHP_EOL, '<br>', $record['text']);
