@@ -966,6 +966,10 @@ if(!$ticket['incident_category_id'])
             readFiles: function()
             {
                 const origin = this;
+                const fileListCopy = [...this.fileList];
+                const arFileNamesList = fileListCopy.map(function(file) {
+                    return file.name;
+                });
 
                 Array.prototype.forEach.call(this.fileList, function(file)
                 {
@@ -976,6 +980,9 @@ if(!$ticket['incident_category_id'])
                         origin.saveFileInB24(event, file.name);
                     };
                 });
+
+                // save changes to the table
+                origin.handleAddOrDeleteFiles('addFiles', 'addFiles', arFileNamesList);
             },
             saveFileInB24(event, fileName)
             {
@@ -1054,6 +1061,9 @@ if(!$ticket['incident_category_id'])
                         }
                     }
                 );
+
+                // save changes to the table
+                origin.handleAddOrDeleteFiles('deleteFile', 'deleteFile', file.NAME);
             },
             displayToast(message, type = 'success')
             {
@@ -1071,6 +1081,32 @@ if(!$ticket['incident_category_id'])
 
                 notificationTextElement.innerHTML = message;
                 $('#notification').toast('show');
+            },
+            handleAddOrDeleteFiles(action, code, value)
+            {
+                const parameters = Object.assign(
+                    {
+                        ticketId: this.ticket.id,
+                        value: value,
+                        do: action,
+                        code: code
+                    },
+                    this.required
+                );
+                fetch(this.ajax,
+                {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    try
+                    {
+                        const response = await result.json();
+                        console.log(response);
+                    } catch (e) {
+                        console.error("Error occuried: " + e);
+                    }
+                });
             }
         }
     });

@@ -28,6 +28,7 @@ class BitrixController extends AppController
     private $placement;
     private $ticket = null;
     private $messages = [];
+    private const SEPARATOR = '|';
 
     public function initialize() : void
     {
@@ -140,6 +141,13 @@ class BitrixController extends AppController
                 {
                     $data = $this->request->getParsedBody();
                     return $this->addResolution($data, $currentUser);
+                }
+
+                // handle add or delete files
+                if($do && ($do === 'addFiles' || $do === 'deleteFile'))
+                {
+                    $data = $this->request->getParsedBody();
+                    return $this->handleAddOrDeleteFiles($data, $currentUser);
                 }
 
                 if($do && $do === 'assignNewDeal')
@@ -479,10 +487,13 @@ class BitrixController extends AppController
                     'changeIncidentCategory' => 'incident_category_id',
                     'changeUsersForNotifications' => 'bitrix_users'
                 ];
-                $oldValue = $oldTicket->{$arTicketFieldsByCode[$code]};
-                $newValue = $data['ticket'][$arTicketFieldsByCode[$code]];
-                if($code === 'changeUsersForNotifications') {
-                    $newValue = $arBitrixUsersIDs;
+
+                if ($code === 'changeUsersForNotifications') {
+                    $oldValue = implode(self::SEPARATOR, json_decode($oldTicket->{$arTicketFieldsByCode[$code]}));
+                    $newValue = implode(self::SEPARATOR, json_decode($arBitrixUsersIDs));
+                } else {
+                    $oldValue = $oldTicket->{$arTicketFieldsByCode[$code]};
+                    $newValue = $data['ticket'][$arTicketFieldsByCode[$code]];
                 }
 
                 $ticketHistory = $this->TicketHistory->create(
@@ -1353,6 +1364,49 @@ class BitrixController extends AppController
             ])]);
         }
 
+        return new Response(['body' => json_encode([
+            'success' => false,
+            'message' => __('Bad request')
+        ])]);
+    }
+
+    public function handleAddOrDeleteFiles($data, $currentUser)
+    {
+        $this->disableAutoRender();
+        $data = $this->request->getParsedBody();
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'data' => $data
+        ]);
+        // write to ticket_history table
+        if(isset($data['code']))
+        {
+            $code = $data['code'];
+            $eventType = $this->EventTypes->getEventTypeByCode($code);
+            $value = $data['value'];
+            if($data['code'] == 'addFiles')
+            {
+                $value = implode('|', $data['value']);
+            }
+
+            $ticketHistory = $this->TicketHistory->create(
+                $data['ticketId'],
+                $currentUser['ID'],
+                $eventType->id,
+                null,
+                $value
+            );
+            if ($ticketHistory)
+            {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+            } else {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+            }
+            return new Response(['body' => json_encode([
+                'success' => true,
+                'message' => 'Successful entry to the ticket_history table'
+            ])]);
+        }
         return new Response(['body' => json_encode([
             'success' => false,
             'message' => __('Bad request')
