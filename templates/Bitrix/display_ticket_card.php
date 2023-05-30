@@ -632,7 +632,8 @@ if(!$ticket['incident_category_id'])
                     {
                         resolutionText: this.resolutionText,
                         ticketId: this.ticket.id,
-                        do: 'addResolution'
+                        do: 'addResolution',
+                        code: 'addResolution'
                     },
                     this.required
                 );
@@ -693,25 +694,26 @@ if(!$ticket['incident_category_id'])
                     }
                 }
                 this.ticket.status_id = newStatusID;
-                this.save();
+                this.save('awaiting', 'changeStatus');
             },
             setTicketCategory: function(event)
             {
                 this.ticket.category_id = event.target.value;
-                this.save('awaitingCategory');
+                this.save('awaitingCategory', 'changeCategory');
             },
             setIncidentCategory: function(event)
             {
                 this.ticket.incident_category_id = event.target.value;
-                this.save('awaitingIncidentCategory');
+                this.save('awaitingIncidentCategory', 'changeIncidentCategory');
             },
-            save: function (awaiting = 'awaiting')
+            save: function (awaiting = 'awaiting', eventTypeCode = null)
             {
                 this[awaiting] = true;
                 this.ticket.bitrixUsers = this.bitrixUsers;
                 const parameters = Object.assign(
                     {
-                        ticket: this.ticket
+                        ticket: this.ticket,
+                        code: eventTypeCode
                     },
                     this.required
                 );
@@ -861,12 +863,18 @@ if(!$ticket['incident_category_id'])
             },
             changeresponsibleInView: function(data)
             {
+                // save data about the old and new responsible in the object
+                let rData = {};
+                rData.oldResponsible = { ...this.ticketAttributes.responsible };
+                rData.newResponsible = data;
+
+                // change responsible in view
                 this.ticketAttributes.responsible.id = data.id;
                 this.ticketAttributes.responsible.title = data.name;
                 this.ticketAttributes.responsible.photo = data.photo;
                 this.ticketAttributes.responsible.abr = this.getAbbreviation(data.name);
 
-                this.runOnChangeResponsible(data);
+                this.runOnChangeResponsible(rData);
             },
             runOnChangeResponsible: function(data)
             {
@@ -876,7 +884,8 @@ if(!$ticket['incident_category_id'])
                 const parameters = Object.assign(
                     {
                         activityId: this.ticketAttributes.id,
-                        newResponsible: data
+                        newResponsible: data.newResponsible,
+                        oldResponsible: data.oldResponsible
                     },
                     this.required
                 );
@@ -901,7 +910,7 @@ if(!$ticket['incident_category_id'])
             deleteBitrixUser: function(index)
             {
                 this.bitrixUsers.splice(index, 1);
-                this.save('awaitingBitrixUser');
+                this.save('awaitingBitrixUser', 'changeUsersForNotifications');
             },
             addBitrixUsers: function()
             {
@@ -940,7 +949,7 @@ if(!$ticket['incident_category_id'])
                             this.bitrixUsers.push(row);
                         }
                     }, this);
-                    this.save('awaitingBitrixUser');
+                    this.save('awaitingBitrixUser', 'changeUsersForNotifications');
                 }
             },
             selectedFiles: function()
@@ -995,6 +1004,10 @@ if(!$ticket['incident_category_id'])
             readFiles: function()
             {
                 const origin = this;
+                const fileListCopy = [...this.fileList];
+                const arFileNamesList = fileListCopy.map(function(file) {
+                    return file.name;
+                });
 
                 Array.prototype.forEach.call(this.fileList, function(file)
                 {
@@ -1005,6 +1018,9 @@ if(!$ticket['incident_category_id'])
                         origin.saveFileInB24(event, file.name);
                     };
                 });
+
+                // save changes to the table
+                origin.handleAddOrDeleteFiles('addFiles', 'addFiles', arFileNamesList);
             },
             saveFileInB24(event, fileName)
             {
@@ -1083,6 +1099,9 @@ if(!$ticket['incident_category_id'])
                         }
                     }
                 );
+
+                // save changes to the table
+                origin.handleAddOrDeleteFiles('deleteFile', 'deleteFile', file.NAME);
             },
             displayToast(message, type = 'success')
             {
@@ -1100,6 +1119,32 @@ if(!$ticket['incident_category_id'])
 
                 notificationTextElement.innerHTML = message;
                 $('#notification').toast('show');
+            },
+            handleAddOrDeleteFiles(action, code, value)
+            {
+                const parameters = Object.assign(
+                    {
+                        ticketId: this.ticket.id,
+                        value: value,
+                        do: action,
+                        code: code
+                    },
+                    this.required
+                );
+                fetch(this.ajax,
+                {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(parameters)
+                }).then(async result => {
+                    try
+                    {
+                        const response = await result.json();
+                        console.log(response);
+                    } catch (e) {
+                        console.error("Error occuried: " + e);
+                    }
+                });
             }
         }
     });

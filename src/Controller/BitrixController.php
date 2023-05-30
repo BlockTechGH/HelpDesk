@@ -28,6 +28,7 @@ class BitrixController extends AppController
     private $placement;
     private $ticket = null;
     private $messages = [];
+    private const SEPARATOR = '|';
 
     public function initialize() : void
     {
@@ -79,6 +80,8 @@ class BitrixController extends AppController
         $this->IncidentCategories = $this->getTableLocator()->get('IncidentCategories');
         $this->Tickets = $this->getTableLocator()->get('Tickets');
         $this->TicketBindings = $this->getTableLocator()->get('TicketBindings');
+        $this->TicketHistory = $this->getTableLocator()->get('TicketHistory');
+        $this->EventTypes = $this->getTableLocator()->get('EventTypes');
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'bitrix_controller.log';
         $this->BxControllerLogger = new Logger('BitrixController');
         $this->BxControllerLogger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
@@ -138,6 +141,13 @@ class BitrixController extends AppController
                 {
                     $data = $this->request->getParsedBody();
                     return $this->addResolution($data, $currentUser);
+                }
+
+                // handle add or delete files
+                if($do && ($do === 'addFiles' || $do === 'deleteFile'))
+                {
+                    $data = $this->request->getParsedBody();
+                    return $this->handleAddOrDeleteFiles($data, $currentUser);
                 }
 
                 if($do && $do === 'assignNewDeal')
@@ -465,6 +475,42 @@ class BitrixController extends AppController
 
             $oldTicket = $this->Tickets->get($data['ticket']['id']);
             $oldMark = $this->Statuses->get($oldTicket->status_id)->mark;
+
+            // write to ticket_history table
+            if(isset($data['code']))
+            {
+                $code = $data['code'];
+                $eventType = $this->EventTypes->getEventTypeByCode($code);
+                $arTicketFieldsByCode = [
+                    'changeStatus' => 'status_id',
+                    'changeCategory' => 'category_id',
+                    'changeIncidentCategory' => 'incident_category_id',
+                    'changeUsersForNotifications' => 'bitrix_users'
+                ];
+
+                if ($code === 'changeUsersForNotifications') {
+                    $oldValue = implode(self::SEPARATOR, json_decode($oldTicket->{$arTicketFieldsByCode[$code]}));
+                    $newValue = implode(self::SEPARATOR, json_decode($arBitrixUsersIDs));
+                } else {
+                    $oldValue = $oldTicket->{$arTicketFieldsByCode[$code]};
+                    $newValue = $data['ticket'][$arTicketFieldsByCode[$code]];
+                }
+
+                $ticketHistory = $this->TicketHistory->create(
+                    $oldTicket->id,
+                    $currentUser['ID'],
+                    $eventType->id,
+                    $oldValue,
+                    $newValue
+                );
+                if ($ticketHistory)
+                {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+                } else {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+                }
+            }
+
             $ticket = $this->Tickets->editTicket(
                 (int)$data['ticket']['id'],
                 (int)$data['ticket']['status_id'],
@@ -1284,6 +1330,27 @@ class BitrixController extends AppController
                 ])]);
             }
 
+            // write to ticket_history table
+            if(isset($data['code']))
+            {
+                $code = $data['code'];
+                $eventType = $this->EventTypes->getEventTypeByCode($code);
+
+                $ticketHistory = $this->TicketHistory->create(
+                    $data['ticketId'],
+                    $currentUser['ID'],
+                    $eventType->id,
+                    null,
+                    $record->id
+                );
+                if ($ticketHistory)
+                {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+                } else {
+                    $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+                }
+            }
+
             $record['fullName'] = implode(' ', [$currentUser['NAME'], $currentUser['LAST_NAME']]);
             $record['formattedTime'] = $record->created->format(Bx24Component::DATE_TIME_FORMAT);
             $record['formattedText'] = str_replace(PHP_EOL, '<br>', $record['text']);
@@ -1303,6 +1370,49 @@ class BitrixController extends AppController
             ])]);
         }
 
+        return new Response(['body' => json_encode([
+            'success' => false,
+            'message' => __('Bad request')
+        ])]);
+    }
+
+    public function handleAddOrDeleteFiles($data, $currentUser)
+    {
+        $this->disableAutoRender();
+        $data = $this->request->getParsedBody();
+
+        $this->BxControllerLogger->debug(__FUNCTION__ . ' - input data', [
+            'data' => $data
+        ]);
+        // write to ticket_history table
+        if(isset($data['code']))
+        {
+            $code = $data['code'];
+            $eventType = $this->EventTypes->getEventTypeByCode($code);
+            $value = $data['value'];
+            if($data['code'] == 'addFiles')
+            {
+                $value = implode('|', $data['value']);
+            }
+
+            $ticketHistory = $this->TicketHistory->create(
+                $data['ticketId'],
+                $currentUser['ID'],
+                $eventType->id,
+                null,
+                $value
+            );
+            if ($ticketHistory)
+            {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+            } else {
+                $this->BxControllerLogger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+            }
+            return new Response(['body' => json_encode([
+                'success' => true,
+                'message' => 'Successful entry to the ticket_history table'
+            ])]);
+        }
         return new Response(['body' => json_encode([
             'success' => false,
             'message' => __('Bad request')
