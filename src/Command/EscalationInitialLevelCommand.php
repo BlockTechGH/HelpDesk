@@ -36,6 +36,8 @@ class EscalationInitialLevelCommand extends Command
         $this->TicketsTable = $this->fetchTable('Tickets');
         $this->TicketStatusesTable = $this->fetchTable('TicketStatuses');
         $this->HelpdeskOptionsTable = $this->fetchTable('HelpdeskOptions');
+        $this->TicketHistory = $this->getTableLocator()->get('TicketHistory');
+        $this->EventTypes = $this->getTableLocator()->get('EventTypes');
         $this->slaOptions = $this->getSlaOptionsValue();
 
         $config = [
@@ -53,6 +55,9 @@ class EscalationInitialLevelCommand extends Command
         $logFile = Configure::read('AppConfig.LogsFilePath') . DS . 'escalation_initial_level.log';
         $this->logger = new Logger('EscalationInitialLevel');
         $this->logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+
+        // get event type
+        $this->eventType = $this->EventTypes->getEventTypeByCode('changeStatus');
     }
 
     public function execute(Arguments $args, ConsoleIo $io): int
@@ -124,7 +129,25 @@ class EscalationInitialLevelCommand extends Command
                     'result' => $resultChangeTicketStatus
                 ]);
 
-                // mark tikcet as violated
+                // write to ticket_history table
+                foreach($expiredTickets as $ticket)
+                {
+                    $ticketHistory = $this->TicketHistory->create(
+                        $ticket->id,
+                        0,
+                        $this->eventType->id,
+                        $ticket->status_id,
+                        $escatatedStatus->id
+                    );
+                    if ($ticketHistory)
+                    {
+                        $this->logger->debug(__FUNCTION__ . ' - successful entry to the TicketHistoryTable', ['data' => $ticketHistory]);
+                    } else {
+                        $this->logger->debug(__FUNCTION__ . ' - error when writing to the TicketHistoryTable');
+                    }
+                }
+
+                // mark ticket as violated
                 foreach($expiredTickets as $ticket)
                 {
                     $resultViolation = $this->TicketsTable->markAsViolated($ticket);
