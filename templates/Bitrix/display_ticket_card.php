@@ -5,6 +5,16 @@
         method="POST"
         action="<?= $this->Url->build(['_name' => 'crm_settings_interface', '?' => ['DOMAIN' => $domain]]) ?>"
     >
+        <div id="notification" class="toast mt-3 mr-3" role="alert" aria-live="assertive" aria-atomic="true" data-delay="4000" style="position: absolute; top: 0; right: 50px;">
+            <div class="toast-header">
+                <i id="notificationIcon" class="bi bi-check-square-fill text-success"></i>
+                <strong class="mr-auto ml-2"><?= __('Helpdesk') ?></strong>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="toastText" class="toast-body"></div>
+        </div>
         <div class="row h-100 content-block" role="tabpanel" aria-labelledby="ticket-tab">
             <div class="col-3 border border-right-0">
 
@@ -364,6 +374,7 @@ if(!$ticket['incident_category_id'])
             'Customer_phone' => __('Customer Phone Number'),
             'Customer_email' => __('Customer Email ID'),
             'Created_by' => __('Ticket Created by'),
+            'close_ticket_error' => __('Ticket can not be closed without Resolution'),
         ]);?>,
         awaiting: false,
         awaitingBitrixUser: false,
@@ -442,6 +453,14 @@ if(!$ticket['incident_category_id'])
                     }
                 }
 
+                return false;
+            },
+            isResolutionExist: function()
+            {
+                if (this.resolutions.length > 0)
+                {
+                    return true;
+                }
                 return false;
             }
         },
@@ -661,7 +680,20 @@ if(!$ticket['incident_category_id'])
             },
             setStatus: function (event)
             {
-                this.ticket.status_id = event.target.value;
+                let newStatusID = event.target.value;
+                let oldStatusID = this.ticket.status_id;
+
+                if (this.statuses[newStatusID].mark === 2)
+                {
+                    if (!this.isResolutionExist)
+                    {
+                        let ticketStatusField = document.getElementById('ticket_status');
+                        ticketStatusField.value = oldStatusID;
+                        this.displayToast(this.i18n.close_ticket_error, 'error')
+                        return false;
+                    }
+                }
+                this.ticket.status_id = newStatusID;
                 this.save('awaiting', 'changeStatus');
             },
             setTicketCategory: function(event)
@@ -765,6 +797,12 @@ if(!$ticket['incident_category_id'])
             },
             completeToggle: function()
             {
+                if (!this.isResolutionExist)
+                {
+                    this.displayToast(this.i18n.close_ticket_error, 'error')
+                    return false;
+                }
+
                 this.awaiting = true;
                 const parameters = Object.assign(
                     {
