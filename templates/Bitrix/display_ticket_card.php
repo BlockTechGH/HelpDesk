@@ -231,6 +231,12 @@
                         </svg>
                         <?= __('Screenshots and Attachments') ?>
                     </a>
+                    <a class="nav-link" href="#" id="history-tab" data-toggle="tab" data-target="#history" role="tab" aria-controls="history" aria-selected="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16">
+                            <path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+                        </svg>
+                        <?= __('Ticket History') ?>
+                    </a>
                 </nav>
                 <!-- End menu -->
 
@@ -281,6 +287,11 @@
                             <?= $this->element('files', []); ?>
                         </div>
                     </div>
+                    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                        <div class="container-fluid pt-4">
+                            <?= $this->element('history', []); ?>
+                        </div>
+                    </div>
                 </div>
                 <!-- End content -->
 
@@ -328,6 +339,7 @@ if(!$ticket['incident_category_id'])
         required: <?=json_encode($required)?>,
         ticketActivityType: "<?=$ticketActivityType;?>",
         ticket: <?=json_encode($ticket)?>,
+        ticketHistory: <?=json_encode($ticketHistory)?>,
         dialogId: "<?= $dialogId ?>",
         memberId: "<?=$memberId?>",
         bitrixUsers: <?=json_encode($bitrixUsers)?>,

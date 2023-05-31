@@ -20,21 +20,21 @@ class EventTypesSeed extends AbstractSeed
             ],
             [
                 'name' => 'Change of status',
-                'template' => 'Ticket status has been changed from #OLD# to #NEW#.',
+                'template' => 'Ticket status has been changed from <b>#OLD#</b> to <b>#NEW#</b>.',
                 'code' => 'changeStatus',
                 'created' => date('Y-m-d H:i:s'),
                 'modified' => date('Y-m-d H:i:s')
             ],
             [
                 'name' => 'Category change',
-                'template' => 'Ticket category has been changed from #OLD# to #NEW#.',
+                'template' => 'Ticket category has been changed from <b>#OLD#</b> to <b>#NEW#</b>.',
                 'code' => 'changeCategory',
                 'created' => date('Y-m-d H:i:s'),
                 'modified' => date('Y-m-d H:i:s')
             ],
             [
                 'name' => 'Change incident category',
-                'template' => 'Ticket incident category has been changed from #OLD# to #NEW#.',
+                'template' => 'Ticket incident category has been changed from <b>#OLD#</b> to <b>#NEW#</b>.',
                 'code' => 'changeIncidentCategory',
                 'created' => date('Y-m-d H:i:s'),
                 'modified' => date('Y-m-d H:i:s')
