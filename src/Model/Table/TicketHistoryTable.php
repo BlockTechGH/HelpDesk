@@ -123,4 +123,14 @@ class TicketHistoryTable extends Table
         }
         return $entity;
     }
+
+    public function getHistoryByTicketID($ticketID)
+    {
+        return $this->find()
+            ->contain(['EventTypes'])
+            ->where([
+                'ticket_id' => $ticketID,
+            ])
+            ->order(['TicketHistory.id' => 'DESC'])->all()->toArray();
+    }
 }

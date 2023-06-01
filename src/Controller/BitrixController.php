@@ -584,6 +584,15 @@ class BitrixController extends AppController
             $files = [];
         }
 
+        // get ticket history
+        $ticketHistory = $this->TicketHistory->getHistoryByTicketID($this->ticket['id']);
+
+        if ($ticketHistory)
+        {
+            $ticketHistory = $this->prepareTicketHistoryEventData($ticketHistory);
+        }
+
+        $this->set('ticketHistory', $ticketHistory);
         $this->set('from', $currentUser['TITLE'] ?? "{$currentUser['NAME']} {$currentUser['LAST_NAME']}");
         $this->set('ticket', $this->ticket);
         $this->set('PLACEMENT_OPTIONS', $this->placement);
@@ -1417,5 +1426,144 @@ class BitrixController extends AppController
             'success' => false,
             'message' => __('Bad request')
         ])]);
+    }
+
+    public function prepareTicketHistoryEventData($arTicketHistory)
+    {
+        $arUsers = [];
+
+        foreach ($arTicketHistory as $key => $history)
+        {
+            // prepare time format
+            $arTicketHistory[$key]->created = $history->created->i18nFormat('yyyy-MM-dd HH:mm:ss');
+            // collect user ids to get additional info later
+            if ($history->user_id > 0)
+            {
+                // changed by
+                $arUsers[] = $history->user_id;
+            }
+
+            if ($history->event_type->code == 'changeResponsible')
+            {
+                // old/new responsible
+                $arUsers[] = $history->old_value;
+                $arUsers[] = $history->new_value;
+            }
+
+            if ($history->event_type->code == 'changeUsersForNotifications')
+            {
+                // notifications users
+                $oldBitrixUsers = [];
+                $newBitrixUsers = [];
+                if ($history->old_value)
+                {
+                    $oldBitrixUsers = explode('|', $history->old_value);
+                }
+                if ($history->new_value)
+                {
+                    $newBitrixUsers = explode('|', $history->new_value);
+                }
+
+                $arUsers = array_merge($arUsers, $oldBitrixUsers, $newBitrixUsers);
+            }
+        }
+
+        // get additional info on users
+        $arUsers = array_unique($arUsers);
+        $arUsersAttributes = $this->Bx24->getUsersAttributes($arUsers);
+
+        foreach ($arTicketHistory as $key => $history)
+        {
+            // add changeby user info to history
+            if ($history->user_id > 0)
+            {
+                $arTicketHistory[$key]->changeByInfo = $arUsersAttributes[$history->user_id];
+            }
+
+            // fill description template for history
+            switch($history->event_type->code) {
+                case 'changeResponsible':
+                    $arOldResp = $arUsersAttributes[$history->old_value];
+                    $arNewResp = $arUsersAttributes[$history->new_value];
+                    if ($arOldResp['photo'])
+                    {
+                        $oldRespValue = '<img class="rounded-circle avatar-img-history" alt="' . $arOldResp['title'] . '" src="'. $arOldResp['photo'] .'">' . $arOldResp['title'];
+                    }
+                    else
+                    {
+                        $oldRespValue = '<span class="border rounded-circle p-0">' . $arOldResp['abr'] .'</span>' . $arOldResp['title'];
+                    }
+
+                    if ($arNewResp['photo'])
+                    {
+                        $newRespValue = '<img class="rounded-circle avatar-img-history" alt="' . $arNewResp['title'] . '" src="'. $arNewResp['photo'] .'">' . $arNewResp['title'];
+                    }
+                    else
+                    {
+                        $newRespValue = '<span class="border rounded-circle p-0">' . $arNewResp['abr'] .'</span>' . $arNewResp['title'];
+                    }
+
+                    $arTicketHistory[$key]->event_type->template = str_replace(['#OLD#', '#NEW#'], [$oldRespValue, $newRespValue], $history->event_type->template);
+                    break;
+                case 'changeStatus':
+                    $oldStatus = $this->statuses[$history->old_value]['name'];
+                    $newStatus = $this->statuses[$history->new_value]['name'];
+                    $arTicketHistory[$key]->event_type->template = str_replace(['#OLD#', '#NEW#'], [$oldStatus, $newStatus], $history->event_type->template);
+                    break;
+                case 'changeCategory':
+                    $oldCategory = $this->categories[$history->old_value]['name'];
+                    $newCategory = $this->categories[$history->new_value]['name'];
+                    $arTicketHistory[$key]->event_type->template = str_replace(['#OLD#', '#NEW#'], [$oldCategory, $newCategory], $history->event_type->template);
+                    break;
+                case 'changeIncidentCategory':
+                    $oldIncidentCategory = $this->incidentCategories[$history->old_value]['name'];
+                    $newIncidentCategory = $this->incidentCategories[$history->new_value]['name'];
+                    $arTicketHistory[$key]->event_type->template = str_replace(['#OLD#', '#NEW#'], [$oldIncidentCategory, $newIncidentCategory], $history->event_type->template);
+                    break;
+                case 'changeUsersForNotifications':
+                    $oldBitrixUsersText = '';
+                    $newBitrixUsersText = '';
+                    if ($history->old_value)
+                    {
+                        $oldBitrixUsers = explode('|', $history->old_value);
+                        foreach ($oldBitrixUsers as $userID)
+                        {
+                            $oldBitrixUsersText .= $arUsersAttributes[$userID]['title'] . ', ';
+                        }
+                    }
+                    else
+                    {
+                        $oldBitrixUsersText = ' ' . __('None');
+                    }
+                    if ($history->new_value)
+                    {
+                        $newBitrixUsers = explode('|', $history->new_value);
+                        foreach ($newBitrixUsers as $userID)
+                        {
+                            $newBitrixUsersText .= $arUsersAttributes[$userID]['title'] . ', ';
+                        }
+                    }
+                    else
+                    {
+                        $newBitrixUsersText = ' ' . __('None');
+                    }
+                    $newBitrixUsersText = rtrim($newBitrixUsersText, ", \t\n");
+                    $oldBitrixUsersText = rtrim($oldBitrixUsersText, ", \t\n");
+                    $arTicketHistory[$key]->event_type->template = str_replace(['#OLD#', '#NEW#'], [$oldBitrixUsersText, $newBitrixUsersText], $history->event_type->template);
+                    break;
+                case 'addFiles':
+                    $newFiles = str_replace('|', ', ', $history->new_value);
+                    $arTicketHistory[$key]->event_type->template = str_replace('#NEW#', $newFiles, $history->event_type->template);
+                    break;
+                case 'deleteFile':
+                    $arTicketHistory[$key]->event_type->template = str_replace('#OLD#', $history->new_value, $history->event_type->template);
+                    break;
+                case 'addResolution':
+                default:
+                    break;
+            }
+        }
+
+        return $arTicketHistory;
     }
 }
