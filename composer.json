@@ -10,7 +10,7 @@
         "cakephp/migrations": "^3.2",
         "cakephp/plugin-installer": "^1.3",
         "mesilov/bitrix24-php-sdk": "1.x",
-        "mobiledetect/mobiledetectlib": "^2.8",
+        "mobiledetect/mobiledetectlib": "^3.74",
         "monolog/monolog": "^2.8"
     },
     "require-dev": {
